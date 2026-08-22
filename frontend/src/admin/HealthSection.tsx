@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 
-import { api, type AdminHealth } from "../shared/api";
+import { api, type AdminHealth, type CameraScan } from "../shared/api";
 import { Button, Row, Section } from "./ui";
 
 /* Tableau de bord : « est-ce que la borne va tenir la soirée ? »
@@ -21,6 +21,8 @@ const CARTRIDGE_CAPACITIES = [36, 54, 108];
 export function HealthSection() {
   const [health, setHealth] = useState<AdminHealth | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [scan, setScan] = useState<CameraScan | null>(null);
+  const [scanning, setScanning] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -55,6 +57,19 @@ export function HealthSection() {
       setHealth((current) => (current ? { ...current, counters } : current));
     } catch (cause) {
       setError(String(cause));
+    }
+  };
+
+  /* Jamais au chargement, jamais en boucle : le sondage ouvre chaque périphérique tour à
+     tour, et le capteur n'accepte qu'un propriétaire. Uniquement sur ce clic. */
+  const scanCameras = async () => {
+    setScanning(true);
+    try {
+      setScan(await api.scanCameras());
+    } catch (cause) {
+      setError(String(cause));
+    } finally {
+      setScanning(false);
     }
   };
 
@@ -131,10 +146,61 @@ export function HealthSection() {
         </Group>
       </div>
 
-      <div className="mt-6">
+      <div className="mt-6 flex flex-wrap items-center gap-3">
         <Button onClick={() => void resetCartridge()}>Nouvelle cartouche</Button>
+        <Button onClick={() => void scanCameras()} disabled={scanning}>
+          {scanning ? "Sondage…" : "Détecter les caméras"}
+        </Button>
       </div>
+
+      {scan && <ScanResult scan={scan} />}
     </Section>
+  );
+}
+
+/** Deux listes côte à côte, jamais appariées — voir `CameraScan`. */
+function ScanResult({ scan }: { scan: CameraScan }) {
+  const nothingProbed = scan.probed.length === 0;
+  return (
+    <dl className="mt-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 border-t border-edge pt-4 text-sm">
+      <Row
+        label="Index utilisables"
+        value={
+          nothingProbed
+            ? "aucun index n'a répondu"
+            : scan.probed.map((camera) => `${camera.index} (${size(camera.size)})`).join(" · ")
+        }
+      />
+      <Row
+        label="Vus par le système"
+        value={scan.system_names.length > 0 ? scan.system_names.join(", ") : "nom indisponible"}
+      />
+      {scan.skipped_index !== null && (
+        <Row label="Non sondé" value={`index ${scan.skipped_index} — utilisé par le kiosque`} />
+      )}
+
+      <dt className="text-muted">À savoir</dt>
+      <dd className="text-muted">
+        {nothingProbed ? (
+          /* Sur macOS, l'autorisation caméra s'attache à l'application qui a lancé le
+             backend : accordée au terminal, elle ne l'est pas pour autant à un service
+             lancé autrement. C'est la cause la plus fréquente d'un sondage vide, et sans
+             cette phrase l'opérateur conclut qu'il n'a pas de caméra. */
+          <>
+            Causes possibles : OpenCV n'est pas installé (extra <code>webcam</code>), la
+            caméra est déjà utilisée par une autre application, ou — sur macOS —
+            l'autorisation caméra n'est pas accordée au processus qui a lancé le backend.
+            Elle s'attache à l'application qui le démarre, pas à la machine.
+          </>
+        ) : (
+          <>
+            Les deux listes ne se correspondent pas ligne à ligne : rien ne garantit que le
+            premier nom soit l'index 0. C'est l'index qui va dans{" "}
+            <code>DYM_CAMERA_DEVICE</code>.
+          </>
+        )}
+      </dd>
+    </dl>
   );
 }
 

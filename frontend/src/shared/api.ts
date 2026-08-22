@@ -93,6 +93,25 @@ export interface AdminHealth {
   disk_total_bytes: number;
 }
 
+/** Un index de caméra qui s'ouvre, et la taille que le pilote y annonce. */
+export interface ProbedCamera {
+  index: number;
+  size: [number, number];
+}
+
+/** Résultat d'un sondage de caméras.
+ *
+ * Les deux listes ne sont **pas** appariées, et l'interface ne doit pas le suggérer :
+ * aucune API ne garantit que le troisième nom rendu par le système corresponde à l'index 2
+ * d'OpenCV. L'ordre coïncide souvent — et « souvent » ferait débrancher la mauvaise caméra.
+ */
+export interface CameraScan {
+  probed: ProbedCamera[];
+  system_names: string[];
+  /** Index détenu par le kiosque, donc non sondé. */
+  skipped_index: number | null;
+}
+
 /** Une session terminée, telle que la galerie la liste. */
 export interface GalleryEntry {
   session_id: string;
@@ -165,6 +184,9 @@ export const api = {
 
   health: () => request<AdminHealth>("/admin/system/health"),
   resetCartridge: () => post<CounterReading>("/admin/counters/reset"),
+  // POST : le sondage ouvre chaque périphérique tour à tour. Jamais déclenché
+  // automatiquement — un GET finirait préchargé par le navigateur.
+  scanCameras: () => post<CameraScan>("/admin/cameras/scan"),
   gallery: (offset: number, limit: number) =>
     request<GalleryPage>(`/admin/gallery?offset=${offset}&limit=${limit}`),
   eventConfig: () => request<EventConfigPayload>("/admin/event-config"),

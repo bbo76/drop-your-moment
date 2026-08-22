@@ -26,6 +26,11 @@ from pydantic import BaseModel
 from dropyourmoment.api.kiosk_router import get_runtime
 from dropyourmoment.core.event_config import OVERLAY_FILENAME, EventConfig
 from dropyourmoment.core.session import SessionState
+from dropyourmoment.hardware.camera.discovery import (
+    ProbedCamera,
+    probe_indices,
+    system_camera_names,
+)
 from dropyourmoment.imaging.steps import overlay_matches_ratio
 from dropyourmoment.runtime import Runtime
 from dropyourmoment.storage.atomic import write_atomic
@@ -402,3 +407,53 @@ def _slug(name: str) -> str:
     """
     ascii_only = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()
     return re.sub(r"[^A-Za-z0-9]+", "-", ascii_only).strip("-") or "evenement"
+
+
+# --- Découverte des caméras -------------------------------------------------------------
+
+
+class CameraScan(BaseModel):
+    """Deux listes, délibérément non appariées.
+
+    Aucune API ne garantit que le troisième nom rendu par le système corresponde à l'index
+    2 d'OpenCV. L'ordre coïncide souvent, et « souvent » n'a pas sa place dans une
+    interface d'exploitation : un opérateur à qui on a menti sur un appariement débranche
+    la mauvaise caméra.
+    """
+
+    probed: list[ProbedCamera]
+    system_names: list[str]
+    # Index détenu par le kiosque, donc non sondé : un capteur n'accepte qu'un propriétaire.
+    skipped_index: int | None
+
+
+@router.post("/cameras/scan", response_model=CameraScan)
+def scan_cameras(runtime: Runtime = Depends(get_runtime)) -> CameraScan:
+    """Sonde les index de caméra, sur action explicite de l'opérateur.
+
+    `POST` et non `GET` parce que le sondage a un effet de bord bien réel : il ouvre chaque
+    périphérique tour à tour. Jamais au démarrage, jamais au chargement de la page — un
+    `GET` finirait par être appelé par un rafraîchissement automatique ou un préchargement
+    de navigateur, et volerait le capteur au kiosque en pleine soirée.
+
+    macOS journalise une erreur par index qui n'ouvre pas. Bruit attendu, pas une panne.
+    """
+    skipped = _kiosk_index(runtime)
+    return CameraScan(
+        probed=probe_indices(skip=skipped),
+        system_names=system_camera_names(),
+        skipped_index=skipped,
+    )
+
+
+def _kiosk_index(runtime: Runtime) -> int | None:
+    """L'index que le kiosque occupe, s'il en occupe un.
+
+    Seul le driver webcam en réserve un. Le capteur CSI du Pi n'a pas de sélection à faire,
+    et la mire de synthèse n'ouvre aucun périphérique — dans les deux cas il n'y a rien à
+    épargner, et tous les index sont sondables.
+    """
+    if runtime.camera.get_capabilities().driver_name != "opencv":
+        return None
+    device = runtime.settings.camera_device
+    return device if isinstance(device, int) else None
