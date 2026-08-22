@@ -13,6 +13,11 @@ frontend est une page web, donc capable de tourner sur une tablette ou un Mac.
 `PrinterDriver` et l'état `PRINTING` existent déjà, servis par un pilote neutre, pour que
 le branchement de CUPS ne demande aucune restructuration.
 
+- [Feuille de route](docs/roadmap.md) — jalons faits et restants, et ce qui n'est pas
+  encore vérifié sur le vrai matériel
+- [Décisions](docs/decisions.md) — les choix structurants et pourquoi, avec les
+  conditions qui justifieraient de les rouvrir
+
 ## Architecture en deux lignes
 
 Une application web en mode kiosque : un frontend statique plein écran (Chromium kiosk sur
