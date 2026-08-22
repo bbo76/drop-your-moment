@@ -61,8 +61,9 @@ l'accès est censé rester limité au réseau d'un événement.
 - **Événement** — nom, filtres proposés, format de sortie, nombre de copies, téléversement
   de l'overlay. Une modification est vue par le kiosque **sans redémarrage** : c'est la
   raison d'être du process unique à deux sockets.
-- **Galerie** — liste paginée, vignettes, téléchargement unitaire, archive zip de
-  l'événement servie en flux.
+- **Galerie** — liste paginée, vignettes ouvrables en plein écran, téléchargement
+  explicite, suppression définitive après confirmation, archive zip de l'événement servie
+  en flux.
 
 Un overlay au mauvais ratio est **refusé au téléversement**, avec le ratio reçu et le ratio
 attendu dans le message. Le même fichier serait accepté au chargement, avec un

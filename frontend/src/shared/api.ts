@@ -189,6 +189,11 @@ export const api = {
   scanCameras: () => post<CameraScan>("/admin/cameras/scan"),
   gallery: (offset: number, limit: number) =>
     request<GalleryPage>(`/admin/gallery?offset=${offset}&limit=${limit}`),
+  deleteGalleryEntry: async (sessionId: string) => {
+    const path = `/admin/gallery/${sessionId}`;
+    const response = await fetch(path, { method: "DELETE", cache: "no-store" });
+    if (!response.ok) throw new Error(await errorMessage(response, path));
+  },
   eventConfig: () => request<EventConfigPayload>("/admin/event-config"),
   uploadOverlay: (file: File) => {
     const form = new FormData();
@@ -239,4 +244,5 @@ export const overlayUrl = (revision: number) => `/admin/overlay?v=${revision}`;
    backend répond déjà `Content-Disposition: attachment`. */
 export const thumbnailUrl = (sessionId: string) => `/admin/gallery/${sessionId}/thumbnail`;
 export const photoDownloadUrl = (sessionId: string) => `/admin/gallery/${sessionId}/photo`;
+export const photoViewUrl = (sessionId: string) => `/admin/gallery/${sessionId}/view`;
 export const ARCHIVE_URL = "/admin/gallery/archive.zip";

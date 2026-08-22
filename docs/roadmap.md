@@ -67,6 +67,18 @@ défaut de Pillow n'a aucun glyphe accentué, et `make_overlay` sortait « Maria
 Th□o » ; et le test du sondage caméra en `GET` affirmait un 405 là où le vrai serveur rend
 404 — il passait pour la mauvaise raison.
 
+### ✅ Jalon 5.1 — Finitions d'usage
+
+Trois gestes qui manquaient avant de passer au matériel : le flash logiciel blanc reste
+visible assez longtemps pour être perçu même quand le backend local répond immédiatement ;
+un clic sur une vignette ouvre désormais la photo en grand, avec navigation et bouton de
+téléchargement explicite ; et l'opérateur peut supprimer définitivement une photo après
+confirmation.
+
+La suppression porte sur le dossier complet de la session, refuse la session encore active
+et remet immédiatement pagination et total en cohérence. Pas de corbeille : le portail le
+dit avant l'action, et l'archive zip reste le moyen de sauvegarder l'événement en bloc.
+
 ### ⬜ Jalon 6 — Validation sur le Raspberry Pi
 
 Le premier contact avec le vrai matériel. Le pilote picamera2 est écrit contre la

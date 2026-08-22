@@ -59,6 +59,16 @@ le portail d'administration n'est pas joignable. SQLite se justifierait s'il fal
 historique requêtable ou plusieurs événements en parallèle — aucun des deux n'est au
 programme.
 
+### Suppression de galerie sans corbeille
+
+Supprimer une photo depuis l'administration efface le dossier complet de sa session, après
+une confirmation qui nomme la photo et dit explicitement que l'action est irréversible.
+
+Une corbeille ajouterait un second état de conservation, une purge et une interface de
+restauration pour un besoin d'exploitation ponctuel. L'archive zip de l'événement est la
+sauvegarde volontaire avant ménage ; la session encore utilisée par le kiosque est, elle,
+toujours protégée contre la suppression.
+
 ### Strict à la porte, permissif à l'exécution
 
 Un overlay au mauvais ratio est **refusé au téléversement** mais **accepté au

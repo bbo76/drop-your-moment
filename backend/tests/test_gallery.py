@@ -177,9 +177,54 @@ def test_telechargement_unitaire_en_piece_jointe(admin: TestClient, runtime: Run
     assert "attachment" in response.headers["content-disposition"]
 
 
+def test_photo_plein_format_s_affiche_sans_telechargement(
+    admin: TestClient, runtime: Runtime
+) -> None:
+    _sessions(runtime.settings.sessions_dir, 1)
+
+    response = admin.get("/admin/gallery/000000000000/view")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/jpeg"
+    assert "content-disposition" not in response.headers
+
+
+def test_suppression_efface_toute_la_session(admin: TestClient, runtime: Runtime) -> None:
+    _sessions(runtime.settings.sessions_dir, 2)
+    directory = runtime.settings.sessions_dir / "000000000000"
+    (directory / "raw.jpg").write_bytes(b"prise brute")
+    (directory / "artefact.tmp").write_bytes(b"autre artefact")
+
+    response = admin.delete("/admin/gallery/000000000000")
+
+    assert response.status_code == 204
+    assert not directory.exists()
+    body = admin.get("/admin/gallery").json()
+    assert body["total"] == 1
+    assert body["entries"][0]["session_id"] == "000000000001"
+
+
+def test_suppression_refuse_la_session_en_cours(
+    admin: TestClient, kiosk: TestClient, runtime: Runtime
+) -> None:
+    session_id = kiosk.post("/api/session").json()["session_id"]
+    kiosk.post(f"/api/session/{session_id}/capture")
+
+    response = admin.delete(f"/admin/gallery/{session_id}")
+
+    assert response.status_code == 409
+    assert "session en cours" in response.json()["detail"]
+    assert (runtime.settings.sessions_dir / session_id / "final.jpg").is_file()
+
+
+def test_suppression_inconnue_en_404(admin: TestClient) -> None:
+    assert admin.delete("/admin/gallery/jamais-vue").status_code == 404
+
+
 def test_session_inconnue_en_404(admin: TestClient) -> None:
     assert admin.get("/admin/gallery/jamais-vue/photo").status_code == 404
     assert admin.get("/admin/gallery/jamais-vue/thumbnail").status_code == 404
+    assert admin.get("/admin/gallery/jamais-vue/view").status_code == 404
 
 
 def test_traversee_de_chemin_refusee(admin: TestClient, runtime: Runtime) -> None:
@@ -187,8 +232,9 @@ def test_traversee_de_chemin_refusee(admin: TestClient, runtime: Runtime) -> Non
     (runtime.settings.data_dir / "secret.txt").write_text("hors galerie")
 
     for tentative in ("..%2F..%2Fsecret.txt", "%2Fetc", "..", "..%2F..%2F..%2Fetc%2Fpasswd"):
-        response = admin.get(f"/admin/gallery/{tentative}/photo")
-        assert response.status_code == 404, f"{tentative!r} n'a pas été refusé"
+        for method, suffix in ((admin.get, "/photo"), (admin.delete, "")):
+            response = method(f"/admin/gallery/{tentative}{suffix}")
+            assert response.status_code == 404, f"{tentative!r} n'a pas été refusé"
 
 
 def test_l_archive_de_l_evenement_se_telecharge(admin: TestClient, runtime: Runtime) -> None:

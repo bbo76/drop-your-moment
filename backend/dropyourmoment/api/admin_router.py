@@ -375,6 +375,39 @@ def download_photo(session_id: str, runtime: Runtime = Depends(get_runtime)) -> 
     )
 
 
+@router.get("/gallery/{session_id}/view")
+def view_photo(session_id: str, runtime: Runtime = Depends(get_runtime)) -> FileResponse:
+    """Photo plein format affichable dans la lightbox, sans téléchargement forcé."""
+    return FileResponse(
+        _photo_path(runtime, session_id),
+        media_type="image/jpeg",
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+@router.delete("/gallery/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_photo(session_id: str, runtime: Runtime = Depends(get_runtime)) -> Response:
+    """Supprime définitivement toute la session associée à une photo.
+
+    La session courante est protégée même si elle porte déjà un ``final.jpg`` : supprimer
+    sous les pieds du kiosque ferait échouer un changement de filtre ou la confirmation.
+    """
+    active = runtime.machine.session
+    if active is not None and active.id == session_id:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail="impossible de supprimer la session en cours",
+        )
+
+    directory = _photo_path(runtime, session_id).parent
+    try:
+        shutil.rmtree(directory)
+    except FileNotFoundError:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="photo introuvable") from None
+    logger.info("session %s supprimée depuis la galerie", session_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 # Sentinelle de tranche : `list_sessions` prend un `limit` obligatoire, et l'archive en
 # veut la totalité.
 _ALL = 1 << 30
