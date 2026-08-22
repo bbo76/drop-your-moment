@@ -23,7 +23,7 @@ RATIO = POSTCARD_LANDSCAPE.aspect_ratio
 @pytest.fixture
 def raw_shot(tmp_path: Path) -> Path:
     """Prise brute en 16:9, comme le capteur la produit."""
-    path = tmp_path / "raw-0.jpg"
+    path = tmp_path / "raw.jpg"
     Image.new("RGB", (2304, 1296), (120, 120, 120)).save(path, format="JPEG", quality=95)
     return path
 
@@ -40,7 +40,7 @@ def red_band_overlay(size: tuple[int, int] = (1480, 1000)) -> Image.Image:
 
 
 def test_compose_recadre_au_format_de_sortie(raw_shot: Path) -> None:
-    result = ImagePipeline(event()).compose([raw_shot], FilterName.ORIGINAL)
+    result = ImagePipeline(event()).compose(raw_shot, FilterName.ORIGINAL)
 
     assert result.size == (1918, 1296)
     assert result.size[0] / result.size[1] == pytest.approx(RATIO, abs=1e-3)
@@ -49,7 +49,7 @@ def test_compose_recadre_au_format_de_sortie(raw_shot: Path) -> None:
 def test_compose_conserve_la_resolution_native(raw_shot: Path) -> None:
     """On ne redimensionne pas à la taille d'impression : la sortie sert aussi au
     numérique, et le tirage se chargera de son propre échantillonnage."""
-    result = ImagePipeline(event()).compose([raw_shot], FilterName.ORIGINAL)
+    result = ImagePipeline(event()).compose(raw_shot, FilterName.ORIGINAL)
 
     minimum = POSTCARD_LANDSCAPE.pixel_size
     assert result.size[0] >= minimum[0]
@@ -57,7 +57,7 @@ def test_compose_conserve_la_resolution_native(raw_shot: Path) -> None:
 
 
 def test_l_overlay_est_applique(raw_shot: Path) -> None:
-    result = ImagePipeline(event(red_band_overlay())).compose([raw_shot], FilterName.ORIGINAL)
+    result = ImagePipeline(event(red_band_overlay())).compose(raw_shot, FilterName.ORIGINAL)
 
     width, height = result.size
     assert result.getpixel((width // 2, height // 10)) == (255, 0, 0)
@@ -69,7 +69,7 @@ def test_l_overlay_n_est_pas_filtre(raw_shot: Path) -> None:
     Si l'overlay était composé avant le filtre, ce rouge saturé sortirait en gris avec le
     filtre N&B — et le logo d'un client partirait avec lui.
     """
-    result = ImagePipeline(event(red_band_overlay())).compose([raw_shot], FilterName.BW)
+    result = ImagePipeline(event(red_band_overlay())).compose(raw_shot, FilterName.BW)
 
     width, height = result.size
     red, green, blue = result.getpixel((width // 2, height // 10))
@@ -81,7 +81,7 @@ def test_l_overlay_n_est_pas_filtre(raw_shot: Path) -> None:
 
 
 def test_le_filtre_sepia_epargne_aussi_l_overlay(raw_shot: Path) -> None:
-    result = ImagePipeline(event(red_band_overlay())).compose([raw_shot], FilterName.SEPIA)
+    result = ImagePipeline(event(red_band_overlay())).compose(raw_shot, FilterName.SEPIA)
 
     width, height = result.size
     assert result.getpixel((width // 2, height // 10)) == (255, 0, 0)
@@ -89,7 +89,7 @@ def test_le_filtre_sepia_epargne_aussi_l_overlay(raw_shot: Path) -> None:
 
 def test_composition_sans_overlay(raw_shot: Path) -> None:
     """Une borne sans branding configuré doit fonctionner normalement."""
-    result = ImagePipeline(event()).compose([raw_shot], FilterName.ORIGINAL)
+    result = ImagePipeline(event()).compose(raw_shot, FilterName.ORIGINAL)
 
     assert result.size == (1918, 1296)
 
@@ -102,30 +102,20 @@ def test_changer_de_filtre_est_reproductible(raw_shot: Path) -> None:
     """
     pipeline = ImagePipeline(event(red_band_overlay()))
 
-    first = pipeline.compose([raw_shot], FilterName.SEPIA)
-    pipeline.compose([raw_shot], FilterName.BW)
-    again = pipeline.compose([raw_shot], FilterName.SEPIA)
+    first = pipeline.compose(raw_shot, FilterName.SEPIA)
+    pipeline.compose(raw_shot, FilterName.BW)
+    again = pipeline.compose(raw_shot, FilterName.SEPIA)
 
     assert first.tobytes() == again.tobytes()
 
 
 def test_prise_manquante_rejetee(tmp_path: Path) -> None:
     with pytest.raises(CompositionError, match="illisible"):
-        ImagePipeline(event()).compose([tmp_path / "absent.jpg"], FilterName.ORIGINAL)
-
-
-def test_aucune_prise_rejetee() -> None:
-    with pytest.raises(CompositionError, match="aucune prise"):
-        ImagePipeline(event()).compose([], FilterName.ORIGINAL)
-
-
-def test_plusieurs_prises_rejetees_en_mode_simple(raw_shot: Path) -> None:
-    with pytest.raises(CompositionError, match="attend 1 prise"):
-        ImagePipeline(event()).compose([raw_shot, raw_shot], FilterName.ORIGINAL)
+        ImagePipeline(event()).compose(tmp_path / "absent.jpg", FilterName.ORIGINAL)
 
 
 def test_sauvegarde_cree_l_arborescence(tmp_path: Path, raw_shot: Path) -> None:
-    result = ImagePipeline(event()).compose([raw_shot], FilterName.ORIGINAL)
+    result = ImagePipeline(event()).compose(raw_shot, FilterName.ORIGINAL)
     destination = tmp_path / "sessions" / "abc123" / "final.jpg"
 
     save_jpeg(result, destination)

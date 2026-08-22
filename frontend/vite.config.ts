@@ -1,10 +1,6 @@
-import { fileURLToPath } from "node:url";
-
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
-
-const entry = (name: string) => fileURLToPath(new URL(name, import.meta.url));
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
@@ -15,8 +11,8 @@ export default defineConfig({
     // dupliquer l'outillage ni l'arbre de dépendances.
     rollupOptions: {
       input: {
-        kiosk: entry("./index.html"),
-        admin: entry("./admin.html"),
+        kiosk: "index.html",
+        admin: "admin.html",
       },
     },
   },

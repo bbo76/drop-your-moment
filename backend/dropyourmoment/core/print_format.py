@@ -15,21 +15,14 @@ décidé, et le décider maintenant évite de refaire tous les overlays plus tar
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 
 class PrintFormat(BaseModel):
-    name: str
+    name: str = Field(min_length=1)
     width_mm: float = Field(gt=0)
     height_mm: float = Field(gt=0)
     dpi: int = Field(default=300, gt=0)
-
-    @field_validator("name")
-    @classmethod
-    def _non_vide(cls, value: str) -> str:
-        if not value.strip():
-            raise ValueError("le nom du format ne peut pas être vide")
-        return value
 
     @property
     def aspect_ratio(self) -> float:
@@ -46,18 +39,7 @@ class PrintFormat(BaseModel):
         )
 
 
-# Formats de média de la Canon Selphy CP1500. Le paysage carte postale est le défaut :
-# c'est le média le plus courant et l'orientation qui cadre le mieux un groupe.
+# Média de la Canon Selphy CP1500 retenu par défaut : le plus courant, et l'orientation
+# qui cadre le mieux un groupe. Les autres médias (portrait, carte, carré) s'écrivent à la
+# main dans `event_config.json` — un format est quatre nombres, pas une entrée de registre.
 POSTCARD_LANDSCAPE = PrintFormat(name="Carte postale paysage", width_mm=148, height_mm=100)
-POSTCARD_PORTRAIT = PrintFormat(name="Carte postale portrait", width_mm=100, height_mm=148)
-CARD_LANDSCAPE = PrintFormat(name="Format carte paysage", width_mm=86, height_mm=54)
-SQUARE = PrintFormat(name="Carré", width_mm=72, height_mm=72)
-
-BUILTIN_FORMATS: dict[str, PrintFormat] = {
-    "postcard_landscape": POSTCARD_LANDSCAPE,
-    "postcard_portrait": POSTCARD_PORTRAIT,
-    "card_landscape": CARD_LANDSCAPE,
-    "square": SQUARE,
-}
-
-DEFAULT_FORMAT_KEY = "postcard_landscape"

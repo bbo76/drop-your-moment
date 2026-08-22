@@ -12,7 +12,6 @@ import pytest
 
 from dropyourmoment.core.errors import PrintJobFailedError
 from dropyourmoment.hardware.printer.base import JobState, PrinterDriver, PrintJob
-from dropyourmoment.hardware.printer.factory import PrinterDriverName, build_printer_driver
 from dropyourmoment.hardware.printer.null_driver import NullPrinterDriver
 
 
@@ -29,10 +28,6 @@ def test_un_pilote_incomplet_est_refuse() -> None:
 
 def test_le_pilote_neutre_satisfait_le_contrat() -> None:
     assert isinstance(NullPrinterDriver(), PrinterDriver)
-
-
-def test_la_fabrique_rend_le_pilote_neutre() -> None:
-    assert isinstance(build_printer_driver(PrinterDriverName.NULL), NullPrinterDriver)
 
 
 def test_le_job_est_termine_immediatement(tmp_path: Path) -> None:
@@ -56,16 +51,3 @@ def test_un_job_inconnu_est_refuse() -> None:
     """Mieux vaut un écran d'erreur qu'une session bloquée en PRINTING pour l'éternité."""
     with pytest.raises(PrintJobFailedError):
         NullPrinterDriver().get_job_status("job-inexistant")
-
-
-def test_le_pilote_neutre_se_declare_pret() -> None:
-    status = NullPrinterDriver().get_status()
-
-    assert status.ready
-    assert status.driver_name == "null"
-    assert NullPrinterDriver().list_available_printers() == []
-
-
-def test_les_etats_finaux() -> None:
-    assert JobState.COMPLETED.is_final and JobState.FAILED.is_final
-    assert not JobState.PENDING.is_final and not JobState.PRINTING.is_final

@@ -16,16 +16,9 @@ import logging
 from pathlib import Path
 
 from dropyourmoment.core.errors import PrintJobFailedError
-from dropyourmoment.hardware.printer.base import (
-    JobState,
-    PrinterDriver,
-    PrinterStatus,
-    PrintJob,
-)
+from dropyourmoment.hardware.printer.base import JobState, PrinterDriver, PrintJob
 
 logger = logging.getLogger(__name__)
-
-DRIVER_NAME = "null"
 
 
 class NullPrinterDriver(PrinterDriver):
@@ -59,14 +52,3 @@ class NullPrinterDriver(PrinterDriver):
             return self._jobs[job_id]
         except KeyError:
             raise PrintJobFailedError(f"job inconnu : {job_id}") from None
-
-    def get_status(self) -> PrinterStatus:
-        return PrinterStatus(
-            driver_name=DRIVER_NAME,
-            ready=True,
-            printer_name=None,
-            detail="aucune imprimante branchée — les tirages sont simulés",
-        )
-
-    def list_available_printers(self) -> list[str]:
-        return []

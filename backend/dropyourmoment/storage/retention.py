@@ -39,17 +39,6 @@ class RetentionPolicy:
 
 
 @dataclass(frozen=True)
-class PurgeReport:
-    removed_ids: list[str]
-    freed_bytes: int
-    remaining_bytes: int
-
-    @property
-    def removed(self) -> int:
-        return len(self.removed_ids)
-
-
-@dataclass(frozen=True)
 class _Candidate:
     path: Path
     modified_at: float
@@ -61,14 +50,14 @@ def purge(
     policy: RetentionPolicy,
     keep_ids: Collection[str] = (),
     now: datetime | None = None,
-) -> PurgeReport:
+) -> list[str]:
     """Supprime les sessions trop vieilles, puis les plus anciennes si le total déborde.
 
-    `keep_ids` protège la session en cours : on ne purge jamais sous les pieds d'un
-    visiteur, même si l'horloge ou le plafond le réclament.
+    Rend les identifiants supprimés. `keep_ids` protège la session en cours : on ne purge
+    jamais sous les pieds d'un visiteur, même si l'horloge ou le plafond le réclament.
     """
     if not sessions_root.is_dir():
-        return PurgeReport(removed_ids=[], freed_bytes=0, remaining_bytes=0)
+        return []
 
     protected = set(keep_ids)
     reference = (now or datetime.now(UTC)).timestamp()
@@ -84,11 +73,6 @@ def purge(
         key=lambda candidate: candidate.modified_at,
     )
     total = sum(candidate.size for candidate in candidates)
-    total += sum(
-        _directory_size(sessions_root / session_id)
-        for session_id in protected
-        if (sessions_root / session_id).is_dir()
-    )
 
     removed: list[str] = []
     freed = 0
@@ -115,7 +99,7 @@ def purge(
             len(removed),
             freed / 1024 / 1024,
         )
-    return PurgeReport(removed_ids=removed, freed_bytes=freed, remaining_bytes=total - freed)
+    return removed
 
 
 def _remove(candidate: _Candidate, reason: str) -> None:

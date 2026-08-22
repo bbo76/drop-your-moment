@@ -6,13 +6,7 @@ import pytest
 from PIL import Image
 
 from dropyourmoment.imaging.filters import FilterName, apply_filter
-from dropyourmoment.imaging.steps import (
-    LayoutSpec,
-    apply_overlay,
-    compose_layout,
-    crop_to_aspect,
-    overlay_matches_ratio,
-)
+from dropyourmoment.imaging.steps import apply_overlay, crop_to_aspect, overlay_matches_ratio
 
 POSTCARD_RATIO = 148 / 100  # 1.48
 
@@ -71,26 +65,6 @@ def test_recadrage_ne_modifie_pas_la_source() -> None:
 def test_ratio_cible_invalide_rejete() -> None:
     with pytest.raises(ValueError):
         crop_to_aspect(solid((100, 100), (0, 0, 0)), 0)
-
-
-# --- Disposition -------------------------------------------------------------------
-
-
-def test_disposition_simple_est_un_passe_plat() -> None:
-    shot = solid((640, 480), (7, 8, 9))
-
-    composed = compose_layout([shot], LayoutSpec())
-
-    assert composed.size == shot.size
-    assert composed.getpixel((0, 0)) == (7, 8, 9)
-
-
-def test_disposition_simple_refuse_plusieurs_prises() -> None:
-    """Garde-fou pour le jour où le mode bandeau alimentera plusieurs prises."""
-    shots = [solid((10, 10), (0, 0, 0)) for _ in range(3)]
-
-    with pytest.raises(ValueError, match="attend 1 prise"):
-        compose_layout(shots, LayoutSpec())
 
 
 # --- Overlay -----------------------------------------------------------------------

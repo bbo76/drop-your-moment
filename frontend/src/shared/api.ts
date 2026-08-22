@@ -30,9 +30,7 @@ export interface SessionStatus {
 /** Capacités du matériel. Ne changent qu'au rebranchement d'un périphérique. */
 export interface SystemStatus {
   camera_ok: boolean;
-  camera_driver: string;
   preview_size: [number, number];
-  still_size: [number, number];
 }
 
 /** Réglages de l'événement. Modifiables depuis le portail d'administration. */
@@ -43,19 +41,18 @@ export interface EventInfo {
   print_aspect_ratio: number;
 }
 
-export class ApiError extends Error {
-  constructor(
-    readonly path: string,
-    readonly status: number,
-  ) {
-    super(`${path} → HTTP ${status}`);
-    this.name = "ApiError";
-  }
+/** Diagnostic servi par le portail d'administration, sur l'autre socket. */
+export interface AdminHealth {
+  camera_ok: boolean;
+  camera_driver: string;
+  session_state: SessionState;
+  print_format_name: string;
+  print_aspect_ratio: number;
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, { cache: "no-store", ...init });
-  if (!response.ok) throw new ApiError(path, response.status);
+  if (!response.ok) throw new Error(`${path} → HTTP ${response.status}`);
   return (await response.json()) as T;
 }
 
@@ -80,6 +77,8 @@ export const api = {
     post<SessionStatus>(`/api/session/${sessionId}/filter`, { name }),
   retake: (sessionId: string) => post<SessionStatus>(`/api/session/${sessionId}/retake`),
   printPhoto: (sessionId: string) => post<SessionStatus>(`/api/session/${sessionId}/print`),
+
+  health: () => request<AdminHealth>("/admin/system/health"),
 };
 
 /** URL du flux MJPEG.

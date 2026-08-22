@@ -20,7 +20,8 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
 from dropyourmoment.config import load_settings
-from dropyourmoment.core.print_format import BUILTIN_FORMATS, DEFAULT_FORMAT_KEY, PrintFormat
+from dropyourmoment.core.event_config import EventStore
+from dropyourmoment.core.print_format import PrintFormat
 
 FRAME_COLOR = (255, 255, 255, 235)
 BANNER_COLOR = (18, 20, 26, 205)
@@ -69,12 +70,6 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--label", default="Drop Your Moment", help="texte du bandeau")
     parser.add_argument(
-        "--format",
-        default=DEFAULT_FORMAT_KEY,
-        choices=sorted(BUILTIN_FORMATS),
-        help="format de sortie, qui fixe le ratio",
-    )
-    parser.add_argument(
         "--out",
         type=Path,
         default=settings.event_dir / "overlay.png",
@@ -82,7 +77,9 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    print_format = BUILTIN_FORMATS[args.format]
+    # Le ratio vient du format de sortie de l'événement, jamais d'un choix indépendant :
+    # un overlay au mauvais ratio finit étiré sur la photo.
+    print_format = EventStore(settings.event_dir).load().config.print_format
     overlay = build_overlay(print_format, args.label)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     overlay.save(args.out)

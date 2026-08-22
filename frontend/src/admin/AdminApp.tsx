@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 
+import { api, type AdminHealth } from "../shared/api";
+
 /* Portail d'administration — squelette.
  *
  * Il n'expose au jalon 1 que le diagnostic déjà servi par le backend, ce qui suffit à
@@ -8,14 +10,6 @@ import { useEffect, useState } from "react";
  *
  * Contrairement au kiosque, cet écran s'adresse à un opérateur sur un PC : il peut
  * défiler, afficher des informations techniques et n'a aucune contrainte tactile. */
-
-interface AdminHealth {
-  camera_ok: boolean;
-  camera_driver: string;
-  session_state: string;
-  print_format_name: string;
-  print_aspect_ratio: number;
-}
 
 export function AdminApp() {
   const [health, setHealth] = useState<AdminHealth | null>(null);
@@ -27,9 +21,7 @@ export function AdminApp() {
 
     const tick = async () => {
       try {
-        const response = await fetch("/admin/system/health", { cache: "no-store" });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const fresh = (await response.json()) as AdminHealth;
+        const fresh = await api.health();
         if (cancelled) return;
         setHealth(fresh);
         setError(null);

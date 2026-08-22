@@ -18,7 +18,7 @@ from dropyourmoment.core.session import SessionMachine
 from dropyourmoment.hardware.camera.base import CameraDriver
 from dropyourmoment.hardware.camera.factory import build_camera_driver
 from dropyourmoment.hardware.printer.base import PrinterDriver
-from dropyourmoment.hardware.printer.factory import build_printer_driver
+from dropyourmoment.hardware.printer.null_driver import NullPrinterDriver
 from dropyourmoment.imaging.filters import FilterName
 from dropyourmoment.imaging.pipeline import ImagePipeline
 from dropyourmoment.storage.counters import CounterStore
@@ -55,7 +55,9 @@ class Runtime:
         return cls(
             settings=settings,
             camera=build_camera_driver(settings.camera_driver),
-            printer=build_printer_driver(settings.printer_driver),
+            # Pilote neutre pendant toute la phase numérique : le parcours va jusqu'au
+            # bout sans imprimante branchée. Le jalon 7 branche ici le pilote CUPS.
+            printer=NullPrinterDriver(),
             machine=SessionMachine(timeouts=settings.state_timeouts()),
             event_store=store,
             event=store.load(),

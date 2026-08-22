@@ -16,12 +16,7 @@ from dropyourmoment.config import Settings
 from dropyourmoment.core.errors import PrinterOfflineError
 from dropyourmoment.core.event_config import EventConfig
 from dropyourmoment.core.session import SessionState, StateTimeouts
-from dropyourmoment.hardware.printer.base import (
-    JobState,
-    PrinterDriver,
-    PrinterStatus,
-    PrintJob,
-)
+from dropyourmoment.hardware.printer.base import JobState, PrinterDriver, PrintJob
 from dropyourmoment.hardware.printer.null_driver import NullPrinterDriver
 from dropyourmoment.runtime import Runtime
 from dropyourmoment.storage.paths import final_path, raw_path
@@ -53,12 +48,6 @@ class FakePrinterDriver(PrinterDriver):
 
     def get_job_status(self, job_id: str) -> PrintJob:
         return self.jobs[job_id]
-
-    def get_status(self) -> PrinterStatus:
-        return PrinterStatus(driver_name="fake", ready=self.mode != "offline")
-
-    def list_available_printers(self) -> list[str]:
-        return ["fake"]
 
     def settle(self, state: JobState, detail: str | None = None) -> None:
         """Fait aboutir (ou échouer) le dernier job soumis."""
@@ -127,9 +116,7 @@ def test_le_compteur_suit_le_nombre_de_copies(kiosk: TestClient, runtime: Runtim
 
     kiosk.post(f"/api/session/{session_id}/print")
 
-    counters = runtime.counters.read()
-    assert counters.prints_total == 3
-    assert counters.prints_since_reset == 3
+    assert runtime.counters.read().prints_total == 3
 
 
 def test_le_compteur_ne_bouge_pas_sans_tirage(kiosk: TestClient, runtime: Runtime) -> None:
@@ -145,7 +132,7 @@ def test_le_tirage_conserve_les_fichiers(kiosk: TestClient, runtime: Runtime) ->
 
     kiosk.post(f"/api/session/{session_id}/print")
 
-    assert raw_path(root, session_id, 0).is_file()
+    assert raw_path(root, session_id).is_file()
     assert final_path(root, session_id).is_file()
 
 

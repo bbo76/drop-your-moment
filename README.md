@@ -131,11 +131,10 @@ Variables d'environnement préfixées `DYM_` (voir
 
 | variable | défaut | rôle |
 |---|---|---|
-| `CAMERA_DRIVER` | `auto` | `mock`, `picamera2`, ou `unavailable` pour tester l'écran dégradé |
+| `CAMERA_DRIVER` | `auto` | `mock` ou `picamera2` ; `auto` détecte le Pi et retombe sur `mock` |
 | `PREVIEW_TIMEOUT_S` | `60` | retour à l'accueil si le visiteur s'éloigne devant l'aperçu |
 | `REVIEW_TIMEOUT_S` | `90` | idem sur l'écran de review |
 | `KIOSK_HOST` / `ADMIN_HOST` | `127.0.0.1` / `0.0.0.0` | adresses de bind |
-| `PRINTER_DRIVER` | `null` | pilote neutre pendant la phase numérique ; `cups` au jalon 7 |
 | `RETENTION_MAX_AGE_DAYS` | `30` | âge au-delà duquel une session est purgée |
 | `RETENTION_MAX_TOTAL_GB` | `8` | plafond du dossier `data/sessions`, filet contre le disque plein |
 

@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { previewStreamUrl } from "../../shared/api";
-import { computeFraming } from "../../shared/framing";
-import { FramingGuide } from "./FramingGuide";
+import { computeFraming, FramingGuide } from "./FramingGuide";
 import { GhostButton, PrimaryButton } from "./Screen";
 
 const RETURN_HINT_THRESHOLD_S = 20;
