@@ -60,7 +60,12 @@ jobs:
 
       # La version de pnpm vient du champ packageManager de package.json : une seule
       # source de vérité pour la machine de développement, la CI et le Pi.
+      #
+      # Le chemin doit être explicite : `defaults.run.working-directory` ne s'applique
+      # qu'aux étapes `run:`, pas aux actions `uses:`, qui partent de la racine du dépôt.
       - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: frontend/package.json
 
       - uses: actions/setup-node@v5
         with:
