@@ -7,10 +7,17 @@ redémarrage. C'est la raison d'être du process unique à deux sockets, et jusq
 
 from __future__ import annotations
 
-from fastapi.testclient import TestClient
+from io import BytesIO
 
-from dropyourmoment.core.event_config import CONFIG_FILENAME
+from fastapi.testclient import TestClient
+from PIL import Image
+
+from dropyourmoment.core.event_config import CONFIG_FILENAME, OVERLAY_FILENAME
+from dropyourmoment.core.print_format import POSTCARD_LANDSCAPE
 from dropyourmoment.runtime import Runtime
+
+# Au ratio de la carte postale paysage (1.48), le format par défaut de l'événement.
+GOOD_SIZE = (1480, 1000)
 
 
 def test_lecture_de_la_configuration_active(admin: TestClient) -> None:
@@ -137,3 +144,159 @@ def test_la_configuration_survit_a_un_redemarrage(admin: TestClient, runtime: Ru
     admin.put("/admin/event-config", json=config)
 
     assert runtime.event_store.load().config.event_name == "Gala"
+
+
+# --- Téléversement de l'overlay -------------------------------------------------------
+
+
+def _png(size: tuple[int, int], mode: str = "RGBA", alpha: int = 128) -> bytes:
+    """Un PNG en mémoire. `alpha=255` produit une image entièrement opaque."""
+    color = (255, 0, 0, alpha) if mode == "RGBA" else (255, 0, 0)
+    buffer = BytesIO()
+    Image.new(mode, size, color).save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
+def _upload(admin: TestClient, data: bytes, name: str = "cadre.png"):
+    return admin.post("/admin/overlay", files={"file": (name, data, "image/png")})
+
+
+def test_overlay_au_bon_ratio_accepte(admin: TestClient, runtime: Runtime) -> None:
+    response = _upload(admin, _png(GOOD_SIZE))
+
+    assert response.status_code == 200
+    assert response.json()["overlay_file"] == OVERLAY_FILENAME
+    assert runtime.event.overlay is not None, "le kiosque doit l'avoir chargé aussitôt"
+    assert runtime.event_store.overlay_path.is_file()
+
+
+def test_overlay_au_mauvais_ratio_refuse_avec_les_deux_ratios(admin: TestClient) -> None:
+    """Message exploitable, pas un 422 muet : l'opérateur doit savoir quoi corriger."""
+    response = _upload(admin, _png((1000, 1000)))
+
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert "1.000" in detail, "le ratio reçu"
+    assert f"{POSTCARD_LANDSCAPE.aspect_ratio:.3f}" in detail, "le ratio attendu"
+    assert "1000×1000" in detail, "les dimensions reçues"
+    assert POSTCARD_LANDSCAPE.name in detail, "le format qui l'impose"
+
+
+def test_overlay_refuse_ne_touche_a_rien(admin: TestClient, runtime: Runtime) -> None:
+    _upload(admin, _png((1000, 1000)))
+
+    assert runtime.event.config.overlay_file is None
+    assert not runtime.event_store.overlay_path.exists()
+
+
+def test_fichier_qui_n_est_pas_une_image_refuse(admin: TestClient) -> None:
+    response = _upload(admin, b"ce ne sont pas des pixels")
+
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert "illisible" in detail
+    assert "BytesIO" not in detail, "le repr de Pillow ne dit rien à un opérateur"
+
+
+def test_png_tronque_refuse_sans_500(admin: TestClient) -> None:
+    """En-tête valide, pixels absents : `Image.open` étant paresseux, il ne lève qu'au
+    décodage. Décoder hors du gestionnaire d'erreur rendrait un 500 au lieu d'un refus."""
+    entier = _png(GOOD_SIZE)
+
+    response = _upload(admin, entier[: len(entier) // 2])
+
+    assert response.status_code == 422
+
+
+def test_image_sans_canal_alpha_refusee(admin: TestClient) -> None:
+    response = _upload(admin, _png(GOOD_SIZE, mode="RGB"))
+
+    assert response.status_code == 422
+    assert "opaque" in response.json()["detail"]
+
+
+def test_rgba_entierement_opaque_refuse(admin: TestClient) -> None:
+    """Le piège qu'un contrôle de mode laisserait passer.
+
+    Un JPEG aplati réexporté en PNG RGBA a bien un canal alpha, rempli de 255. Accepté, il
+    donnerait des photos entièrement recouvertes par le cadre.
+    """
+    response = _upload(admin, _png(GOOD_SIZE, alpha=255))
+
+    assert response.status_code == 422
+    assert "opaque" in response.json()["detail"]
+
+
+def test_png_palettise_transparent_accepte(admin: TestClient) -> None:
+    """Faux négatif à éviter : la transparence d'un PNG palettisé vit dans un bloc tRNS,
+    pas dans une bande « A ». Un cadre parfaitement valable ne doit pas être refusé."""
+    buffer = BytesIO()
+    Image.new("RGBA", GOOD_SIZE, (255, 0, 0, 0)).convert("P", palette=Image.Palette.ADAPTIVE).save(
+        buffer, format="PNG", transparency=0
+    )
+
+    assert _upload(admin, buffer.getvalue()).status_code == 200
+
+
+def test_le_televersement_preserve_le_reste_de_la_configuration(admin: TestClient) -> None:
+    """Seul `overlay_file` change : le nom de l'événement ne doit pas repartir par défaut."""
+    config = admin.get("/admin/event-config").json()
+    config["event_name"] = "Gala"
+    config["copies_per_print"] = 3
+    admin.put("/admin/event-config", json=config)
+
+    apres = _upload(admin, _png(GOOD_SIZE)).json()
+
+    assert apres["event_name"] == "Gala"
+    assert apres["copies_per_print"] == 3
+
+
+def test_l_overlay_est_visible_sur_la_capture_suivante(
+    admin: TestClient, kiosk: TestClient
+) -> None:
+    """Le bout en bout : accepté à la porte, appliqué par le pipeline sans redémarrage."""
+    sans_overlay = _photo_apres_capture(kiosk)
+
+    _upload(admin, _png(GOOD_SIZE))
+    avec_overlay = _photo_apres_capture(kiosk)
+
+    assert avec_overlay != sans_overlay
+
+
+def test_overlay_servi_pour_apercu(admin: TestClient) -> None:
+    assert admin.get("/admin/overlay").status_code == 404
+
+    _upload(admin, _png(GOOD_SIZE))
+
+    response = admin.get("/admin/overlay")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/png"
+
+
+def test_retrait_de_l_overlay(admin: TestClient, runtime: Runtime) -> None:
+    """Sans ce pendant, un cadre mis par erreur ne se retirerait qu'en éditant le JSON."""
+    _upload(admin, _png(GOOD_SIZE))
+
+    response = admin.delete("/admin/overlay")
+
+    assert response.json()["overlay_file"] is None
+    assert runtime.event.overlay is None
+    assert not runtime.event_store.overlay_path.exists()
+
+
+def test_overlay_refuse_apres_changement_de_format(admin: TestClient) -> None:
+    """Le format de sortie est l'autorité : le passer en carré change le ratio attendu."""
+    config = admin.get("/admin/event-config").json()
+    config["print_format"] = {"name": "Carré", "width_mm": 72, "height_mm": 72, "dpi": 300}
+    admin.put("/admin/event-config", json=config)
+
+    assert _upload(admin, _png(GOOD_SIZE)).status_code == 422
+    assert _upload(admin, _png((1000, 1000))).status_code == 200
+
+
+def _photo_apres_capture(kiosk: TestClient) -> bytes:
+    session_id = kiosk.post("/api/session").json()["session_id"]
+    kiosk.post(f"/api/session/{session_id}/capture")
+    photo = kiosk.get(f"/api/session/{session_id}/photo").content
+    kiosk.post("/api/session/cancel")
+    return photo

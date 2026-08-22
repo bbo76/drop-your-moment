@@ -25,6 +25,11 @@ logger = logging.getLogger(__name__)
 
 CONFIG_FILENAME = "event_config.json"
 
+# Nom fixe : le téléversement remplace toujours le même fichier. Un nom par version
+# imposerait de nettoyer les précédents, pour un dossier d'événement qui n'en contient
+# qu'un à la fois.
+OVERLAY_FILENAME = "overlay.png"
+
 
 class EventConfig(BaseModel):
     event_name: str = "Événement"
@@ -84,6 +89,15 @@ class EventStore:
     @property
     def config_path(self) -> Path:
         return self._dir / CONFIG_FILENAME
+
+    @property
+    def overlay_path(self) -> Path:
+        """Emplacement de l'overlay téléversé.
+
+        Exposé ici plutôt que reconstruit par le routeur : la disposition du dossier
+        d'événement appartient au store, comme pour `config_path`.
+        """
+        return self._dir / OVERLAY_FILENAME
 
     def load(self) -> LoadedEvent:
         config = self._read_config()

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import {
   api,
   FILTER_LABELS,
+  overlayUrl,
   type EventConfigPayload,
   type FilterName,
   type PrintFormatPayload,
@@ -15,9 +16,9 @@ import { Button, Feedback, Field, inputClass, Section } from "./ui";
  * la renvoie entière. Pas de fusion partielle côté serveur — l'opérateur a l'objet complet
  * sous les yeux, et un PATCH demanderait de distinguer « champ absent » de « champ vidé ».
  *
- * `overlay_file` n'apparaît pas dans le formulaire mais voyage dans le brouillon : le `PUT`
+ * `overlay_file` n'est pas un champ de saisie mais voyage dans le brouillon : le `PUT`
  * remplace tout, et l'oublier effacerait le branding de l'événement à chaque
- * enregistrement. C'est le téléversement d'overlay qui écrit ce champ. */
+ * enregistrement. Seul le téléversement écrit ce champ. */
 
 const ALL_FILTERS = Object.keys(FILTER_LABELS) as FilterName[];
 
@@ -26,6 +27,9 @@ export function EventSection() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // Anti-cache de l'aperçu : l'URL de l'overlay est fixe, donc rien ne rechargerait
+  // l'image après un remplacement.
+  const [overlayRevision, setOverlayRevision] = useState(0);
 
   useEffect(() => {
     api.eventConfig().then(setDraft, (cause) => setError(String(cause)));
@@ -55,6 +59,20 @@ export function EventSection() {
           // des clics de l'opérateur.
           ALL_FILTERS.filter((each) => each === name || draft.available_filters.includes(each)),
     });
+
+  /** Le téléversement ne rapatrie que `overlay_file` : le reste de la réponse est la
+   *  configuration enregistrée, qui écraserait des modifications encore en cours. */
+  const runOverlayAction = async (action: () => Promise<EventConfigPayload>) => {
+    setError(null);
+    setNotice(null);
+    try {
+      const { overlay_file } = await action();
+      setDraft({ ...draft, overlay_file });
+      setOverlayRevision((revision) => revision + 1);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    }
+  };
 
   const save = async () => {
     setSaving(true);
@@ -140,6 +158,38 @@ export function EventSection() {
           <p className="mt-1 text-sm text-muted">
             Ratio : {(draft.print_format.width_mm / draft.print_format.height_mm).toFixed(3)}
           </p>
+        </fieldset>
+
+        <fieldset>
+          <legend className="mb-1 text-sm text-muted">
+            Overlay — cadre ou logo composé par-dessus la photo. PNG transparent, au ratio
+            du format de sortie
+          </legend>
+          {draft.overlay_file ? (
+            <div className="flex items-start gap-4">
+              <img
+                src={overlayUrl(overlayRevision)}
+                alt="Overlay de l'événement"
+                /* Le damier rend la transparence visible : sur fond uni, un overlay opaque
+                   et un overlay ajouré se ressemblent. */
+                className="h-24 rounded border border-edge bg-[repeating-conic-gradient(#333846_0_25%,transparent_0_50%)] bg-[length:16px_16px]"
+              />
+              <Button onClick={() => void runOverlayAction(api.deleteOverlay)}>Retirer</Button>
+            </div>
+          ) : (
+            <p className="text-sm text-muted">Aucun overlay — les photos sortiront sans cadre.</p>
+          )}
+          <input
+            type="file"
+            accept="image/png"
+            className="mt-3 block text-sm text-muted"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              // Réinitialiser permet de retenter le même fichier après un refus.
+              e.target.value = "";
+              if (file) void runOverlayAction(() => api.uploadOverlay(file));
+            }}
+          />
         </fieldset>
 
         <Field label="Copies par tirage">

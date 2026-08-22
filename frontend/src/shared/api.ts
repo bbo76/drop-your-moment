@@ -130,6 +130,14 @@ export const api = {
 
   health: () => request<AdminHealth>("/admin/system/health"),
   eventConfig: () => request<EventConfigPayload>("/admin/event-config"),
+  uploadOverlay: (file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    // Pas d'en-tête Content-Type : c'est au navigateur de composer la frontière multipart,
+    // et la fixer à la main produit un corps que le backend ne sait pas découper.
+    return request<EventConfigPayload>("/admin/overlay", { method: "POST", body: form });
+  },
+  deleteOverlay: () => request<EventConfigPayload>("/admin/overlay", { method: "DELETE" }),
   saveEventConfig: (config: EventConfigPayload) =>
     request<EventConfigPayload>("/admin/event-config", {
       method: "PUT",
@@ -145,3 +153,10 @@ export const api = {
  * une image gelée.
  */
 export const previewStreamUrl = () => `/api/preview/stream?t=${Date.now()}`;
+
+/** URL de l'overlay courant.
+ *
+ * La révision est indispensable même si le backend répond `no-store` : un `<img>` dont le
+ * `src` ne change pas ne redemande rien, et l'opérateur croirait son téléversement perdu.
+ */
+export const overlayUrl = (revision: number) => `/admin/overlay?v=${revision}`;
