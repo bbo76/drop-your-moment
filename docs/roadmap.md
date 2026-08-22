@@ -86,6 +86,11 @@ d'autodétection `picamera2 → opencv → mock`, et `opencv-python` en extra `w
 qui n'ont rien à faire sur le Pi. Une webcam n'ayant qu'un flux, `still_size ==
 preview_size` : voir [decisions.md](decisions.md).
 
+Confirmé sur la caméra du MacBook : aperçu vivant, 1280×720 négociés — la résolution
+demandée, sans repli. L'autorisation caméra de macOS s'attache à l'application qui lance
+le backend : accordée au terminal interactif, elle ne l'est pas pour autant à un shell
+lancé autrement, qui retombe alors sur la mire.
+
 ## Phase 2 — Impression
 
 ### ⬜ Jalon 7 — Impression CUPS
@@ -112,7 +117,6 @@ Aucun changement d'API ni de machine à états attendu : le pilote neutre est re
 | **Pilote picamera2 jamais exécuté** | Écrit contre la documentation. Configuration à un seul mode capteur, encodeur MJPEG sur le flux `lores`, capture depuis `main` sans changement de mode : tout cela est à confirmer sur le Pi. |
 | **Rendu visuel du kiosque** | Le rythme du décompte et la taille des cibles tactiles sur 7 pouces sont des jugements qui demandent l'écran réel. |
 | **uv + `--system-site-packages` sur le Pi** | Le mécanisme est vérifié (`include-system-site-packages` survit à `uv sync`), mais la combinaison exacte avec `python3-picamera2` reste à confirmer sur place. |
-| **Pilote webcam sur une vraie webcam** | Validé de bout en bout contre un flux vidéo de test — relecture de la résolution négociée, encodage JPEG, capture, fin de flux propre à la déconnexion. L'ouverture d'un périphérique physique demande l'autorisation caméra du terminal (macOS), pas encore accordée sur la machine de développement. |
 | **Impression CP1500 depuis ce logiciel** | L'impression via CUPS est confirmée fonctionnelle sur le Pi, mais pas encore depuis cette application. |
 
 ## Hors périmètre
