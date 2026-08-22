@@ -22,25 +22,26 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v6
+      - uses: astral-sh/setup-uv@v10
         with:
-          python-version: ${{ matrix.python-version }}
-          cache: pip
-          cache-dependency-path: backend/pyproject.toml
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
 
+      # --locked échoue si uv.lock ne correspond plus à pyproject.toml : une dépendance
+      # ajoutée sans relock ne passera pas inaperçue.
       - name: Installer les dépendances
-        run: pip install -e ".[dev]"
+        run: uv sync --locked --python ${{ matrix.python-version }}
 
       - name: Lint
-        run: ruff check dropyourmoment tests
+        run: uv run ruff check dropyourmoment tests
 
       - name: Formatage
-        run: ruff format --check dropyourmoment tests
+        run: uv run ruff format --check dropyourmoment tests
 
       # Aucun matériel n'est nécessaire : les drivers de synthèse couvrent la caméra et
       # l'imprimante, ce qui est précisément la raison de leur existence.
       - name: Tests
-        run: pytest -q
+        run: uv run pytest -q
 
   frontend:
     runs-on: ubuntu-latest

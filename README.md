@@ -64,16 +64,17 @@ pas de distinguer un flux MJPEG vivant d'un flux gelé.
 
 ### Backend
 
+Dépendances gérées par [uv](https://docs.astral.sh/uv/), verrouillées dans `uv.lock`.
+
 ```sh
 cd backend
-python3 -m venv .venv
-.venv/bin/pip install -e ".[dev]"
+uv sync                                    # crée .venv et installe le tout
 
-.venv/bin/python -m pytest                      # aucun matériel requis
-.venv/bin/ruff check dropyourmoment tests
-.venv/bin/ruff format --check dropyourmoment tests
+uv run pytest                              # aucun matériel requis
+uv run ruff check dropyourmoment tests
+uv run ruff format --check dropyourmoment tests
 
-.venv/bin/python -m dropyourmoment.main         # kiosque sur :8000, admin sur :8001
+uv run python -m dropyourmoment.main       # kiosque sur :8000, admin sur :8001
 ```
 
 Pour ne pas exposer le portail d'administration sur le réseau pendant un simple essai :
@@ -109,18 +110,29 @@ Variables d'environnement préfixées `DYM_` (voir
 
 ```sh
 sudo apt install python3-picamera2 rpicam-apps nodejs npm
-rpicam-hello                                   # valider le capteur AVANT tout Python
+rpicam-hello                    # valider le capteur AVANT tout Python
 
 cd backend
-python3 -m venv --system-site-packages .venv   # PEP 668 : indispensable pour voir les paquets apt
-.venv/bin/pip install -e .
+# L'interpréteur est épinglé sur celui du système, et --system-site-packages expose les
+# paquets apt. Sans ces deux options, `import picamera2` échouerait : voir plus bas.
+uv venv --python /usr/bin/python3 --system-site-packages
+uv sync --no-dev --inexact
 
 cd ../frontend && npm ci && npm run build      # le frontend est construit sur place
 ```
 
-`picamera2` dépend des bindings Python de libcamera compilés contre le libcamera système :
-l'installer par pip n'est pas fiable, d'où le venv `--system-site-packages`. Le compositeur
-de Trixie est **labwc** (Wayland), donc l'autostart de Chromium passe par
+Deux précautions liées à `picamera2`, qui dépend de bindings Python de libcamera compilés
+contre le libcamera système et ne s'installe donc pas par pip :
+
+- **`--system-site-packages`** expose les paquets apt au venv. C'est aussi ce que PEP 668,
+  appliqué sur Trixie, rend obligatoire : pip refuse d'écrire dans l'environnement système.
+- **`--python /usr/bin/python3`** épingle l'interpréteur du système. uv sait télécharger
+  ses propres CPython, et l'un d'eux ne verrait jamais `/usr/lib/python3/dist-packages` —
+  `--system-site-packages` expose les paquets de l'interpréteur de base, pas ceux d'un
+  autre. `uv sync` préserve ensuite ce réglage (`include-system-site-packages` reste vrai
+  dans `pyvenv.cfg`).
+
+Le compositeur de Trixie est **labwc** (Wayland), donc l'autostart de Chromium passe par
 `~/.config/labwc/autostart` et non `.xinitrc`.
 
 ## Licence

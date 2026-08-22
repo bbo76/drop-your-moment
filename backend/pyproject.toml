@@ -17,7 +17,11 @@ dependencies = [
     "python-multipart>=0.0.12",
 ]
 
-[project.optional-dependencies]
+# Groupe de dépendances au sens PEP 735 plutôt qu'un extra : ces outils servent au
+# développement, jamais à l'exécution, et n'ont donc rien à faire dans la distribution.
+# `uv sync` les installe par défaut, `uv sync --no-dev` les laisse de côté — ce qui est
+# exactement ce qu'on veut sur la borne.
+[dependency-groups]
 dev = [
     "pytest>=8.3",
     "pytest-asyncio>=0.24",
