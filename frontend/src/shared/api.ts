@@ -214,6 +214,19 @@ export const api = {
  */
 export const previewStreamUrl = () => `/api/preview/stream?t=${Date.now()}`;
 
+/** Ce qu'il faut affecter à `src` pour **arrêter** un flux MJPEG.
+ *
+ * Retirer l'`<img>` du DOM ne suffit pas : Chromium garde la connexion
+ * `multipart/x-mixed-replace` ouverte, le backend continue d'encoder des frames pour
+ * personne, et la webcam reste retenue. Réassigner `src` annule le chargement en cours,
+ * ce qui ferme réellement la connexion.
+ *
+ * Un GIF transparent d'un pixel plutôt que la chaîne vide : `src=""` se résout en l'URL du
+ * document et déclencherait une requête parasite sur la page elle-même.
+ */
+export const BLANK_PIXEL =
+  "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+
 /** URL de l'overlay courant.
  *
  * La révision est indispensable même si le backend répond `no-store` : un `<img>` dont le
