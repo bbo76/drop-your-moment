@@ -14,9 +14,10 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 from dataclasses import dataclass, replace
 from pathlib import Path
+
+from dropyourmoment.storage.atomic import write_atomic
 
 logger = logging.getLogger(__name__)
 
@@ -60,15 +61,7 @@ class CounterStore:
         return updated
 
     def _write(self, counters: Counters) -> None:
-        """Écriture atomique : une coupure ne doit pas laisser un JSON tronqué.
-
-        `os.replace` est atomique sur le même système de fichiers, ce qui est le cas d'un
-        temporaire déposé dans le répertoire de destination.
-        """
-        self._path.parent.mkdir(parents=True, exist_ok=True)
-        temporary = self._path.with_suffix(".json.tmp")
-        temporary.write_text(
-            json.dumps(counters.__dict__, indent=2, ensure_ascii=False) + "\n",
-            encoding="utf-8",
+        write_atomic(
+            self._path,
+            (json.dumps(counters.__dict__, indent=2, ensure_ascii=False) + "\n").encode("utf-8"),
         )
-        os.replace(temporary, self._path)
