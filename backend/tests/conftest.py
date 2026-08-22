@@ -24,8 +24,7 @@ def settings(tmp_path: Path) -> Settings:
     return Settings(
         camera_driver=CameraDriverName.MOCK,
         data_dir=tmp_path / "data",
-        kiosk_frontend_dir=tmp_path / "absent-kiosk",
-        admin_frontend_dir=tmp_path / "absent-admin",
+        frontend_dist_dir=tmp_path / "dist-absent",
     )
 
 

@@ -33,8 +33,11 @@ class Settings(BaseSettings):
     error_timeout_s: float = 15.0
 
     data_dir: Path = REPO_ROOT / "data"
-    kiosk_frontend_dir: Path = REPO_ROOT / "frontend-kiosk"
-    admin_frontend_dir: Path = REPO_ROOT / "frontend-admin"
+
+    # Sortie du build Vite. Un seul projet frontend produit les deux points d'entrée :
+    # `index.html` pour le kiosque, `admin.html` pour l'administration, avec les mêmes
+    # jetons de design et le même client d'API.
+    frontend_dist_dir: Path = REPO_ROOT / "frontend" / "dist"
 
     # Cadence du ticker qui applique les timeouts d'inactivité. `tick()` est aussi appelé
     # à chaque lecture de statut, donc ce ticker n'est qu'un filet de sécurité au cas où

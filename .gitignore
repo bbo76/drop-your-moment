@@ -5,6 +5,10 @@ __pycache__/
 .ruff_cache/
 *.egg-info/
 
+# Frontend : dépendances et sortie de build, reconstruites par `npm ci && npm run build`
+node_modules/
+/frontend/dist/
+
 # Données d'exécution : photos, config d'événement, compteurs.
 # Le contenu est propre à une installation, jamais versionné.
 /data/

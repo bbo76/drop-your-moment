@@ -1,0 +1,47 @@
+@import "tailwindcss";
+
+/* Jetons partagés par le kiosque et l'administration. Déclarés ici plutôt que répétés
+   dans les composants : le branding d'un événement se change en un endroit. */
+@theme {
+  --color-ink: #0d0f14;
+  --color-surface: #171a22;
+  --color-edge: #333846;
+  --color-body: #f2f3f7;
+  --color-muted: #8f97ab;
+  --color-accent: #ff5d73;
+  --color-accent-ink: #1a0208;
+  --color-warn: #ffb84d;
+  --color-warn-bg: #2a1f0c;
+
+  --radius-panel: 0.75rem;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  /* La borne n'a rien à faire défiler : chaque écran tient dans la fenêtre. */
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  background-color: var(--color-ink);
+  color: var(--color-body);
+}
+
+/* Durcissement kiosque, appliqué uniquement sur un véritable écran tactile.
+   `hover: none` + `pointer: coarse` décrit exactement la borne — doigt, pas de survol —
+   et exclut une machine de développement à la souris, où masquer le pointeur et
+   interdire la sélection rend le débogage pénible pour rien.
+
+   Filet de sécurité côté système : si le pilote tactile du Pi ne rapportait pas ces
+   caractéristiques, le masquage du curseur se fait au niveau du compositeur (labwc). */
+@media (hover: none) and (pointer: coarse) {
+  body {
+    cursor: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+}

@@ -41,3 +41,30 @@ jobs:
       # l'imprimante, ce qui est précisément la raison de leur existence.
       - name: Tests
         run: pytest -q
+
+  frontend:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Contrôle de types
+        run: npm run typecheck
+
+      # Le déploiement sur le Pi passe par ce même build : le vérifier ici évite de
+      # découvrir une compilation cassée sur place, au moment de brancher la borne.
+      - name: Build
+        run: npm run build

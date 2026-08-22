@@ -41,12 +41,28 @@ photos, et se configure depuis le portail d'administration. Le filtre choisi par
 visiteur s'applique à la photo **avant** que l'overlay soit composé par-dessus : un
 branding en couleur ne doit pas partir en sépia.
 
+## Organisation du dépôt
+
+```
+backend/      FastAPI, machine à états, pilotes caméra et imprimante
+frontend/     Vite + React + Tailwind, deux points d'entrée dans un seul projet
+                index.html  → kiosque tactile
+                admin.html  → portail d'administration
+```
+
+Un seul projet frontend pour les deux interfaces : jetons de design, client d'API et
+composants sont partagés, et il n'y a qu'un arbre de dépendances à maintenir. Le backend
+sert le même répertoire `frontend/dist` depuis ses deux sockets, avec un document
+différent de chaque côté.
+
 ## Développement
 
 Le développement se fait sur une machine de bureau ; le Pi reçoit le code par git aux
 points de contrôle matériels. Sans `picamera2` installé, une **caméra de synthèse animée**
 prend le relais automatiquement — animée à dessein, car un mock statique ne permettrait
 pas de distinguer un flux MJPEG vivant d'un flux gelé.
+
+### Backend
 
 ```sh
 cd backend
@@ -63,6 +79,20 @@ python3 -m venv .venv
 Pour ne pas exposer le portail d'administration sur le réseau pendant un simple essai :
 `DYM_ADMIN_HOST=127.0.0.1`.
 
+### Frontend
+
+```sh
+cd frontend
+npm ci
+npm run dev        # Vite sur :5173, relaie /api et /admin vers le backend Python
+npm run build      # produit frontend/dist, servi par le backend
+npm run typecheck
+```
+
+Deux manières de travailler : `npm run dev` pour le rechargement à chaud (Vite relaie les
+appels d'API vers le backend, qui doit tourner en parallèle), ou `npm run build` puis le
+backend seul, ce qui reproduit exactement le fonctionnement sur la borne.
+
 ## Réglages
 
 Variables d'environnement préfixées `DYM_` (voir
@@ -78,9 +108,14 @@ Variables d'environnement préfixées `DYM_` (voir
 ## Installation sur le Pi (Raspberry Pi OS Trixie)
 
 ```sh
-sudo apt install python3-picamera2 rpicam-apps
+sudo apt install python3-picamera2 rpicam-apps nodejs npm
 rpicam-hello                                   # valider le capteur AVANT tout Python
+
+cd backend
 python3 -m venv --system-site-packages .venv   # PEP 668 : indispensable pour voir les paquets apt
+.venv/bin/pip install -e .
+
+cd ../frontend && npm ci && npm run build      # le frontend est construit sur place
 ```
 
 `picamera2` dépend des bindings Python de libcamera compilés contre le libcamera système :
