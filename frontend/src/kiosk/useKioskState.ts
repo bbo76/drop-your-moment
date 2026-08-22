@@ -9,6 +9,10 @@ import {
 } from "../shared/api";
 
 const POLL_INTERVAL_MS = 500;
+// Le backend local répond souvent en quelques dizaines de millisecondes. Sans plancher,
+// le voile blanc de PreviewScreen disparaît avant même que l'écran ait eu le temps de le
+// peindre. Assez long pour être perçu, assez bref pour garder un déclenchement naturel.
+const MINIMUM_FLASH_MS = 180;
 
 export type Connection = "connecting" | "online" | "offline";
 
@@ -115,7 +119,19 @@ export function useKioskState(): KioskState {
     [],
   );
 
-  const capture = useCallback(() => withSession(api.capture), [withSession]);
+  const capture = useCallback(async () => {
+    const id = sessionIdRef.current;
+    if (!id) return;
+    try {
+      const [status] = await Promise.all([
+        api.capture(id),
+        new Promise<void>((resolve) => setTimeout(resolve, MINIMUM_FLASH_MS)),
+      ]);
+      setSession(status);
+    } catch (error) {
+      console.warn(error);
+    }
+  }, []);
   const retake = useCallback(() => withSession(api.retake), [withSession]);
   const keepPhoto = useCallback(() => withSession(api.printPhoto), [withSession]);
   const chooseFilter = useCallback(

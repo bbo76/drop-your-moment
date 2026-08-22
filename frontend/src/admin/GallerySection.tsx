@@ -4,6 +4,7 @@ import {
   api,
   ARCHIVE_URL,
   photoDownloadUrl,
+  photoViewUrl,
   thumbnailUrl,
   type GalleryEntry,
   type GalleryPage,
@@ -26,6 +27,8 @@ export function GallerySection() {
   const [offset, setOffset] = useState(0);
   const [page, setPage] = useState<GalleryPage | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<GalleryEntry | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -58,6 +61,27 @@ export function GallerySection() {
   const shown = page.entries.length;
   const hasPrevious = offset > 0;
   const hasNext = offset + shown < page.total;
+  const selectedIndex = selected
+    ? page.entries.findIndex((entry) => entry.session_id === selected.session_id)
+    : -1;
+
+  const deleteEntry = async (entry: GalleryEntry) => {
+    setDeleting(true);
+    try {
+      await api.deleteGalleryEntry(entry.session_id);
+      setSelected(null);
+      setError(null);
+      if (page.entries.length === 1 && offset > 0) {
+        setOffset(Math.max(0, offset - PAGE_SIZE));
+      } else {
+        await load();
+      }
+    } catch (cause) {
+      setError(String(cause));
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   return (
     <Section title="Galerie">
@@ -84,7 +108,7 @@ export function GallerySection() {
 
           <ul className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-6">
             {page.entries.map((entry) => (
-              <Thumbnail key={entry.session_id} entry={entry} />
+              <Thumbnail key={entry.session_id} entry={entry} onOpen={() => setSelected(entry)} />
             ))}
           </ul>
 
@@ -99,16 +123,38 @@ export function GallerySection() {
               Suivant
             </Button>
           </div>
+
+          {selected && (
+            <Lightbox
+              entry={selected}
+              deleting={deleting}
+              onClose={() => setSelected(null)}
+              onDelete={() => void deleteEntry(selected)}
+              onPrevious={
+                selectedIndex > 0 ? () => setSelected(page.entries[selectedIndex - 1]!) : undefined
+              }
+              onNext={
+                selectedIndex >= 0 && selectedIndex < page.entries.length - 1
+                  ? () => setSelected(page.entries[selectedIndex + 1]!)
+                  : undefined
+              }
+            />
+          )}
         </>
       )}
     </Section>
   );
 }
 
-function Thumbnail({ entry }: { entry: GalleryEntry }) {
+function Thumbnail({ entry, onOpen }: { entry: GalleryEntry; onOpen: () => void }) {
   return (
     <li>
-      <a href={photoDownloadUrl(entry.session_id)} title="Télécharger cette photo">
+      <button
+        type="button"
+        onClick={onOpen}
+        title="Afficher cette photo en grand"
+        className="block w-full cursor-zoom-in"
+      >
         <img
           src={thumbnailUrl(entry.session_id)}
           alt={`Photo du ${moment(entry.captured_at)}`}
@@ -117,11 +163,135 @@ function Thumbnail({ entry }: { entry: GalleryEntry }) {
           loading="lazy"
           className="aspect-[3/2] w-full rounded border border-edge object-cover"
         />
-      </a>
+      </button>
       <p className="mt-1 text-xs text-muted">
         {moment(entry.captured_at)} · {kilobytes(entry.size_bytes)}
       </p>
     </li>
+  );
+}
+
+function Lightbox({
+  entry,
+  deleting,
+  onClose,
+  onDelete,
+  onPrevious,
+  onNext,
+}: {
+  entry: GalleryEntry;
+  deleting: boolean;
+  onClose: () => void;
+  onDelete: () => void;
+  onPrevious?: () => void;
+  onNext?: () => void;
+}) {
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+
+  useEffect(() => {
+    setConfirmingDelete(false);
+  }, [entry.session_id]);
+
+  useEffect(() => {
+    const keydown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+      if (event.key === "ArrowLeft") onPrevious?.();
+      if (event.key === "ArrowRight") onNext?.();
+    };
+    window.addEventListener("keydown", keydown);
+    return () => window.removeEventListener("keydown", keydown);
+  }, [onClose, onNext, onPrevious]);
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Photo du ${moment(entry.captured_at)}`}
+      className="fixed inset-0 z-50 grid bg-black/90 p-4 sm:p-8"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <div className="m-auto flex max-h-full max-w-6xl flex-col gap-4">
+        <div className="flex items-center justify-between gap-4">
+          <p className="text-sm text-muted">
+            {moment(entry.captured_at)} · {kilobytes(entry.size_bytes)}
+          </p>
+          <button type="button" onClick={onClose} className="text-2xl" aria-label="Fermer">
+            ×
+          </button>
+        </div>
+
+        <div className="flex min-h-0 items-center gap-3">
+          <button
+            type="button"
+            onClick={onPrevious}
+            disabled={!onPrevious}
+            className="px-2 text-3xl disabled:invisible"
+            aria-label="Photo précédente"
+          >
+            ‹
+          </button>
+          <img
+            src={photoViewUrl(entry.session_id)}
+            alt={`Photo du ${moment(entry.captured_at)}`}
+            className="max-h-[75vh] min-w-0 rounded-panel object-contain"
+          />
+          <button
+            type="button"
+            onClick={onNext}
+            disabled={!onNext}
+            className="px-2 text-3xl disabled:invisible"
+            aria-label="Photo suivante"
+          >
+            ›
+          </button>
+        </div>
+
+        {confirmingDelete ? (
+          <div className="rounded-panel border border-warn bg-warn-bg p-4">
+            <p className="font-medium text-warn">Supprimer définitivement cette photo ?</p>
+            <p className="mt-1 text-sm text-muted">
+              La session complète sera effacée. Cette action est irréversible.
+            </p>
+            <div className="mt-4 flex flex-wrap justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setConfirmingDelete(false)}
+                disabled={deleting}
+                className="rounded border border-edge px-4 py-2 disabled:opacity-40"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={onDelete}
+                disabled={deleting}
+                className="rounded bg-warn px-4 py-2 font-medium text-ink disabled:opacity-40"
+              >
+                {deleting ? "Suppression…" : "Confirmer la suppression"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-wrap justify-end gap-3">
+            <a
+              href={photoDownloadUrl(entry.session_id)}
+              className="rounded bg-accent px-4 py-2 font-medium text-accent-ink"
+            >
+              Télécharger
+            </a>
+            <button
+              type="button"
+              onClick={() => setConfirmingDelete(true)}
+              className="rounded border border-warn px-4 py-2 text-warn"
+            >
+              Supprimer
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
