@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import { previewStreamUrl } from "../../shared/api";
+import { BLANK_PIXEL, previewStreamUrl } from "../../shared/api";
 import { computeFraming, FramingGuide } from "./FramingGuide";
 import { GhostButton, PrimaryButton } from "./Screen";
 
@@ -37,10 +37,25 @@ export function PreviewScreen({
   const framing = computeFraming(previewSize, printAspectRatio);
   const [phase, setPhase] = useState<Phase>({ kind: "waiting" });
 
-  // Figé à la première image du composant : recalculer l'URL à chaque rendu
-  // redémarrerait le flux MJPEG. Le montage et le démontage du composant suffisent à
-  // ouvrir et fermer la connexion — React s'en charge quand on quitte cet écran.
+  // Figé à la première image du composant : recalculer l'URL à chaque rendu redémarrerait
+  // le flux MJPEG.
   const [streamUrl] = useState(previewStreamUrl);
+  const preview = useRef<HTMLImageElement>(null);
+
+  // Le démontage ne ferme pas la connexion, contrairement à ce qu'on pourrait croire.
+  // React retire l'`<img>` du DOM, mais Chromium garde la requête
+  // `multipart/x-mixed-replace` en cours : le backend continue d'encoder des frames pour
+  // un écran que plus personne ne regarde, la webcam reste retenue, et la page de santé
+  // affiche un flux actif à vie — à raison. Il faut annuler la requête explicitement.
+  useEffect(() => {
+    const image = preview.current;
+    // React StrictMode rejoue setup → cleanup → setup en développement. Le setup doit
+    // donc restaurer le flux que le premier cleanup vient volontairement d'annuler.
+    if (image) image.src = streamUrl;
+    return () => {
+      if (image) image.src = BLANK_PIXEL;
+    };
+  }, [streamUrl]);
 
   useEffect(() => {
     if (phase.kind !== "counting") return;
@@ -73,7 +88,7 @@ export function PreviewScreen({
         // mentir le cadre de visée sur ce qui est réellement conservé.
         style={{ aspectRatio: framing.aspectRatio }}
       >
-        <img src={streamUrl} alt="" className="block h-full w-full" />
+        <img ref={preview} src={streamUrl} alt="" className="block h-full w-full" />
         <FramingGuide {...framing} />
 
         {phase.kind === "counting" && (

@@ -79,11 +79,15 @@ def kiosk_url(runtime: Runtime) -> Iterator[str]:
     réseau, donc l'application continue à tirer des frames d'un générateur infini et
     l'arrêt du client ne se termine jamais. Or la fermeture du flux à la déconnexion est
     exactement ce qu'on veut vérifier — il faut donc une vraie socket.
+
+    L'adresse de bind vient des réglages et n'est pas codée en dur : c'est elle qui porte
+    l'isolation réseau, et `test_network_isolation.py` s'appuie sur cette fixture pour la
+    vérifier sur une vraie socket.
     """
     server = uvicorn.Server(
         uvicorn.Config(
             build_kiosk_app(runtime),
-            host="127.0.0.1",
+            host=runtime.settings.kiosk_host,
             port=0,
             log_level="warning",
             access_log=False,
@@ -99,7 +103,7 @@ def kiosk_url(runtime: Runtime) -> Iterator[str]:
 
     port = server.servers[0].sockets[0].getsockname()[1]
     try:
-        yield f"http://127.0.0.1:{port}"
+        yield f"http://{runtime.settings.kiosk_host}:{port}"
     finally:
         server.should_exit = True
         thread.join(timeout=10)

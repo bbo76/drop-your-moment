@@ -14,6 +14,10 @@ dependencies = [
     "pydantic>=2.9",
     "pydantic-settings>=2.6",
     "pillow>=11.0",
+    # Exigé par FastAPI pour lire un `UploadFile` : le téléversement d'overlay est du
+    # multipart, et sans ce paquet la route lève une erreur au démarrage plutôt qu'à
+    # l'appel. Rien d'optionnel donc, malgré son nom de dépendance de confort.
+    "python-multipart>=0.0.20",
 ]
 
 # Extra et non groupe PEP 735 : opencv est bien une dépendance d'exécution — pour qui

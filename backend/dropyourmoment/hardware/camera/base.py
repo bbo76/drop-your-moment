@@ -52,10 +52,30 @@ class CameraDriver(ABC):
 
     @abstractmethod
     def is_available(self) -> bool:
-        """True si le capteur est ouvert et prêt à produire des images."""
+        """True si la caméra est **utilisable**, pas nécessairement ouverte à cet instant.
+
+        La nuance vient du driver webcam, qui rend le périphérique quand plus personne ne
+        regarde l'aperçu — une webcam est celle d'un poste de travail, avec une LED allumée
+        et une visioconférence qui voudra peut-être la même caméra. Lier cette réponse à
+        « ouverte maintenant » désactiverait le bouton « Commencer » de l'écran d'accueil
+        dès que la LED s'éteint.
+
+        Le driver Pi ne fait pas cette distinction : son capteur est dédié à la borne et
+        reste ouvert du démarrage à l'arrêt.
+        """
 
     @abstractmethod
     def get_capabilities(self) -> CameraCapabilities: ...
+
+    @property
+    @abstractmethod
+    def active_streams(self) -> int:
+        """Nombre de flux de preview réellement consommés en ce moment.
+
+        Compté par activité et non par cycle de vie — voir `preview_activity.py`. C'est ce
+        qui distingue, sur une page de santé, un aperçu vivant d'un aperçu gelé : la
+        caméra peut être ouverte et disponible sans que plus personne ne tire de frame.
+        """
 
     @abstractmethod
     def preview_frames(self) -> Iterator[bytes]:

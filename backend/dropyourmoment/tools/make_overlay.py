@@ -27,6 +27,15 @@ FRAME_COLOR = (255, 255, 255, 235)
 BANNER_COLOR = (18, 20, 26, 205)
 TEXT_COLOR = (255, 255, 255, 245)
 
+# La police par défaut de Pillow n'embarque aucun glyphe accentué : « Mariage Camille &
+# Théo » sortait « Th□o ». Rédhibitoire pour un outil dont l'unique travail est d'écrire un
+# nom d'événement français. D'où ces deux polices système, la première de Raspberry Pi OS,
+# la seconde de macOS — la seule paire nécessaire, la borne et le poste de développement.
+FONT_CANDIDATES = (
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    "/System/Library/Fonts/Helvetica.ttc",
+)
+
 
 def build_overlay(print_format: PrintFormat, label: str) -> Image.Image:
     width, height = print_format.pixel_size
@@ -51,7 +60,7 @@ def build_overlay(print_format: PrintFormat, label: str) -> Image.Image:
         fill=BANNER_COLOR,
     )
 
-    font = ImageFont.load_default(size=round(banner_height * 0.42))
+    font = _font(size=round(banner_height * 0.42))
     box = draw.textbbox((0, 0), label, font=font)
     draw.text(
         (
@@ -63,6 +72,21 @@ def build_overlay(print_format: PrintFormat, label: str) -> Image.Image:
         fill=TEXT_COLOR,
     )
     return overlay
+
+
+def _font(size: int) -> ImageFont.FreeTypeFont:
+    """Une police qui sait écrire « Théo ».
+
+    Repli sur la police par défaut plutôt qu'une erreur : un cadre au texte abîmé reste
+    plus utile qu'un outil qui refuse de produire quoi que ce soit.
+    """
+    for candidate in FONT_CANDIDATES:
+        try:
+            return ImageFont.truetype(candidate, size=size)
+        except OSError:
+            continue
+    print("aucune police système trouvée — les accents sortiront en carrés")
+    return ImageFont.load_default(size=size)
 
 
 def main() -> None:

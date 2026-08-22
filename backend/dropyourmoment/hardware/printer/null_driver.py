@@ -22,6 +22,8 @@ logger = logging.getLogger(__name__)
 
 
 class NullPrinterDriver(PrinterDriver):
+    name = "pilote neutre — aucune imprimante branchée"
+
     def __init__(self) -> None:
         self._counter = itertools.count(1)
         self._jobs: dict[str, PrintJob] = {}

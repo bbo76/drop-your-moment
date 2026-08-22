@@ -1,79 +1,30 @@
-import { useEffect, useState } from "react";
+import { EventSection } from "./EventSection";
+import { GallerySection } from "./GallerySection";
+import { HealthSection } from "./HealthSection";
 
-import { api, type AdminHealth } from "../shared/api";
-
-/* Portail d'administration — squelette.
- *
- * Il n'expose au jalon 1 que le diagnostic déjà servi par le backend, ce qui suffit à
- * exercer la seconde socket et à vérifier l'isolation réseau. Config d'événement, upload
- * d'overlay et galerie arrivent au jalon 5.
+/* Portail d'administration.
  *
  * Contrairement au kiosque, cet écran s'adresse à un opérateur sur un PC : il peut
- * défiler, afficher des informations techniques et n'a aucune contrainte tactile. */
+ * défiler, afficher des informations techniques et n'a aucune contrainte tactile.
+ *
+ * Une `<section>` par sujet, dans l'ordre où l'opérateur en a besoin : surveiller pendant
+ * l'événement, régler avant, récupérer après. Pas d'onglets ni de routeur — trois sections
+ * sur une page qui défile ne justifient pas un mécanisme de navigation. À reconsidérer le
+ * jour où la page devient illisible. */
 
 export function AdminApp() {
-  const [health, setHealth] = useState<AdminHealth | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-
-    const tick = async () => {
-      try {
-        const fresh = await api.health();
-        if (cancelled) return;
-        setHealth(fresh);
-        setError(null);
-      } catch (cause) {
-        if (!cancelled) setError(String(cause));
-      } finally {
-        if (!cancelled) timer = setTimeout(tick, 2000);
-      }
-    };
-
-    void tick();
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, []);
-
   return (
-    <div className="min-h-full overflow-auto p-8">
+    <div className="min-h-full p-8">
       <header className="mb-8">
         <h1 className="text-2xl font-semibold">Drop Your Moment</h1>
         <p className="text-muted">Administration</p>
       </header>
 
-      <section className="max-w-xl rounded-panel border border-edge bg-surface p-6">
-        <h2 className="mb-4 text-lg font-medium">État du système</h2>
-
-        {error && <p className="text-warn">Backend injoignable : {error}</p>}
-
-        {health && (
-          <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
-            <Row label="Caméra" value={health.camera_ok ? "détectée" : "absente"} />
-            <Row label="Pilote" value={health.camera_driver} />
-            <Row label="Session" value={health.session_state} />
-            <Row label="Format de sortie" value={health.print_format_name} />
-            <Row label="Ratio" value={health.print_aspect_ratio.toFixed(3)} />
-          </dl>
-        )}
-      </section>
-
-      <p className="mt-8 text-sm text-muted">
-        Config d'événement, overlay et galerie : jalon 5.
-      </p>
+      <div className="max-w-5xl">
+        <HealthSection />
+        <EventSection />
+        <GallerySection />
+      </div>
     </div>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <>
-      <dt className="text-muted">{label}</dt>
-      <dd>{value}</dd>
-    </>
   );
 }

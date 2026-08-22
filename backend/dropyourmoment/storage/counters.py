@@ -1,22 +1,26 @@
-"""Compteur de tirages, persisté sur disque.
+"""Compteurs de tirages, persistés sur disque.
 
 L'état de session vit en mémoire et se perd au redémarrage — sans gravité, le visiteur
 recommence. Le compteur de tirages, lui, ne peut pas se le permettre : les cartouches de
 la Canon Selphy CP1500 font 36, 54 ou 108 tirages, et sans compteur l'opérateur découvre
 la fin de cartouche en pleine soirée.
 
-Un seul compteur tant que rien ne sait le remettre à zéro. Le compteur de cartouche —
-« me reste-t-il du papier », donc un second compteur *et* le bouton qui le réarme —
-arrive avec la page de santé de l'administration, au jalon 5.
+Deux compteurs, parce que ce sont deux questions distinctes : « combien de photos cet
+événement a-t-il produit » et « me reste-t-il du papier ». Ils n'ont existé ensemble
+qu'une fois le bouton de remise à zéro disponible — sans lui, le second valait toujours
+exactement le premier, avec un `reset_at` qui restait `null` à vie. Un compteur sans son
+bouton n'est pas la moitié de la fonctionnalité, c'est une copie du cumul sous un autre nom.
 """
 
 from __future__ import annotations
 
 import json
 import logging
-import os
 from dataclasses import dataclass, replace
+from datetime import UTC, datetime
 from pathlib import Path
+
+from dropyourmoment.storage.atomic import write_atomic
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +30,11 @@ COUNTERS_FILENAME = "counters.json"
 @dataclass(frozen=True)
 class Counters:
     prints_total: int = 0
+    prints_since_reset: int = 0
+    # Horodatage ISO de la dernière remise à zéro, `None` si elle n'a jamais eu lieu.
+    # En chaîne et non en `datetime` : ce champ ne sert qu'à être affiché et sérialisé,
+    # aucun calcul ne s'appuie dessus.
+    reset_at: str | None = None
 
 
 class CounterStore:
@@ -44,7 +53,16 @@ class CounterStore:
             return Counters()
         try:
             payload = json.loads(self._path.read_text(encoding="utf-8"))
-            return Counters(prints_total=int(payload["prints_total"]))
+            total = int(payload["prints_total"])
+            reset_at = payload.get("reset_at")
+            return Counters(
+                prints_total=total,
+                # Un fichier écrit avant l'arrivée du second compteur n'a que le cumul.
+                # Le repli sur `total` est la lecture honnête : aucune remise à zéro n'a
+                # eu lieu, donc la cartouche a vu passer tous les tirages.
+                prints_since_reset=int(payload.get("prints_since_reset", total)),
+                reset_at=None if reset_at is None else str(reset_at),
+            )
         except (json.JSONDecodeError, KeyError, TypeError, ValueError, OSError) as exc:
             # Repartir de zéro plutôt que refuser de démarrer : même arbitrage que pour la
             # configuration d'événement. Un compteur faux se corrige, une borne éteinte
@@ -54,21 +72,40 @@ class CounterStore:
 
     def record_prints(self, copies: int) -> Counters:
         current = self.read()
-        updated = replace(current, prints_total=current.prints_total + copies)
+        updated = replace(
+            current,
+            prints_total=current.prints_total + copies,
+            prints_since_reset=current.prints_since_reset + copies,
+        )
         self._write(updated)
-        logger.info("compteur de tirages : +%d (total %d)", copies, updated.prints_total)
+        logger.info(
+            "compteur de tirages : +%d (total %d, cartouche %d)",
+            copies,
+            updated.prints_total,
+            updated.prints_since_reset,
+        )
+        return updated
+
+    def reset_cartridge(self) -> Counters:
+        """Réarme le compteur de cartouche, sans toucher au cumul.
+
+        Le geste que l'opérateur fait en changeant de papier. Le cumul, lui, répond à une
+        autre question et n'a aucune raison de bouger — c'est bien pour ça qu'il en faut
+        deux.
+        """
+        updated = replace(
+            self.read(),
+            prints_since_reset=0,
+            reset_at=datetime.now(UTC).isoformat(timespec="seconds"),
+        )
+        self._write(updated)
+        logger.info(
+            "compteur de cartouche remis à zéro (cumul inchangé : %d)", updated.prints_total
+        )
         return updated
 
     def _write(self, counters: Counters) -> None:
-        """Écriture atomique : une coupure ne doit pas laisser un JSON tronqué.
-
-        `os.replace` est atomique sur le même système de fichiers, ce qui est le cas d'un
-        temporaire déposé dans le répertoire de destination.
-        """
-        self._path.parent.mkdir(parents=True, exist_ok=True)
-        temporary = self._path.with_suffix(".json.tmp")
-        temporary.write_text(
-            json.dumps(counters.__dict__, indent=2, ensure_ascii=False) + "\n",
-            encoding="utf-8",
+        write_atomic(
+            self._path,
+            (json.dumps(counters.__dict__, indent=2, ensure_ascii=False) + "\n").encode("utf-8"),
         )
-        os.replace(temporary, self._path)
