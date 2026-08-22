@@ -40,7 +40,7 @@ def build_apps(runtime: Runtime) -> tuple[FastAPI, FastAPI]:
 
 @contextlib.asynccontextmanager
 async def _ticker_lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """Applique périodiquement les timeouts d'inactivité.
+    """Applique périodiquement les timeouts d'inactivité et sonde le tirage en cours.
 
     Filet de sécurité : `tick()` est déjà appelé à chaque lecture de statut, mais si le
     frontend cesse d'interroger le backend (onglet planté, écran figé), c'est ce ticker
@@ -60,6 +60,10 @@ async def _tick_forever(runtime: Runtime) -> None:
     interval = runtime.settings.tick_interval_s
     while True:
         await asyncio.sleep(interval)
+        # Le sondage du job d'impression suit la même logique que les timeouts : il est
+        # déjà fait à chaque lecture de statut, et ce ticker n'est là que si le frontend
+        # cesse de poser des questions.
+        runtime.print_flow.poll()
         if runtime.machine.tick():
             logger.info("timeout d'inactivité — retour à %s", runtime.machine.state)
 

@@ -21,6 +21,7 @@ from dropyourmoment.core.errors import (
     CameraError,
     InvalidTransitionError,
     NoActiveSessionError,
+    PrinterError,
 )
 from dropyourmoment.core.session import Session, SessionState
 from dropyourmoment.imaging.filters import FilterName
@@ -77,8 +78,11 @@ class EventInfo(BaseModel):
 
 def _status(runtime: Runtime) -> SessionStatus:
     machine = runtime.machine
-    # tick() à chaque lecture : l'état reste juste même si le ticker de fond est en
-    # retard, et les tests n'ont pas besoin de faire tourner une boucle asyncio.
+    # poll() puis tick() à chaque lecture : l'état reste juste même si le ticker de fond
+    # est en retard, et les tests n'ont pas besoin de faire tourner une boucle asyncio.
+    # Dans cet ordre, parce qu'un job qui se termine fait entrer en DONE, dont le timeout
+    # ne doit courir qu'à partir de là.
+    runtime.print_flow.poll()
     machine.tick()
     session = machine.session
     return SessionStatus(
@@ -224,6 +228,40 @@ def retake(session_id: str, runtime: Runtime = Depends(get_runtime)) -> SessionS
         runtime.machine.retake()
     except InvalidTransitionError as exc:
         raise HTTPException(status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+    return _status(runtime)
+
+
+@router.post("/session/{session_id}/print", response_model=SessionStatus)
+def print_photo(session_id: str, runtime: Runtime = Depends(get_runtime)) -> SessionStatus:
+    """Fige la photo et lance le tirage. `REVIEW → PRINTING`, puis `DONE` à la fin du job.
+
+    Figer ne demande aucune recomposition : `_compose` a déjà écrit `final.jpg` à la
+    capture et à chaque changement de filtre, et le passage en PRINTING ferme la porte à
+    un CHOOSE_FILTER supplémentaire — la machine à états est fermée par défaut. Il reste à
+    vérifier que le fichier est bien là.
+
+    La réponse ne dit pas forcément PRINTING : avec le pilote neutre le job est terminé
+    avant même que `_status` le sonde, et le visiteur passe directement à la confirmation.
+    C'est le comportement honnête — l'écran d'attente n'a de sens que quand il y a vraiment
+    quelque chose à attendre.
+    """
+    session = _require_session(runtime, session_id)
+    if session.final_path is None or not session.final_path.is_file():
+        raise HTTPException(status.HTTP_409_CONFLICT, detail="aucune photo à enregistrer")
+
+    try:
+        runtime.machine.print()
+    except InvalidTransitionError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+    try:
+        runtime.print_flow.submit(session.final_path, runtime.event.config.copies_per_print)
+    except PrinterError as exc:
+        # Un écran d'erreur, jamais une exception : le visiteur n'a pas à voir un code
+        # d'imprimante, et le timeout d'ERROR le ramènera à l'accueil.
+        logger.error("tirage refusé pour la session %s : %s", session.id, exc)
+        runtime.machine.fail(str(exc))
 
     return _status(runtime)
 

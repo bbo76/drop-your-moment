@@ -1,5 +1,5 @@
 import { FILTER_LABELS, type FilterName } from "../../shared/api";
-import { GhostButton } from "./Screen";
+import { GhostButton, PrimaryButton } from "./Screen";
 
 const RETURN_HINT_THRESHOLD_S = 30;
 
@@ -10,6 +10,7 @@ interface Props {
   remainingSeconds: number | null;
   onChooseFilter: (name: FilterName) => void;
   onRetake: () => void;
+  onKeep: () => void;
 }
 
 export function ReviewScreen({
@@ -19,6 +20,7 @@ export function ReviewScreen({
   remainingSeconds,
   onChooseFilter,
   onRetake,
+  onKeep,
 }: Props) {
   const showReturnHint =
     remainingSeconds !== null && remainingSeconds <= RETURN_HINT_THRESHOLD_S;
@@ -52,15 +54,12 @@ export function ReviewScreen({
             {showReturnHint && `Retour à l'accueil dans ${Math.ceil(remainingSeconds)} s`}
           </span>
           <GhostButton onClick={onRetake}>Refaire la photo</GhostButton>
+          {/* « Je garde » plutôt que « Imprimer » : pendant la phase numérique rien ne
+              sort physiquement, et promettre un tirage serait mensonger. Le libellé
+              deviendra « Imprimer » quand une imprimante sera branchée. */}
+          <PrimaryButton onClick={onKeep}>Je garde cette photo</PrimaryButton>
         </div>
       </div>
-
-      {/* Le parcours s'arrête ici pour l'instant : l'enregistrement définitif et
-          l'impression arrivent au jalon suivant. Dit explicitement plutôt que laissé
-          deviner par un bouton absent. */}
-      <p className="text-center text-xs text-muted">
-        Enregistrement et impression : prochaine étape.
-      </p>
     </div>
   );
 }

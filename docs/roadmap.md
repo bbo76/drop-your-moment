@@ -6,6 +6,10 @@ Le projet avance par jalons. Chacun se termine sur quelque chose d'observable, p
 une couche technique : c'est ce qui permet de vérifier sur le vrai matériel avant
 d'empiler la suite.
 
+Chaque jalon a son [milestone GitHub](https://github.com/bbo76/drop-your-moment/milestones),
+et chaque puce restante ci-dessous son issue. Ce document reste la référence : il porte le
+*pourquoi*, les issues portent le détail d'exécution.
+
 ## Phase 1 — MVP numérique
 
 L'impression physique est reportée à la phase 2. L'interface `PrinterDriver` et l'état
@@ -27,20 +31,16 @@ Pipeline de composition, configuration d'événement en JSON, chargement et déc
 l'overlay, endpoints de capture / filtre / refaire, décompte 3-2-1, flash logiciel, écran
 de review. Outil de génération d'un overlay de démonstration.
 
-### ⬜ Jalon 4 — Sortie numérique
+### ✅ Jalon 4 — Sortie numérique
 
-Ce qui manque pour boucler le parcours : aujourd'hui la review n'a aucune issue à part
-« refaire » et le timeout.
+Le parcours boucle : accueil → capture → filtre → « je garde cette photo » → confirmation
+→ retour automatique à l'accueil, sans intervention.
 
-- `hardware/printer/base.py` — interface `PrinterDriver` : `print_image`, `get_status`,
-  `list_available_printers`, `get_job_status`
-- `NullPrinterDriver` — journalise et retourne un succès immédiat
-- `POST /api/session/{id}/print` — fige `final.jpg`, transition `REVIEW → PRINTING → DONE`
-- Compteur de tirages dans `data/counters.json`, face aux capacités de cartouche de la
-  CP1500 (36 / 54 / 108)
-- Écran de confirmation, retour automatique à l'accueil
-- `storage/retention.py` — purge des sessions anciennes : environ 2 Go par événement,
-  plus l'usure en écriture de la carte SD
+Interface `PrinterDriver` et pilote neutre, `POST /api/session/{id}/print`, compteur de
+tirages persisté, écran de confirmation, purge des sessions anciennes.
+
+Le flux d'impression est **asynchrone dès le pilote neutre** — c'est ce qui permet au
+jalon 7 de ne remplacer qu'un pilote (voir [decisions.md](decisions.md)).
 
 ### ⬜ Jalon 5 — Portail d'administration
 

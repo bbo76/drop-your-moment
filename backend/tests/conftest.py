@@ -15,6 +15,8 @@ from dropyourmoment.core.event_config import EventStore
 from dropyourmoment.core.session import SessionMachine
 from dropyourmoment.hardware.camera.factory import CameraDriverName
 from dropyourmoment.hardware.camera.mock_driver import MockCameraDriver
+from dropyourmoment.hardware.printer.base import PrinterDriver
+from dropyourmoment.hardware.printer.null_driver import NullPrinterDriver
 from dropyourmoment.runtime import Runtime
 
 
@@ -34,11 +36,20 @@ def camera() -> MockCameraDriver:
 
 
 @pytest.fixture
-def runtime(settings: Settings, camera: MockCameraDriver) -> Iterator[Runtime]:
+def printer() -> PrinterDriver:
+    """Surchargeable par un test qui veut un tirage lent ou en panne."""
+    return NullPrinterDriver()
+
+
+@pytest.fixture
+def runtime(
+    settings: Settings, camera: MockCameraDriver, printer: PrinterDriver
+) -> Iterator[Runtime]:
     store = EventStore(settings.event_dir)
     runtime = Runtime(
         settings=settings,
         camera=camera,
+        printer=printer,
         machine=SessionMachine(timeouts=settings.state_timeouts()),
         event_store=store,
         event=store.load(),

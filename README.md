@@ -39,7 +39,10 @@ d'événement modifiée depuis l'admin doit être vue immédiatement par le kios
 ## Parcours visiteur
 
 Accueil → décompte 3-2-1 sur l'aperçu live → capture → choix d'un filtre (original, N&B,
-sépia) → enregistrement → retour à l'accueil.
+sépia) → « je garde cette photo » → confirmation → retour automatique à l'accueil.
+
+Le bouton dira « Imprimer » quand une imprimante sera branchée. Pendant la phase numérique
+il ne promet rien qu'il ne tienne : la photo est enregistrée, rien ne sort du caisson.
 
 Le cadre ou logo de l'événement est appliqué automatiquement, identique pour toutes les
 photos, et se configure depuis le portail d'administration. Le filtre choisi par le
@@ -53,6 +56,10 @@ backend/      FastAPI, machine à états, pilotes caméra et imprimante
 frontend/     Vite + React + Tailwind, deux points d'entrée dans un seul projet
                 index.html  → kiosque tactile
                 admin.html  → portail d'administration
+data/         données d'exécution, jamais versionnées
+                sessions/   une photo brute et une composée par passage
+                events/     configuration et overlay de l'événement en cours
+                counters.json  compteur de tirages, face aux cartouches CP1500
 ```
 
 Un seul projet frontend pour les deux interfaces : jetons de design, client d'API et
@@ -128,6 +135,9 @@ Variables d'environnement préfixées `DYM_` (voir
 | `PREVIEW_TIMEOUT_S` | `60` | retour à l'accueil si le visiteur s'éloigne devant l'aperçu |
 | `REVIEW_TIMEOUT_S` | `90` | idem sur l'écran de review |
 | `KIOSK_HOST` / `ADMIN_HOST` | `127.0.0.1` / `0.0.0.0` | adresses de bind |
+| `PRINTER_DRIVER` | `null` | pilote neutre pendant la phase numérique ; `cups` au jalon 7 |
+| `RETENTION_MAX_AGE_DAYS` | `30` | âge au-delà duquel une session est purgée |
+| `RETENTION_MAX_TOTAL_GB` | `8` | plafond du dossier `data/sessions`, filet contre le disque plein |
 
 ## Installation sur le Pi (Raspberry Pi OS Trixie)
 
