@@ -6,9 +6,9 @@ sur-ingénierie pour un pilote qui répond « terminé » immédiatement : la CP
 sublimation quatre passes d'environ 40 secondes, et un endpoint bloquant serait à réécrire
 au jalon 7 — avec la machine à états et le polling du frontend derrière lui.
 
-`poll()` est appelé aux mêmes deux endroits que `SessionMachine.tick()` : à chaque lecture
-de statut *et* par le ticker de fond. Même raison — l'état reste juste sans dépendre de la
-cadence du ticker, et les tests n'ont pas besoin de faire tourner une boucle asyncio.
+`poll()` est appelé au même endroit que `SessionMachine.tick()` : à chaque lecture de
+statut. Même raison — c'est la seule horloge dont l'état a besoin, et les tests n'ont pas
+à faire tourner une boucle asyncio.
 """
 
 from __future__ import annotations

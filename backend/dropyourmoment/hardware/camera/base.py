@@ -27,11 +27,6 @@ class CameraCapabilities:
     preview_size: tuple[int, int]
     supports_live_preview: bool
 
-    @property
-    def still_aspect_ratio(self) -> float:
-        width, height = self.still_size
-        return width / height
-
 
 @dataclass(frozen=True)
 class CaptureResult:

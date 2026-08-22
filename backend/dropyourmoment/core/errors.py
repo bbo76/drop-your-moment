@@ -41,11 +41,3 @@ class InvalidTransitionError(PhotoboothError):
         super().__init__(f"transition impossible : {event} depuis l'état {state}")
         self.state = state
         self.event = event
-
-
-class NoActiveSessionError(PhotoboothError):
-    """Opération demandée sur une session qui n'existe pas ou n'est plus active."""
-
-
-class OverlayValidationError(PhotoboothError):
-    """L'overlay fourni ne convient pas (format, ratio, dimensions)."""

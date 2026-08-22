@@ -8,7 +8,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from dropyourmoment.core.session import StateTimeouts
 from dropyourmoment.hardware.camera.factory import CameraDriverName
-from dropyourmoment.hardware.printer.factory import PrinterDriverName
 from dropyourmoment.storage.retention import RetentionPolicy
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -18,10 +17,6 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="DYM_", extra="ignore")
 
     camera_driver: CameraDriverName = CameraDriverName.AUTO
-
-    # `null` pendant toute la phase numérique : le parcours va jusqu'au bout sans
-    # imprimante branchée. `cups` s'ajoutera au jalon 7 sans rien changer d'autre.
-    printer_driver: PrinterDriverName = PrinterDriverName.NULL
 
     # Le kiosque n'écoute que sur la boucle locale et l'admin sur toutes les interfaces.
     # C'est cette paire d'adresses de bind — et non une frontière de process — qui porte
@@ -49,11 +44,6 @@ class Settings(BaseSettings):
     # `index.html` pour le kiosque, `admin.html` pour l'administration, avec les mêmes
     # jetons de design et le même client d'API.
     frontend_dist_dir: Path = REPO_ROOT / "frontend" / "dist"
-
-    # Cadence du ticker qui applique les timeouts d'inactivité. `tick()` est aussi appelé
-    # à chaque lecture de statut, donc ce ticker n'est qu'un filet de sécurité au cas où
-    # le frontend ne poserait plus de question.
-    tick_interval_s: float = 1.0
 
     def retention_policy(self) -> RetentionPolicy:
         return RetentionPolicy.from_gb(

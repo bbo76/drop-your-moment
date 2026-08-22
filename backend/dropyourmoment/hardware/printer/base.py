@@ -26,10 +26,6 @@ class JobState(StrEnum):
     COMPLETED = "completed"
     FAILED = "failed"
 
-    @property
-    def is_final(self) -> bool:
-        return self in (JobState.COMPLETED, JobState.FAILED)
-
 
 @dataclass(frozen=True)
 class PrintJob:
@@ -43,14 +39,6 @@ class PrintJob:
     id: str
     state: JobState
     copies: int
-    detail: str | None = None
-
-
-@dataclass(frozen=True)
-class PrinterStatus:
-    driver_name: str
-    ready: bool
-    printer_name: str | None = None
     detail: str | None = None
 
 
@@ -77,11 +65,3 @@ class PrinterDriver(ABC):
         Un identifiant inconnu lève `PrintJobFailedError` : mieux vaut un écran d'erreur
         qu'une session bloquée en PRINTING pour l'éternité.
         """
-
-    @abstractmethod
-    def get_status(self) -> PrinterStatus:
-        """Disponibilité de l'imprimante, pour la page de santé de l'administration."""
-
-    @abstractmethod
-    def list_available_printers(self) -> list[str]:
-        """Noms des imprimantes visibles, pour la sélection depuis l'administration."""

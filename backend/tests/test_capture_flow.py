@@ -53,7 +53,7 @@ def test_capture_ecrit_la_prise_brute_et_l_image_finale(
     kiosk.post(f"/api/session/{session_id}/capture")
 
     root = runtime.settings.sessions_dir
-    assert raw_path(root, session_id, 0).is_file()
+    assert raw_path(root, session_id).is_file()
     assert final_path(root, session_id).is_file()
 
 
@@ -174,7 +174,7 @@ def test_refaire_efface_les_fichiers(kiosk: TestClient, runtime: Runtime) -> Non
 
     kiosk.post(f"/api/session/{session_id}/retake")
 
-    assert not raw_path(root, session_id, 0).exists()
+    assert not raw_path(root, session_id).exists()
     assert not final_path(root, session_id).exists()
     assert not session_dir(root, session_id).exists(), "le dossier vide est retiré"
 

@@ -17,12 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
-from dropyourmoment.core.errors import (
-    CameraError,
-    InvalidTransitionError,
-    NoActiveSessionError,
-    PrinterError,
-)
+from dropyourmoment.core.errors import CameraError, InvalidTransitionError, PrinterError
 from dropyourmoment.core.session import Session, SessionState
 from dropyourmoment.imaging.filters import FilterName
 from dropyourmoment.imaging.pipeline import CompositionError, save_jpeg
@@ -78,10 +73,10 @@ class EventInfo(BaseModel):
 
 def _status(runtime: Runtime) -> SessionStatus:
     machine = runtime.machine
-    # poll() puis tick() à chaque lecture : l'état reste juste même si le ticker de fond
-    # est en retard, et les tests n'ont pas besoin de faire tourner une boucle asyncio.
-    # Dans cet ordre, parce qu'un job qui se termine fait entrer en DONE, dont le timeout
-    # ne doit courir qu'à partir de là.
+    # poll() puis tick() à chaque lecture de statut : c'est le seul endroit où le temps
+    # avance, et le frontend interroge deux fois par seconde. Dans cet ordre, parce qu'un
+    # job qui se termine fait entrer en DONE, dont le timeout ne doit courir qu'à partir
+    # de là.
     runtime.print_flow.poll()
     machine.tick()
     session = machine.session
@@ -167,7 +162,7 @@ def capture(session_id: str, runtime: Runtime = Depends(get_runtime)) -> Session
     review d'afficher quelque chose sans aller-retour supplémentaire.
     """
     session = _require_session(runtime, session_id)
-    destination = raw_path(runtime.settings.sessions_dir, session.id, index=0)
+    destination = raw_path(runtime.settings.sessions_dir, session.id)
 
     try:
         runtime.camera.capture_still(destination)
@@ -176,7 +171,7 @@ def capture(session_id: str, runtime: Runtime = Depends(get_runtime)) -> Session
         runtime.machine.fail(str(exc))
         return _status(runtime)
 
-    session.raw_paths = [destination]
+    session.raw_path = destination
     try:
         runtime.machine.capture()
     except InvalidTransitionError as exc:
@@ -199,7 +194,7 @@ def choose_filter(
     """Applique un filtre à la photo déjà prise. Rejouable autant que voulu."""
     session = _require_session(runtime, session_id)
 
-    if not runtime.event.config.offers(choice.name):
+    if choice.name not in runtime.event.config.available_filters:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=f"filtre non proposé pour cet événement : {choice.name}",
@@ -301,14 +296,15 @@ def preview_stream(runtime: Runtime = Depends(get_runtime)) -> StreamingResponse
 
 
 def _compose(runtime: Runtime, session: Session, filter_name: FilterName) -> None:
-    """Recompose l'image finale depuis les prises brutes et l'écrit sur disque.
+    """Recompose l'image finale depuis la prise brute et l'écrit sur disque.
 
-    Toujours depuis les prises brutes, jamais depuis une image déjà composée : c'est ce
-    qui garantit qu'un aller-retour entre filtres redonne exactement le même résultat, et
+    Toujours depuis la prise brute, jamais depuis une image déjà composée : c'est ce qui
+    garantit qu'un aller-retour entre filtres redonne exactement le même résultat, et
     qu'aucune compression JPEG ne s'empile.
     """
+    assert session.raw_path is not None  # garanti par la transition depuis PREVIEW
     try:
-        image = runtime.pipeline.compose(session.raw_paths, filter_name)
+        image = runtime.pipeline.compose(session.raw_path, filter_name)
     except CompositionError as exc:
         logger.error("composition échouée pour la session %s : %s", session.id, exc)
         runtime.machine.fail(str(exc))
@@ -323,7 +319,7 @@ def _compose(runtime: Runtime, session: Session, filter_name: FilterName) -> Non
 
 def _purge(runtime: Runtime, session: Session) -> None:
     directory = session_dir(runtime.settings.sessions_dir, session.id)
-    for path in (*session.raw_paths, session.final_path):
+    for path in (session.raw_path, session.final_path):
         if path is not None:
             path.unlink(missing_ok=True)
     if directory.is_dir() and not any(directory.iterdir()):
@@ -334,14 +330,3 @@ def _mjpeg_frames(runtime: Runtime) -> Iterator[bytes]:
     header = f"--{MJPEG_BOUNDARY}\r\nContent-Type: image/jpeg\r\n".encode()
     for frame in runtime.camera.preview_frames():
         yield header + f"Content-Length: {len(frame)}\r\n\r\n".encode() + frame + b"\r\n"
-
-
-__all__ = [
-    "MJPEG_BOUNDARY",
-    "EventInfo",
-    "NoActiveSessionError",
-    "SessionStatus",
-    "SystemStatus",
-    "get_runtime",
-    "router",
-]

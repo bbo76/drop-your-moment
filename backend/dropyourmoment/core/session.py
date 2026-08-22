@@ -99,16 +99,11 @@ class StateTimeouts:
 
 @dataclass
 class Session:
-    """Artefacts et choix d'un passage visiteur.
-
-    `raw_paths` est une liste alors que le MVP n'en produit qu'un seul : c'est le point
-    d'entrée du futur mode bandeau multi-prises, qui remplira cette liste sans changer
-    la forme de la session ni celle de l'API.
-    """
+    """Artefacts et choix d'un passage visiteur."""
 
     id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
     started_at: datetime = field(default_factory=lambda: datetime.now(UTC))
-    raw_paths: list[Path] = field(default_factory=list)
+    raw_path: Path | None = None
     final_path: Path | None = None
     selected_filter: str | None = None
 
@@ -168,7 +163,7 @@ class SessionMachine:
     def retake(self) -> Session:
         self._dispatch(SessionEvent.RETAKE)
         assert self._session is not None
-        self._session.raw_paths.clear()
+        self._session.raw_path = None
         self._session.final_path = None
         self._session.selected_filter = None
         # La révision continue de croître au lieu de repartir de zéro : le navigateur ne
@@ -194,9 +189,8 @@ class SessionMachine:
     def tick(self) -> bool:
         """Applique le timeout de l'état courant s'il est expiré.
 
-        Retourne True si un timeout a été appliqué. Appelée à la fois par le ticker de
-        fond et à chaque lecture de statut, pour que l'état soit correct même si le
-        ticker est en retard.
+        Retourne True si un timeout a été appliqué. Appelée à chaque lecture de statut :
+        le frontend interroge deux fois par seconde, c'est là que le temps avance.
         """
         limit = self.timeouts.for_state(self._state)
         if limit is None or self._elapsed() < limit:

@@ -117,9 +117,10 @@ Aucun changement d'API ni de machine à états attendu : le pilote neutre est re
 
 Explicitement écartés du MVP, à ne pas rouvrir sans élément nouveau :
 
-- **Mode multi-prises / bandeau photo.** L'architecture l'accueille sans réécriture :
-  `Session.raw_paths` est une liste, `LayoutSpec` est le point d'insertion, et
-  `compose_layout` existe déjà en passe-plat.
+- **Mode multi-prises / bandeau photo.** Le pipeline compose une prise, une seule, et le
+  dit dans ses types. L'échafaudage qui l'anticipait (`LayoutSpec`, `compose_layout` en
+  passe-plat, `raw_paths` en liste) a été retiré : maintenir un point d'insertion pour une
+  fonctionnalité explicitement écartée coûtait plus que le jour où il faudra l'écrire.
 - **Partage en ligne, galerie publique, QR code.** Aucune dépendance Internet en
   fonctionnement.
 - **Authentification du portail d'administration.** Risque accepté : accès LAN pendant un

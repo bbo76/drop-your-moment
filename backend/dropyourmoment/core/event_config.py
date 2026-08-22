@@ -38,9 +38,6 @@ class EventConfig(BaseModel):
     print_format: PrintFormat = Field(default_factory=lambda: POSTCARD_LANDSCAPE.model_copy())
     copies_per_print: int = Field(default=1, ge=1, le=10)
 
-    def offers(self, name: FilterName) -> bool:
-        return name in self.available_filters
-
 
 @dataclass
 class LoadedEvent:

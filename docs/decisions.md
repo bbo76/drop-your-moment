@@ -125,15 +125,21 @@ Conséquence visible : avec le pilote neutre, l'état `PRINTING` ne dure qu'un a
 et le visiteur ne le voit pas. C'est le comportement honnête — un écran d'attente n'a de
 sens que quand il y a vraiment quelque chose à attendre.
 
-### Le job d'impression est sondé aux deux mêmes endroits que les timeouts
+### Le temps n'avance qu'à la lecture du statut
 
-`poll()` est appelé à chaque lecture de statut **et** par le ticker de fond, exactement
-comme `SessionMachine.tick()`.
+`poll()` et `SessionMachine.tick()` sont appelés au même endroit : la lecture de statut,
+que le frontend fait deux fois par seconde.
 
-Même raison qu'à l'origine : l'état reste juste sans dépendre de la cadence du ticker, le
-frontend voit la fin du tirage à son prochain sondage à 500 ms plutôt qu'au prochain tour
-de seconde, et les tests n'ont pas besoin de faire tourner une boucle asyncio pour
-observer une transition. Un mécanisme de moins à comprendre, puisque c'est le même.
+Un ticker de fond a existé à côté, à 1 s, présenté comme un filet si le frontend cessait
+d'interroger le backend. Il a été retiré : le seul état qu'il corrigeait était un état que
+plus personne ne lisait — si le kiosque ne demande plus rien, il n'y a ni visiteur devant
+la borne ni écran à ramener au repos, et le rechargement de l'onglet appelle `tick()`
+avant d'afficher quoi que ce soit. Deux mécanismes pour une horloge, dont un sans effet
+observable, c'est un mécanisme de trop.
+
+Le sondage à la lecture reste la bonne place pour une autre raison : le frontend voit la
+fin du tirage à son prochain sondage à 500 ms, et les tests n'ont pas besoin de faire
+tourner une boucle asyncio pour observer une transition.
 
 ### Rétention : l'âge *et* le plafond d'espace
 
@@ -158,14 +164,19 @@ au visiteur un tirage qu'il n'aura pas, et il attendrait devant la borne.
 Le libellé deviendra « Imprimer » au jalon 7. C'est une chaîne de caractères, pas un
 parcours : la transition, l'état `PRINTING` et l'écran de confirmation ne bougent pas.
 
-### Deux compteurs de tirages, pas un
+### Un seul compteur de tirages tant que rien ne sait le remettre à zéro
 
-`data/counters.json` porte un cumul et un compteur depuis remise à zéro.
+`data/counters.json` porte le cumul, et lui seul.
 
-Ce sont deux questions différentes. « Combien de photos cet événement a-t-il produit »
-relève du cumul ; « me reste-t-il du papier » relève du compteur de cartouche, remis à
-zéro à chaque changement. Les cartouches de la CP1500 font 36, 54 ou 108 tirages : sans le
-second, l'opérateur découvre la fin de cartouche en pleine soirée.
+Il en a porté deux : le cumul, et un compteur de cartouche « depuis remise à zéro ». Les
+deux questions sont bien distinctes — « combien de photos cet événement a-t-il produit »
+contre « me reste-t-il du papier », et les cartouches de la CP1500 font 36, 54 ou 108
+tirages. Mais aucune interface ne remettait le second à zéro : il valait donc toujours
+exactement le premier, avec un champ `reset_at` qui restait `null` à vie.
+
+Les deux reviennent ensemble au jalon 5, avec la page de santé qui les affiche et le
+bouton qui réarme le compteur de cartouche. Un compteur sans son bouton n'est pas la
+moitié de la fonctionnalité, c'est une copie du cumul sous un autre nom.
 
 Fichier absent ou corrompu : on repart de zéro en journalisant, jamais un refus de
 démarrer. Même arbitrage que pour la configuration d'événement — un compteur faux se

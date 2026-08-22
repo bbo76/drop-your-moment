@@ -140,10 +140,3 @@ def test_le_format_de_sortie_porte_le_ratio(tmp_path: Path) -> None:
 
 def test_ratio_par_defaut_est_la_carte_postale_paysage(tmp_path: Path) -> None:
     assert EventStore(tmp_path).load().aspect_ratio == POSTCARD_LANDSCAPE.aspect_ratio
-
-
-def test_filtres_proposes_interrogeables(tmp_path: Path) -> None:
-    config = EventConfig(available_filters=[FilterName.ORIGINAL, FilterName.SEPIA])
-
-    assert config.offers(FilterName.SEPIA)
-    assert not config.offers(FilterName.BW)
