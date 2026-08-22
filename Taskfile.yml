@@ -1,0 +1,121 @@
+# Raccourcis de développement — https://taskfile.dev (`brew install go-task`)
+#
+# Le dépôt reste utilisable sans : chaque tâche n'est qu'un rappel des commandes du README,
+# exécutées depuis le bon répertoire. `task --list` les énumère.
+version: "3"
+
+tasks:
+  default:
+    desc: Lance le photobooth (alias de `task run`)
+    cmds:
+      - task: run
+
+  run:
+    desc: "Kiosque sur :8000, admin sur :8001. Reconstruit le frontend si besoin"
+    deps: [build]
+    dir: backend
+    env:
+      # `task run CAMERA=mock` force la mire de synthèse — utile tant que l'autorisation
+      # caméra de macOS n'est pas accordée. Sans rien, l'autodétection choisit.
+      DYM_CAMERA_DRIVER: '{{.CAMERA | default "auto"}}'
+    cmds:
+      - uv run python -m dropyourmoment.main
+
+  dev:
+    desc: "Rechargement à chaud : Vite sur :5173, backend derrière"
+    deps: [dev:backend, dev:frontend]
+
+  dev:backend:
+    internal: true
+    dir: backend
+    env:
+      DYM_CAMERA_DRIVER: '{{.CAMERA | default "auto"}}'
+    cmds:
+      - uv run python -m dropyourmoment.main
+
+  dev:frontend:
+    internal: true
+    dir: frontend
+    cmds:
+      - echo "kiosque http://localhost:5173  •  admin http://localhost:5173/admin.html"
+      - pnpm dev
+
+  build:
+    desc: Construit le frontend. Ne fait rien si aucune source n'a changé
+    dir: frontend
+    sources:
+      - src/**/*
+      - "*.html"
+      - vite.config.ts
+      - tsconfig.json
+      - package.json
+    generates:
+      - dist/**/*
+    cmds:
+      - pnpm build
+
+  setup:
+    desc: Installe toutes les dépendances, webcam comprise
+    cmds:
+      - task: setup:backend
+      - task: setup:frontend
+
+  setup:backend:
+    internal: true
+    dir: backend
+    cmds:
+      - uv sync --extra webcam
+
+  setup:frontend:
+    internal: true
+    dir: frontend
+    cmds:
+      - pnpm install
+
+  check:
+    desc: Tout ce que vérifie la CI, dans le même ordre
+    cmds:
+      - task: lint
+      - task: test
+      - task: build
+
+  lint:
+    desc: Ruff, vérification seule
+    dir: backend
+    cmds:
+      - uv run ruff check dropyourmoment tests
+      - uv run ruff format --check dropyourmoment tests
+
+  fmt:
+    desc: Ruff, réécriture des fichiers
+    dir: backend
+    cmds:
+      - uv run ruff format dropyourmoment tests
+      - uv run ruff check --fix dropyourmoment tests
+
+  test:
+    desc: Tests backend et contrôle de types frontend
+    cmds:
+      - task: test:backend
+      - task: test:frontend
+
+  test:backend:
+    internal: true
+    dir: backend
+    cmds:
+      - uv run pytest -q
+
+  test:frontend:
+    internal: true
+    dir: frontend
+    cmds:
+      - pnpm typecheck
+
+  overlay:
+    desc: 'Génère un overlay de démonstration — task overlay LABEL="Mariage C & T"'
+    dir: backend
+    cmds:
+      # L'application n'écrit jamais d'overlay d'elle-même : un cadre de démonstration
+      # apparaissant sur les photos d'un vrai événement serait pire que pas de cadre.
+      - uv run python -m dropyourmoment.tools.make_overlay --label '{{.LABEL | default "Drop Your Moment"}}'
+      - echo 'Renseigner "overlay_file":"overlay.png" dans data/events/current/event_config.json'
