@@ -31,6 +31,7 @@ from dropyourmoment.hardware.camera.discovery import (
     probe_indices,
     system_camera_names,
 )
+from dropyourmoment.hardware.system_metrics import read_system_metrics
 from dropyourmoment.imaging.steps import overlay_matches_ratio
 from dropyourmoment.runtime import Runtime
 from dropyourmoment.storage.atomic import write_atomic
@@ -84,6 +85,11 @@ class AdminHealth(BaseModel):
     # c'est à cette échelle que l'espace restant se lit.
     disk_free_bytes: int
     disk_total_bytes: int
+    cpu_percent: float
+    memory_used_bytes: int
+    memory_total_bytes: int
+    memory_percent: float
+    temperature_c: float | None
 
 
 @router.get("/system/health", response_model=AdminHealth)
@@ -98,6 +104,7 @@ def read_health(runtime: Runtime = Depends(get_runtime)) -> AdminHealth:
     caps = runtime.camera.get_capabilities()
     config = runtime.event.config
     usage = shutil.disk_usage(runtime.settings.data_dir)
+    metrics = read_system_metrics()
     return AdminHealth(
         camera_ok=runtime.camera.is_available(),
         camera_driver=caps.driver_name,
@@ -112,6 +119,11 @@ def read_health(runtime: Runtime = Depends(get_runtime)) -> AdminHealth:
         counters=_reading(runtime.counters.read()),
         disk_free_bytes=usage.free,
         disk_total_bytes=usage.total,
+        cpu_percent=metrics.cpu_percent,
+        memory_used_bytes=metrics.memory_used_bytes,
+        memory_total_bytes=metrics.memory_total_bytes,
+        memory_percent=metrics.memory_percent,
+        temperature_c=metrics.temperature_c,
     )
 
 

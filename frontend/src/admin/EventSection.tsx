@@ -203,6 +203,21 @@ export function EventSection() {
           />
         </Field>
 
+        <Field label="Durée du flash à l'écran (ms)">
+          <input
+            type="number"
+            min={0}
+            max={2000}
+            step={10}
+            className={inputClass}
+            value={draft.flash_duration_ms}
+            onChange={(e) => patch({ flash_duration_ms: Number(e.target.value) })}
+          />
+          <span className="mt-1 block text-xs text-muted">
+            0 désactive le flash · 180 ms convient à la plupart des écrans
+          </span>
+        </Field>
+
         <div className="flex items-center gap-4">
           <Button onClick={save} disabled={saving}>
             {saving ? "Enregistrement…" : "Enregistrer"}

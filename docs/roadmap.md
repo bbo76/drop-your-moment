@@ -70,7 +70,8 @@ Th□o » ; et le test du sondage caméra en `GET` affirmait un 405 là où le v
 ### ✅ Jalon 5.1 — Finitions d'usage
 
 Trois gestes qui manquaient avant de passer au matériel : le flash logiciel blanc reste
-visible assez longtemps pour être perçu même quand le backend local répond immédiatement ;
+visible pendant la durée réglée depuis le portail, même quand le backend local répond
+immédiatement ;
 un clic sur une vignette ouvre désormais la photo en grand, avec navigation et bouton de
 téléchargement explicite ; et l'opérateur peut supprimer définitivement une photo après
 confirmation.
@@ -78,6 +79,10 @@ confirmation.
 La suppression porte sur le dossier complet de la session, refuse la session encore active
 et remet immédiatement pagination et total en cohérence. Pas de corbeille : le portail le
 dit avant l'action, et l'archive zip reste le moyen de sauvegarder l'événement en bloc.
+
+La page de santé prépare aussi la surveillance du Pi : charge CPU, mémoire utilisée et
+température CPU lorsque le système expose un capteur. Une température absente est une
+information normale sur un poste de développement, pas une panne du portail.
 
 ### ⬜ Jalon 6 — Validation sur le Raspberry Pi
 

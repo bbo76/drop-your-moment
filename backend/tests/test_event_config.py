@@ -25,6 +25,7 @@ def test_config_absente_cree_les_valeurs_par_defaut(tmp_path: Path) -> None:
     event = store.load()
 
     assert event.config.event_name == "Événement"
+    assert event.config.flash_duration_ms == 180
     assert store.config_path.is_file()
 
 
@@ -35,6 +36,7 @@ def test_config_relue_a_l_identique(tmp_path: Path) -> None:
             event_name="Mariage Camille & Théo",
             available_filters=[FilterName.ORIGINAL, FilterName.BW],
             copies_per_print=2,
+            flash_duration_ms=350,
         )
     )
 
@@ -43,6 +45,7 @@ def test_config_relue_a_l_identique(tmp_path: Path) -> None:
     assert event.config.event_name == "Mariage Camille & Théo"
     assert event.config.available_filters == [FilterName.ORIGINAL, FilterName.BW]
     assert event.config.copies_per_print == 2
+    assert event.config.flash_duration_ms == 350
 
 
 def test_config_corrompue_ne_bloque_pas_le_demarrage(

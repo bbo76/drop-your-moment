@@ -18,6 +18,7 @@ dependencies = [
     # multipart, et sans ce paquet la route lève une erreur au démarrage plutôt qu'à
     # l'appel. Rien d'optionnel donc, malgré son nom de dépendance de confort.
     "python-multipart>=0.0.20",
+    "psutil>=6.1",
 ]
 
 # Extra et non groupe PEP 735 : opencv est bien une dépendance d'exécution — pour qui

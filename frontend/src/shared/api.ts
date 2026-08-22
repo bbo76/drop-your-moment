@@ -53,6 +53,7 @@ export interface EventConfigPayload {
   available_filters: FilterName[];
   print_format: PrintFormatPayload;
   copies_per_print: number;
+  flash_duration_ms: number;
 }
 
 /** Réglages de l'événement. Modifiables depuis le portail d'administration. */
@@ -61,6 +62,7 @@ export interface EventInfo {
   available_filters: FilterName[];
   print_format_name: string;
   print_aspect_ratio: number;
+  flash_duration_ms: number;
 }
 
 /** Les deux compteurs de tirages : le cumul de l'événement et celui de la cartouche. */
@@ -91,6 +93,11 @@ export interface AdminHealth {
   counters: CounterReading;
   disk_free_bytes: number;
   disk_total_bytes: number;
+  cpu_percent: number;
+  memory_used_bytes: number;
+  memory_total_bytes: number;
+  memory_percent: number;
+  temperature_c: number | null;
 }
 
 /** Un index de caméra qui s'ouvre, et la taille que le pilote y annonce. */

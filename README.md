@@ -56,11 +56,12 @@ l'accès est censé rester limité au réseau d'un événement.
 
 - **État du système** — pilote caméra et résolutions négociées, aperçu vivant ou gelé,
   imprimante, état de session, les deux compteurs de tirages face aux cartouches CP1500
-  (36 / 54 / 108), espace disque. C'est la page qu'on laisse ouverte pendant un événement,
-  et elle ne sonde ni périphérique ni répertoire.
+  (36 / 54 / 108), espace disque, CPU, RAM et température quand le système l'expose. C'est
+  la page qu'on laisse ouverte pendant un événement, et elle ne sonde ni périphérique ni
+  répertoire.
 - **Événement** — nom, filtres proposés, format de sortie, nombre de copies, téléversement
-  de l'overlay. Une modification est vue par le kiosque **sans redémarrage** : c'est la
-  raison d'être du process unique à deux sockets.
+  de l'overlay, durée du flash visuel. Une modification est vue par le kiosque **sans
+  redémarrage** : c'est la raison d'être du process unique à deux sockets.
 - **Galerie** — liste paginée, vignettes ouvrables en plein écran, téléchargement
   explicite, suppression définitive après confirmation, archive zip de l'événement servie
   en flux.

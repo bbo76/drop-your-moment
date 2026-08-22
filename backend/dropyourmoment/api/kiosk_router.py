@@ -69,6 +69,7 @@ class EventInfo(BaseModel):
     available_filters: list[FilterName]
     print_format_name: str
     print_aspect_ratio: float
+    flash_duration_ms: int
 
 
 def _status(runtime: Runtime) -> SessionStatus:
@@ -137,6 +138,7 @@ def read_event(runtime: Runtime = Depends(get_runtime)) -> EventInfo:
         available_filters=config.available_filters,
         print_format_name=config.print_format.name,
         print_aspect_ratio=config.print_format.aspect_ratio,
+        flash_duration_ms=config.flash_duration_ms,
     )
 
 
