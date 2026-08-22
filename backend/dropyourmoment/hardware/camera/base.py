@@ -52,7 +52,17 @@ class CameraDriver(ABC):
 
     @abstractmethod
     def is_available(self) -> bool:
-        """True si le capteur est ouvert et prêt à produire des images."""
+        """True si la caméra est **utilisable**, pas nécessairement ouverte à cet instant.
+
+        La nuance vient du driver webcam, qui rend le périphérique quand plus personne ne
+        regarde l'aperçu — une webcam est celle d'un poste de travail, avec une LED allumée
+        et une visioconférence qui voudra peut-être la même caméra. Lier cette réponse à
+        « ouverte maintenant » désactiverait le bouton « Commencer » de l'écran d'accueil
+        dès que la LED s'éteint.
+
+        Le driver Pi ne fait pas cette distinction : son capteur est dédié à la borne et
+        reste ouvert du démarrage à l'arrêt.
+        """
 
     @abstractmethod
     def get_capabilities(self) -> CameraCapabilities: ...

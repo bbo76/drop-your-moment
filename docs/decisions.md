@@ -107,7 +107,36 @@ qui se dimensionne sur `preview_size` — on couperait des têtes en croyant l'i
 **À rouvrir si** une webcam devait alimenter de vrais tirages, ou si l'aperçu s'avérait
 saccadé sur un périphérique donné. Le paramètre de construction est là pour ça.
 
-### Pas de thread lecteur pour la webcam, contrairement au Pi
+### La webcam n'est retenue que pendant qu'on la regarde
+
+Le driver OpenCV rend le périphérique après quinze secondes sans flux d'aperçu, et le
+rouvre à la demande. Le driver Pi, lui, garde son capteur du démarrage à l'arrêt.
+
+L'asymétrie n'est pas une incohérence, c'est la différence entre les deux matériels. Un
+capteur CSI est soudé dans la borne : personne d'autre ne le veut, et il n'a pas de LED
+pour signaler qu'il est ouvert. Une webcam est celle d'un poste de travail — la LED reste
+allumée pendant qu'on code, et une visioconférence voudra peut-être la même caméra.
+
+Trois conséquences à connaître :
+
+- **`is_available()` répond « utilisable », pas « ouverte ».** L'écran d'accueil s'en sert
+  pour activer « Commencer » : le lier à l'ouverture désactiverait le bouton dès que la LED
+  s'éteint, c'est-à-dire tout le temps. Une webcam débranchée pendant que le périphérique
+  était rendu reste donc annoncée présente jusqu'à la tentative suivante — le parcours
+  échoue alors avec un écran d'erreur, là où un bouton grisé sans explication laisserait
+  l'opérateur sans piste.
+- **La LED s'allume quand même au lancement.** L'autodétection doit ouvrir le périphérique
+  pour savoir s'il existe : `import cv2` ne prouve rien. Le veilleur l'éteint quinze
+  secondes plus tard.
+- **Un aller-retour par l'écran de review peut coûter une réouverture.** Le délai est
+  volontairement plus long qu'un coup d'œil, mais plus court qu'un timeout de review.
+  C'est un paramètre de construction, et la bonne valeur se mesure devant la borne.
+
+**À rouvrir si** la réouverture s'avérait trop lente sur un périphérique donné, ou si le
+Pi devait un jour libérer aussi — ce qui demanderait de mesurer d'abord ce que coûte un
+`start_recording()` de picamera2, jamais exécuté à ce jour.
+
+### Pas de thread *lecteur* pour la webcam, contrairement au Pi
 
 Le pilote Pi maintient un tampon partagé alimenté par un thread : son encodeur MJPEG
 tourne de toute façon en continu dès `start_recording()`, et le tampon évite que chaque
@@ -116,6 +145,13 @@ consommateur HTTP déclenche son propre encodage.
 Rien de tel ici : sans lecteur, `cv2.VideoCapture` ne produit rien. Les frames sont donc
 tirées à la demande dans le générateur d'aperçu, sous un verrou partagé avec la capture.
 Un thread lecteur n'économiserait aucun encodage et ajouterait un cycle de vie à gérer.
+
+Il y a bien un thread dans ce driver, mais il ne lit rien : c'est le veilleur qui rend le
+périphérique à l'inactivité. Il lui en fallait un, et pas un contrôle à la lecture du
+statut comme pour la machine à états — la LED doit s'éteindre même quand aucun navigateur
+n'interroge le backend, ce qui est précisément le cas gênant : `task run` laissé dans un
+terminal pendant qu'on travaille, aucun onglet ouvert, donc rien qui déclencherait le
+contrôle.
 
 Deux plafonds connus, tous deux hors du parcours réel : chaque flux d'aperçu
 supplémentaire paie son propre encodage — mais un seul kiosque lit — et une frame peut

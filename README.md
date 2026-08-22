@@ -97,7 +97,10 @@ points de contrôle matériels. Deux caméras sont disponibles hors du Pi :
 
 - **Une webcam** — celle du Mac, du PC, ou n'importe quel périphérique USB. C'est le mode
   recommandé pour juger un cadrage ou un filtre sur un vrai visage. Installer l'extra :
-  `uv sync --extra webcam`, et l'autodétection la prendra.
+  `uv sync --extra webcam`, et l'autodétection la prendra. Le périphérique est rendu après
+  quinze secondes sans aperçu et rouvert à la demande : la LED ne reste pas allumée pendant
+  qu'on travaille. Elle s'allume tout de même au lancement, le temps que l'autodétection
+  ouvre la caméra pour savoir si elle existe.
 - **Une caméra de synthèse animée**, sans rien à installer. Animée à dessein : un mock
   statique ne permettrait pas de distinguer un flux MJPEG vivant d'un flux gelé.
   `DYM_CAMERA_DRIVER=mock` la force même quand une webcam est présente.
