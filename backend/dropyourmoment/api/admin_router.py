@@ -12,11 +12,14 @@ sans que rien ne le signale.
 from __future__ import annotations
 
 import logging
+import re
 import shutil
+import unicodedata
 from io import BytesIO
+from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi.responses import FileResponse, Response, StreamingResponse
 from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel
 
@@ -27,6 +30,8 @@ from dropyourmoment.imaging.steps import overlay_matches_ratio
 from dropyourmoment.runtime import Runtime
 from dropyourmoment.storage.atomic import write_atomic
 from dropyourmoment.storage.counters import Counters
+from dropyourmoment.storage.gallery import GalleryEntry, list_sessions, thumbnail_jpeg, zip_stream
+from dropyourmoment.storage.paths import FINAL_NAME
 
 logger = logging.getLogger(__name__)
 
@@ -291,3 +296,109 @@ def _reject_if_wrong_ratio(image: Image.Image, runtime: Runtime) -> None:
             "Recadrer ou réexporter avant de téléverser."
         ),
     )
+
+
+# --- Galerie de l'événement ------------------------------------------------------------
+
+# Une page de grille. Borné parce que la valeur vient de l'URL : sans plafond, un `limit`
+# démesuré ferait produire des centaines de vignettes pour une seule requête.
+DEFAULT_PAGE_SIZE = 24
+MAX_PAGE_SIZE = 100
+
+
+class GalleryPage(BaseModel):
+    """Le total accompagne la tranche : sans lui le frontend ne peut pas paginer."""
+
+    total: int
+    entries: list[GalleryEntry]
+
+
+@router.get("/gallery", response_model=GalleryPage)
+def read_gallery(
+    offset: int = Query(0, ge=0),
+    limit: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
+    runtime: Runtime = Depends(get_runtime),
+) -> GalleryPage:
+    total, entries = list_sessions(runtime.settings.sessions_dir, offset=offset, limit=limit)
+    return GalleryPage(total=total, entries=entries)
+
+
+@router.get("/gallery/archive.zip")
+def download_archive(runtime: Runtime = Depends(get_runtime)) -> StreamingResponse:
+    """Toutes les photos de l'événement, en flux.
+
+    Déclarée avant les routes à paramètre pour que « archive.zip » ne soit jamais pris
+    pour un identifiant de session.
+
+    Pas de `limit` ici, volontairement : l'archive de l'événement est l'archive de
+    l'événement. C'est précisément pour pouvoir la servir entière sans la construire que
+    `zip_stream` existe.
+    """
+    _, entries = list_sessions(runtime.settings.sessions_dir, offset=0, limit=_ALL)
+    photos = [
+        (entry.archive_name, runtime.settings.sessions_dir / entry.session_id / FINAL_NAME)
+        for entry in entries
+    ]
+    name = f"{_slug(runtime.event.config.event_name)}.zip"
+    logger.info("archive demandée : %d photo(s), %s", len(photos), name)
+    return StreamingResponse(
+        zip_stream(photos),
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{name}"'},
+    )
+
+
+@router.get("/gallery/{session_id}/thumbnail")
+def read_thumbnail(session_id: str, runtime: Runtime = Depends(get_runtime)) -> Response:
+    """Vignette produite à la demande, pas de fichier de cache à invalider."""
+    return Response(
+        content=thumbnail_jpeg(_photo_path(runtime, session_id)),
+        media_type="image/jpeg",
+        # Une minute : assez pour une pagination aller-retour, assez peu pour qu'un
+        # `retake` sur la session en cours ne laisse pas une vignette périmée à l'écran.
+        headers={"Cache-Control": "max-age=60"},
+    )
+
+
+@router.get("/gallery/{session_id}/photo")
+def download_photo(session_id: str, runtime: Runtime = Depends(get_runtime)) -> FileResponse:
+    """Téléchargement unitaire. Starlette se charge de l'encodage du nom de fichier."""
+    return FileResponse(
+        _photo_path(runtime, session_id),
+        media_type="image/jpeg",
+        filename=f"{_slug(runtime.event.config.event_name)}-{session_id}.jpg",
+    )
+
+
+# Sentinelle de tranche : `list_sessions` prend un `limit` obligatoire, et l'archive en
+# veut la totalité.
+_ALL = 1 << 30
+
+
+def _photo_path(runtime: Runtime, session_id: str) -> Path:
+    """Résout un identifiant de session en chemin, ou 404.
+
+    Frontière de confiance, et le seul endroit où elle est franchie : les trois routes de
+    la galerie passent par ici. `session_id` vient de l'URL, donc « .. », un chemin absolu
+    ou un lien symbolique doivent tous mener au même refus. `resolve()` avant la
+    comparaison est ce qui couvre les trois d'un coup.
+    """
+    root = runtime.settings.sessions_dir.resolve()
+    path = (root / session_id / FINAL_NAME).resolve()
+    if not path.is_relative_to(root) or not path.is_file():
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="photo introuvable")
+    return path
+
+
+def _slug(name: str) -> str:
+    """Nom d'événement réduit à ce qui traverse sans dommage un nom de fichier.
+
+    « Mariage Camille & Théo » devient « Mariage-Camille-Theo ». La substitution par
+    groupes est ce qui évite « Camille--Theo » là où l'esperluette a disparu.
+
+    L'alternative — garder l'UTF-8 et encoder l'en-tête selon la RFC 5987 — vaudrait pour
+    un nom qu'on veut exact ; ici c'est un nom de fichier dans un dossier de
+    téléchargements.
+    """
+    ascii_only = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()
+    return re.sub(r"[^A-Za-z0-9]+", "-", ascii_only).strip("-") or "evenement"

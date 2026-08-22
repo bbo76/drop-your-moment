@@ -93,6 +93,20 @@ export interface AdminHealth {
   disk_total_bytes: number;
 }
 
+/** Une session terminée, telle que la galerie la liste. */
+export interface GalleryEntry {
+  session_id: string;
+  /** Époque UNIX en secondes — `mtime` de la photo composée. */
+  captured_at: number;
+  size_bytes: number;
+}
+
+/** Le total accompagne la tranche : sans lui, impossible de paginer. */
+export interface GalleryPage {
+  total: number;
+  entries: GalleryEntry[];
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, { cache: "no-store", ...init });
   if (!response.ok) throw new Error(await errorMessage(response, path));
@@ -151,6 +165,8 @@ export const api = {
 
   health: () => request<AdminHealth>("/admin/system/health"),
   resetCartridge: () => post<CounterReading>("/admin/counters/reset"),
+  gallery: (offset: number, limit: number) =>
+    request<GalleryPage>(`/admin/gallery?offset=${offset}&limit=${limit}`),
   eventConfig: () => request<EventConfigPayload>("/admin/event-config"),
   uploadOverlay: (file: File) => {
     const form = new FormData();
@@ -182,3 +198,10 @@ export const previewStreamUrl = () => `/api/preview/stream?t=${Date.now()}`;
  * `src` ne change pas ne redemande rien, et l'opérateur croirait son téléversement perdu.
  */
 export const overlayUrl = (revision: number) => `/admin/overlay?v=${revision}`;
+
+/* URLs de la galerie. Pas de `fetch` derrière : ce sont des `<img src>` et des `<a href>`,
+   qui laissent le navigateur gérer le cache court des vignettes et le téléchargement — le
+   backend répond déjà `Content-Disposition: attachment`. */
+export const thumbnailUrl = (sessionId: string) => `/admin/gallery/${sessionId}/thumbnail`;
+export const photoDownloadUrl = (sessionId: string) => `/admin/gallery/${sessionId}/photo`;
+export const ARCHIVE_URL = "/admin/gallery/archive.zip";
