@@ -42,18 +42,30 @@ tirages persisté, écran de confirmation, purge des sessions anciennes.
 Le flux d'impression est **asynchrone dès le pilote neutre** — c'est ce qui permet au
 jalon 7 de ne remplacer qu'un pilote (voir [decisions.md](decisions.md)).
 
-### ⬜ Jalon 5 — Portail d'administration
+### ✅ Jalon 5 — Portail d'administration
 
-Le squelette existe (`src/admin/`, diagnostic système sur le port 8001). Reste :
+L'opérateur n'a plus besoin d'un éditeur de texte ni des logs. Régler l'événement,
+téléverser le cadre, récupérer les photos, et répondre à « est-ce que la borne va tenir la
+soirée ? » depuis une seule page.
 
-- `GET` / `PUT /admin/event-config` — nom de l'événement, filtres proposés, format de
-  sortie, nombre de copies
-- `POST /admin/overlay` — téléversement avec **refus** si le ratio ne correspond pas au
-  format de sortie. Strict à la porte, contrairement au chargement à l'exécution qui est
-  permissif (voir [decisions.md](decisions.md))
-- Galerie : liste paginée, vignettes, téléchargement unitaire, archive zip de l'événement
-- Page de santé avec le compteur de tirages
-- Test d'isolation réseau kiosque / administration
+Configuration d'événement en lecture-écriture, téléversement d'overlay avec refus motivé,
+galerie paginée avec vignettes et archive zip, page de santé avec les deux compteurs de
+tirages et leur bouton de remise à zéro, détection des caméras, test d'isolation réseau.
+
+`Runtime.reload_event()` existait depuis le jalon 1 **sans aucun appelant**. Il en a un
+maintenant, et un test qui met à jour la configuration côté admin puis la relit côté
+kiosque : c'est la première vérification que le process unique à deux sockets tient sa
+promesse. Une modification est vue sans redémarrage — confirmé à la main, kiosque et
+admin ouverts côte à côte.
+
+L'isolation réseau ne reposait que sur deux valeurs de configuration, sans rien pour le
+dire si l'une changeait. Trois angles la verrouillent désormais, dont un sur une vraie
+socket. Vérifié par mutation : `DYM_KIOSK_HOST=0.0.0.0` en fait tomber deux.
+
+Deux défauts trouvés en regardant tourner plutôt qu'en lisant les tests : la police par
+défaut de Pillow n'a aucun glyphe accentué, et `make_overlay` sortait « Mariage Camille &
+Th□o » ; et le test du sondage caméra en `GET` affirmait un 405 là où le vrai serveur rend
+404 — il passait pour la mauvaise raison.
 
 ### ⬜ Jalon 6 — Validation sur le Raspberry Pi
 
@@ -118,6 +130,8 @@ Aucun changement d'API ni de machine à états attendu : le pilote neutre est re
 | **Rendu visuel du kiosque** | Le rythme du décompte et la taille des cibles tactiles sur 7 pouces sont des jugements qui demandent l'écran réel. |
 | **uv + `--system-site-packages` sur le Pi** | Le mécanisme est vérifié (`include-system-site-packages` survit à `uv sync`), mais la combinaison exacte avec `python3-picamera2` reste à confirmer sur place. |
 | **Impression CP1500 depuis ce logiciel** | L'impression via CUPS est confirmée fonctionnelle sur le Pi, mais pas encore depuis cette application. |
+| **Sondage caméra sur une machine où la webcam s'ouvre** | Le code est exercé et la liste des noms système est confirmée, mais l'autorisation caméra de macOS n'étant pas accordée au processus qui lance le backend, aucun index n'a jamais répondu ici. La partie « index » reste à voir avec une webcam réellement ouvrable. |
+| **Galerie et archive à l'échelle d'un vrai événement** | Vérifié sur 30 photos de synthèse. Le zip en flux et la vignette sans cache sont conçus pour plusieurs centaines, et c'est le Pi qui le dira — pas un MacBook. |
 
 ## Hors périmètre
 

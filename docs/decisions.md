@@ -139,6 +139,30 @@ Conséquence à connaître : sur un poste où l'extra `webcam` est installé, `a
 vraie webcam et non plus la mire. `DYM_CAMERA_DRIVER=mock` reste le moyen sûr de
 travailler sans matériel, et ne tente aucune sonde.
 
+### Le sondage de caméras vole les périphériques, donc jamais automatiquement
+
+Lister les index disponibles demande de les ouvrir : OpenCV n'a pas d'API d'énumération
+portable. Ouvrir, c'est réserver, et le capteur n'accepte qu'un propriétaire — le sondage
+volerait donc la caméra au kiosque.
+
+D'où trois contraintes qui ont dicté la forme : jamais au démarrage, jamais au chargement
+de la page, et `POST` plutôt que `GET`. Ce dernier point n'est pas du purisme REST : un
+`GET` finit par être appelé par un préchargement de navigateur ou un rafraîchissement
+automatique, et couperait l'aperçu en pleine soirée. L'index détenu par le kiosque n'est
+pas sondé du tout, seulement signalé comme occupé.
+
+### Les noms de caméras et leurs index ne sont pas appariés
+
+Le sondage OpenCV donne les index — la seule source de ce que `DYM_CAMERA_DEVICE` attend.
+`system_profiler` et `v4l2-ctl` donnent les noms — ce que l'opérateur veut lire. Le portail
+affiche les deux listes **côte à côte, sans les apparier**.
+
+Rien ne garantit que le troisième nom rendu par le système corresponde à l'index 2
+d'AVFoundation. L'ordre coïncide souvent, et « souvent » n'a pas sa place dans une
+interface d'exploitation : un opérateur qui lit deux listes honnêtes s'en sort, un
+opérateur à qui on a menti sur un appariement débranche la mauvaise caméra. La taille
+négociée par index aide à les distinguer sans rien affirmer de faux.
+
 ### Comptage des flux d'aperçu par activité, pas par cycle de vie
 
 À une déconnexion client, Starlette annule la tâche qui pompe le générateur mais **ne le
@@ -178,6 +202,18 @@ Conséquence visible : avec le pilote neutre, l'état `PRINTING` ne dure qu'un a
 et le visiteur ne le voit pas. C'est le comportement honnête — un écran d'attente n'a de
 sens que quand il y a vraiment quelque chose à attendre.
 
+### Pas de `get_status()` sur `PrinterDriver` avant le driver CUPS
+
+La page de santé aimerait afficher l'état de l'imprimante, et l'issue du jalon 5 nommait
+la méthode. Elle n'existe pas : avec le pilote neutre elle rendrait une constante à vie.
+
+Ajouter une méthode abstraite à une interface pour une valeur qui ne varie pas, c'est figer
+une forme avant de savoir ce que `printer-state-reasons` expose réellement — donc la
+réécrire au jalon 7, en emportant l'implémentation neutre avec elle. Un attribut `name`, en
+miroir de `CameraCapabilities.driver_name`, suffit au besoin d'aujourd'hui : savoir
+qu'aucune imprimante n'est branchée explique un état `PRINTING` qui ne dure qu'un
+aller-retour.
+
 ### Le temps n'avance qu'à la lecture du statut
 
 `poll()` et `SessionMachine.tick()` sont appelés au même endroit : la lecture de statut,
@@ -194,6 +230,22 @@ Le sondage à la lecture reste la bonne place pour une autre raison : le fronten
 fin du tirage à son prochain sondage à 500 ms, et les tests n'ont pas besoin de faire
 tourner une boucle asyncio pour observer une transition.
 
+### Tout état persistant s'écrit atomiquement
+
+Configuration d'événement, compteurs, overlay téléversé : `write_atomic` écrit à côté,
+force les octets sur le disque, puis remplace d'un seul `rename`.
+
+Un `write_text` sur un fichier existant le vide d'abord. Ces trois fichiers sont réécrits
+*pendant* un événement — l'opérateur enregistre un réglage, un tirage incrémente un
+compteur — et une coupure entre les deux laisse un JSON tronqué, que le prochain démarrage
+jette pour repartir sur les valeurs par défaut. Perdre le nom de l'événement parce que
+quelqu'un a débranché la borne au mauvais moment est évitable pour trois lignes.
+
+Le `fsync` porte sur le fichier temporaire et **pas** sur le répertoire, volontairement.
+Sans le premier, une coupure peut laisser un fichier renommé mais vide : exactement le cas
+qu'on cherche à éviter. Sans le second, le pire cas est un renommage qui n'a pas eu lieu,
+donc l'ancien contenu intact. Une valeur périmée se rattrape, un fichier vide non.
+
 ### Rétention : l'âge *et* le plafond d'espace
 
 Les sessions sont purgées si elles dépassent 30 jours, **et** les plus anciennes le sont
@@ -209,6 +261,28 @@ La purge tourne au démarrage et après chaque tirage terminé — moment où le
 regarde sa confirmation et où personne n'attend un balayage de répertoire. La session en
 cours est toujours épargnée : on ne purge pas sous les pieds d'un visiteur.
 
+### L'archive de la galerie sort en flux, avec la seule stdlib
+
+`zipfile` détecte une cible d'écriture dépourvue de `seek` et de `tell`, et bascule alors
+sur les descripteurs de données au lieu de revenir corriger ses en-têtes. Un objet puits de
+dix lignes remplace donc un temporaire de plusieurs gigaoctets sur la carte SD, sans
+dépendance ajoutée. Le pic mémoire vaut une photo.
+
+`ZIP_STORED` et non `ZIP_DEFLATED` : du JPEG est déjà compressé, et le déflater prendrait
+tout le CPU d'un Pi pour quelques pour cent. L'archive d'une soirée se télécharge pendant
+que l'opérateur range le matériel, pas pendant qu'il attend.
+
+### Vignettes à la demande, sans cache
+
+`Image.draft()` demande au décodeur JPEG de sous-échantillonner dans le domaine DCT :
+l'image pleine résolution n'est jamais reconstituée, et une vignette coûte une fraction
+d'un décodage complet. C'est ce qui rend l'absence de cache tenable, donc l'absence de
+fichiers à invalider quand un `retake` recompose un `final.jpg`.
+
+**À rouvrir si** la grille devenait lente sur le Pi. La réponse serait alors un `thumb.jpg`
+écrit à côté de `final.jpg` — jamais un cache en mémoire, qui se viderait au redémarrage
+justement quand l'opérateur en aurait besoin.
+
 ### « Je garde cette photo », pas « Imprimer »
 
 Pendant la phase numérique, rien ne sort physiquement. Un bouton « Imprimer » promettrait
@@ -217,19 +291,22 @@ au visiteur un tirage qu'il n'aura pas, et il attendrait devant la borne.
 Le libellé deviendra « Imprimer » au jalon 7. C'est une chaîne de caractères, pas un
 parcours : la transition, l'état `PRINTING` et l'écran de confirmation ne bougent pas.
 
-### Un seul compteur de tirages tant que rien ne sait le remettre à zéro
+### Un compteur n'existe qu'accompagné de ce qui le remet à zéro
 
-`data/counters.json` porte le cumul, et lui seul.
+`data/counters.json` porte deux compteurs : le cumul de l'événement et celui de la
+cartouche. Les deux questions sont distinctes — « combien de photos cet événement a-t-il
+produit » contre « me reste-t-il du papier », et les cartouches de la CP1500 font 36, 54
+ou 108 tirages.
 
-Il en a porté deux : le cumul, et un compteur de cartouche « depuis remise à zéro ». Les
-deux questions sont bien distinctes — « combien de photos cet événement a-t-il produit »
-contre « me reste-t-il du papier », et les cartouches de la CP1500 font 36, 54 ou 108
-tirages. Mais aucune interface ne remettait le second à zéro : il valait donc toujours
-exactement le premier, avec un champ `reset_at` qui restait `null` à vie.
+Le second a été **retiré** au jalon 4 puis remis au jalon 5, et c'est la règle qui compte :
+il n'existait aucune interface pour le réarmer. Il valait donc toujours exactement le
+premier, avec un `reset_at` qui restait `null` à vie. Un compteur sans son bouton n'est pas
+la moitié de la fonctionnalité, c'est une copie du cumul sous un autre nom. Il est revenu
+avec `POST /admin/counters/reset` et le bouton qui l'appelle, pas avant.
 
-Les deux reviennent ensemble au jalon 5, avec la page de santé qui les affiche et le
-bouton qui réarme le compteur de cartouche. Un compteur sans son bouton n'est pas la
-moitié de la fonctionnalité, c'est une copie du cumul sous un autre nom.
+Un fichier écrit avant son retour se relit avec le compteur de cartouche replié sur le
+cumul, jamais sur zéro : aucune remise à zéro n'a eu lieu, donc la cartouche a bien vu
+passer tous les tirages. Repartir de zéro annoncerait du papier qui n'existe pas.
 
 Fichier absent ou corrompu : on repart de zéro en journalisant, jamais un refus de
 démarrer. Même arbitrage que pour la configuration d'événement — un compteur faux se
@@ -246,6 +323,16 @@ restait un simple afficheur d'état.
 
 Un seul projet Vite pour les deux interfaces plutôt que deux : jetons de design, client
 d'API et composants partagés, un seul arbre de dépendances.
+
+### Le portail est une page qui défile, pas des onglets
+
+Trois sections — santé, événement, galerie — sur une seule page. Ni routeur ni sélecteur
+d'onglets. L'opérateur est sur un PC devant un écran qui défile, et un mécanisme de
+navigation pour trois sections est du câblage sans besoin. Il coûterait en plus une
+position de page à conserver dans l'URL, donc une source de vérité de plus.
+
+**À rouvrir si** la page devient illisible, ce qui arrivera si la sélection d'imprimante du
+jalon 7 s'y ajoute avec ses propres réglages.
 
 ### uv pour Python, pnpm pour Node
 
@@ -294,7 +381,7 @@ et frontend construit — explicitement pas le chemin de déploiement de la born
 
 | dette | pourquoi acceptée | quand la traiter |
 |---|---|---|
-| Portail d'administration sans authentification | Accès LAN pendant un événement, réseau maîtrisé | Si l'usage sort de ce cadre : multi-sites, réseau partagé |
+| Portail d'administration sans authentification | Accès LAN pendant un événement, réseau maîtrisé. À noter qu'il expose désormais les photos de l'événement en téléchargement, et non plus seulement un diagnostic | Si l'usage sort de ce cadre : multi-sites, réseau partagé, ou un événement où les invités ont le mot de passe du wifi |
 | Types d'API TypeScript écrits à la main | Surface petite, tenable | Si elle grossit : génération depuis le schéma OpenAPI que FastAPI expose déjà |
 | Pas de linter JavaScript | TypeScript en mode strict couvre l'essentiel | Si des règles de style deviennent un sujet |
 | État de session en mémoire, perdu au redémarrage | Le visiteur recommence, sans gravité | Jamais, sauf besoin d'audit |

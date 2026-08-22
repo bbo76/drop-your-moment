@@ -49,6 +49,29 @@ photos, et se configure depuis le portail d'administration. Le filtre choisi par
 visiteur s'applique à la photo **avant** que l'overlay soit composé par-dessus : un
 branding en couleur ne doit pas partir en sépia.
 
+## Portail d'administration
+
+Sur `0.0.0.0:8001`, depuis n'importe quel PC du LAN. Sans authentification : risque assumé,
+l'accès est censé rester limité au réseau d'un événement.
+
+- **État du système** — pilote caméra et résolutions négociées, aperçu vivant ou gelé,
+  imprimante, état de session, les deux compteurs de tirages face aux cartouches CP1500
+  (36 / 54 / 108), espace disque. C'est la page qu'on laisse ouverte pendant un événement,
+  et elle ne sonde ni périphérique ni répertoire.
+- **Événement** — nom, filtres proposés, format de sortie, nombre de copies, téléversement
+  de l'overlay. Une modification est vue par le kiosque **sans redémarrage** : c'est la
+  raison d'être du process unique à deux sockets.
+- **Galerie** — liste paginée, vignettes, téléchargement unitaire, archive zip de
+  l'événement servie en flux.
+
+Un overlay au mauvais ratio est **refusé au téléversement**, avec le ratio reçu et le ratio
+attendu dans le message. Le même fichier serait accepté au chargement, avec un
+avertissement dans les logs — voir [decisions.md](docs/decisions.md).
+
+Un bouton « Détecter les caméras » liste les index utilisables et les noms vus par le
+système, pour savoir quoi mettre dans `DYM_CAMERA_DEVICE`. Il ouvre chaque périphérique
+tour à tour, donc il n'est jamais déclenché tout seul.
+
 ## Organisation du dépôt
 
 ```
@@ -59,7 +82,7 @@ frontend/     Vite + React + Tailwind, deux points d'entrée dans un seul projet
 data/         données d'exécution, jamais versionnées
                 sessions/   une photo brute et une composée par passage
                 events/     configuration et overlay de l'événement en cours
-                counters.json  compteur de tirages, face aux cartouches CP1500
+                counters.json  cumul de l'événement et compteur de cartouche
 ```
 
 Un seul projet frontend pour les deux interfaces : jetons de design, client d'API et
