@@ -85,6 +85,24 @@ elle, l'ouverture échoue et l'autodétection retombe silencieusement sur la mir
 l'aperçu affiche des barres de couleur alors que vous attendiez votre visage, c'est là
 qu'il faut regarder.
 
+### Raccourcis
+
+Un [Taskfile](https://taskfile.dev) (`brew install go-task`) enveloppe les commandes
+ci-dessous. Il est facultatif : rien dans le projet n'en dépend, et `task --list` les
+énumère toutes.
+
+```sh
+task              # construit le frontend si besoin, puis lance le tout
+task dev          # rechargement à chaud : Vite sur :5173, backend derrière
+task check        # ce que vérifie la CI : lint, tests, build
+task setup        # installe toutes les dépendances, webcam comprise
+task run CAMERA=mock   # force la mire de synthèse
+```
+
+Le kiosque est alors sur <http://127.0.0.1:8000> et l'administration sur
+<http://127.0.0.1:8001> — ou tous deux sur <http://localhost:5173> et
+<http://localhost:5173/admin.html> en mode `task dev`.
+
 ### Backend
 
 Dépendances gérées par [uv](https://docs.astral.sh/uv/), verrouillées dans `uv.lock`.
