@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient
 
 from dropyourmoment.apps import build_admin_app, build_kiosk_app
 from dropyourmoment.config import Settings
-from dropyourmoment.core.print_format import BUILTIN_FORMATS, DEFAULT_FORMAT_KEY
+from dropyourmoment.core.event_config import EventStore
 from dropyourmoment.core.session import SessionMachine
 from dropyourmoment.hardware.camera.mock_driver import MockCameraDriver
 from dropyourmoment.runtime import Runtime
@@ -30,11 +30,13 @@ def built_runtime(tmp_path: Path) -> Runtime:
     (dist / "assets" / "app.css").write_text("body{color:red}")
 
     settings = Settings(data_dir=tmp_path / "data", frontend_dist_dir=dist)
+    store = EventStore(settings.event_dir)
     return Runtime(
         settings=settings,
         camera=MockCameraDriver(fps=60),
         machine=SessionMachine(timeouts=settings.state_timeouts()),
-        print_format=BUILTIN_FORMATS[DEFAULT_FORMAT_KEY],
+        event_store=store,
+        event=store.load(),
     )
 
 
@@ -76,11 +78,13 @@ def test_l_api_reste_prioritaire_sur_le_frontend(built_runtime: Runtime) -> None
 def test_backend_utilisable_sans_frontend_construit(tmp_path: Path) -> None:
     """Tant que `npm run build` n'a pas tourné, l'API doit rester exploitable."""
     settings = Settings(data_dir=tmp_path / "data", frontend_dist_dir=tmp_path / "absent")
+    store = EventStore(settings.event_dir)
     runtime = Runtime(
         settings=settings,
         camera=MockCameraDriver(fps=60),
         machine=SessionMachine(timeouts=settings.state_timeouts()),
-        print_format=BUILTIN_FORMATS[DEFAULT_FORMAT_KEY],
+        event_store=store,
+        event=store.load(),
     )
 
     with TestClient(build_kiosk_app(runtime)) as client:

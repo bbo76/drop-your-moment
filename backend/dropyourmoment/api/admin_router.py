@@ -24,6 +24,7 @@ class AdminHealth(BaseModel):
     camera_ok: bool
     camera_driver: str
     session_state: SessionState
+    event_name: str
     print_format_name: str
     print_aspect_ratio: float
 
@@ -35,6 +36,7 @@ def read_health(runtime: Runtime = Depends(get_runtime)) -> AdminHealth:
         camera_ok=runtime.camera.is_available(),
         camera_driver=caps.driver_name,
         session_state=runtime.machine.state,
-        print_format_name=runtime.print_format.name,
-        print_aspect_ratio=runtime.print_format.aspect_ratio,
+        event_name=runtime.event.config.event_name,
+        print_format_name=runtime.event.config.print_format.name,
+        print_aspect_ratio=runtime.event.config.print_format.aspect_ratio,
     )

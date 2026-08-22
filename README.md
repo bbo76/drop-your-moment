@@ -80,19 +80,37 @@ uv run python -m dropyourmoment.main       # kiosque sur :8000, admin sur :8001
 Pour ne pas exposer le portail d'administration sur le réseau pendant un simple essai :
 `DYM_ADMIN_HOST=127.0.0.1`.
 
+Un overlay de démonstration au bon ratio, pour exercer la chaîne avant d'avoir un vrai
+visuel d'événement :
+
+```sh
+uv run python -m dropyourmoment.tools.make_overlay --label "Mariage C & T"
+```
+
+Puis renseigner `"overlay_file": "overlay.png"` dans `data/events/current/event_config.json`.
+L'application n'écrit jamais d'overlay d'elle-même : un cadre de démonstration
+apparaissant sur les photos d'un vrai événement serait pire que pas de cadre du tout.
+
 ### Frontend
+
+Dépendances gérées par [pnpm](https://pnpm.io/), verrouillées dans `pnpm-lock.yaml`. La
+version de pnpm est épinglée dans le champ `packageManager`, que corepack sait honorer.
 
 ```sh
 cd frontend
-npm ci
-npm run dev        # Vite sur :5173, relaie /api et /admin vers le backend Python
-npm run build      # produit frontend/dist, servi par le backend
-npm run typecheck
+pnpm install
+pnpm dev           # Vite sur :5173, relaie /api et /admin vers le backend Python
+pnpm build         # produit frontend/dist, servi par le backend
+pnpm typecheck
 ```
 
-Deux manières de travailler : `npm run dev` pour le rechargement à chaud (Vite relaie les
-appels d'API vers le backend, qui doit tourner en parallèle), ou `npm run build` puis le
+Deux manières de travailler : `pnpm dev` pour le rechargement à chaud (Vite relaie les
+appels d'API vers le backend, qui doit tourner en parallèle), ou `pnpm build` puis le
 backend seul, ce qui reproduit exactement le fonctionnement sur la borne.
+
+`pnpm-workspace.yaml` autorise nommément le script d'installation d'`esbuild`. pnpm les
+bloque tous par défaut — une dépendance transitive ne doit pas exécuter du code sans
+décision explicite — et esbuild, dont Vite dépend, a besoin du sien pour lier son binaire.
 
 ## Réglages
 
@@ -110,6 +128,7 @@ Variables d'environnement préfixées `DYM_` (voir
 
 ```sh
 sudo apt install python3-picamera2 rpicam-apps nodejs npm
+sudo npm install -g pnpm    # ou : corepack enable
 rpicam-hello                    # valider le capteur AVANT tout Python
 
 cd backend
@@ -118,7 +137,7 @@ cd backend
 uv venv --python /usr/bin/python3 --system-site-packages
 uv sync --no-dev --inexact
 
-cd ../frontend && npm ci && npm run build      # le frontend est construit sur place
+cd ../frontend && pnpm install --frozen-lockfile && pnpm build   # construit sur place
 ```
 
 Deux précautions liées à `picamera2`, qui dépend de bindings Python de libcamera compilés

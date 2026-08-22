@@ -1,0 +1,7 @@
+# pnpm refuse par défaut d'exécuter les scripts d'installation des dépendances : une
+# dépendance transitive ne doit pas pouvoir lancer du code arbitraire sans décision
+# explicite. esbuild en a un besoin légitime — il lie son binaire natif — et Vite en
+# dépend. La liste est volontairement minimale, et versionnée pour que la CI et le Pi
+# fassent le même choix.
+allowBuilds:
+  esbuild: true

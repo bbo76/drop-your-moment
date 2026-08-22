@@ -38,15 +38,25 @@ def test_annuler_ramene_au_repos(kiosk: TestClient) -> None:
     assert body["session_id"] is None
 
 
-def test_statut_systeme_expose_ce_dont_le_frontend_a_besoin(kiosk: TestClient) -> None:
+def test_statut_systeme_decrit_le_materiel(kiosk: TestClient) -> None:
     body = kiosk.get("/api/system/status").json()
 
     assert body["camera_ok"] is True
     assert body["camera_driver"] == "mock"
     assert body["preview_size"] == [640, 360]
-    # Le cadre de visée du preview se dessine à partir de ce ratio : sans lui, le frontend
-    # ne peut pas montrer la zone réellement conservée au recadrage.
+
+
+def test_info_evenement_separee_du_materiel(kiosk: TestClient) -> None:
+    """Ce qui vient de l'événement est modifiable depuis l'admin, le matériel non.
+
+    Le cadre de visée a besoin des deux : la taille de l'aperçu (matériel) et le ratio du
+    format de sortie (événement).
+    """
+    body = kiosk.get("/api/event").json()
+
     assert body["print_aspect_ratio"] == POSTCARD_LANDSCAPE.aspect_ratio
+    assert body["available_filters"] == ["original", "bw", "sepia"]
+    assert body["event_name"]
 
 
 def test_camera_absente_signalee_sans_faire_tomber_l_api(runtime: Runtime) -> None:

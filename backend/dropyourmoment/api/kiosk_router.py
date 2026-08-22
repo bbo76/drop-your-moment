@@ -2,6 +2,10 @@
 
 Exposée uniquement sur la boucle locale. Le frontend est un afficheur : il lit l'état,
 déclenche des transitions, et ne détient aucune règle de parcours.
+
+Les routes sont déclarées en `def` et non `async def` : FastAPI les exécute alors dans un
+threadpool, ce qui permet aux appels bloquants — capture du capteur, composition Pillow —
+de ne pas figer la boucle d'événements, et donc le flux d'aperçu servi en parallèle.
 """
 
 from __future__ import annotations
@@ -9,12 +13,20 @@ from __future__ import annotations
 import logging
 from collections.abc import Iterator
 
-from fastapi import APIRouter, Depends, Request
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
-from dropyourmoment.core.session import SessionState
+from dropyourmoment.core.errors import (
+    CameraError,
+    InvalidTransitionError,
+    NoActiveSessionError,
+)
+from dropyourmoment.core.session import Session, SessionState
+from dropyourmoment.imaging.filters import FilterName
+from dropyourmoment.imaging.pipeline import CompositionError, save_jpeg
 from dropyourmoment.runtime import Runtime
+from dropyourmoment.storage.paths import final_path, raw_path, session_dir
 
 logger = logging.getLogger(__name__)
 
@@ -35,9 +47,11 @@ def get_runtime(request: Request) -> Runtime:
 class SessionStatus(BaseModel):
     state: SessionState
     session_id: str | None = None
-    selected_filter: str | None = None
+    selected_filter: FilterName | None = None
     remaining_seconds: float | None = None
     error: str | None = None
+    # Porte déjà la révision : le frontend n'a pas à fabriquer son propre anti-cache.
+    photo_url: str | None = None
 
 
 class SystemStatus(BaseModel):
@@ -45,6 +59,18 @@ class SystemStatus(BaseModel):
     camera_driver: str
     preview_size: tuple[int, int]
     still_size: tuple[int, int]
+
+
+class EventInfo(BaseModel):
+    """Ce qui dépend de l'événement, non du matériel.
+
+    Séparé du statut système parce que ces valeurs sont modifiables depuis le portail
+    d'administration : le frontend devra les relire, alors que les capacités du capteur ne
+    changent qu'au rebranchement.
+    """
+
+    event_name: str
+    available_filters: list[FilterName]
     print_format_name: str
     print_aspect_ratio: float
 
@@ -58,10 +84,34 @@ def _status(runtime: Runtime) -> SessionStatus:
     return SessionStatus(
         state=machine.state,
         session_id=session.id if session else None,
-        selected_filter=session.selected_filter if session else None,
+        selected_filter=FilterName(session.selected_filter)
+        if session and session.selected_filter
+        else None,
         remaining_seconds=machine.remaining_seconds(),
         error=machine.last_error,
+        photo_url=_photo_url(session),
     )
+
+
+def _photo_url(session: Session | None) -> str | None:
+    if session is None or session.final_path is None:
+        return None
+    return f"/api/session/{session.id}/photo?v={session.photo_revision}"
+
+
+def _require_session(runtime: Runtime, session_id: str) -> Session:
+    """Récupère la session active, en refusant un identifiant qui n'est plus le bon.
+
+    Le cas se produit vraiment : un visiteur abandonne, le timeout ramène la borne au
+    repos, et l'onglet resté ouvert continue d'agir sur une session disparue.
+    """
+    session = runtime.machine.session
+    if session is None or session.id != session_id:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="cette session n'est plus active",
+        )
+    return session
 
 
 @router.get("/status", response_model=SessionStatus)
@@ -77,8 +127,17 @@ def read_system_status(runtime: Runtime = Depends(get_runtime)) -> SystemStatus:
         camera_driver=caps.driver_name,
         preview_size=caps.preview_size,
         still_size=caps.still_size,
-        print_format_name=runtime.print_format.name,
-        print_aspect_ratio=runtime.print_format.aspect_ratio,
+    )
+
+
+@router.get("/event", response_model=EventInfo)
+def read_event(runtime: Runtime = Depends(get_runtime)) -> EventInfo:
+    config = runtime.event.config
+    return EventInfo(
+        event_name=config.event_name,
+        available_filters=config.available_filters,
+        print_format_name=config.print_format.name,
+        print_aspect_ratio=config.print_format.aspect_ratio,
     )
 
 
@@ -94,6 +153,93 @@ def start_session(runtime: Runtime = Depends(get_runtime)) -> SessionStatus:
 def cancel_session(runtime: Runtime = Depends(get_runtime)) -> SessionStatus:
     runtime.machine.reset()
     return _status(runtime)
+
+
+@router.post("/session/{session_id}/capture", response_model=SessionStatus)
+def capture(session_id: str, runtime: Runtime = Depends(get_runtime)) -> SessionStatus:
+    """Déclenche la prise, puis compose immédiatement une image affichable.
+
+    Composer tout de suite plutôt que d'attendre un choix de filtre permet à l'écran de
+    review d'afficher quelque chose sans aller-retour supplémentaire.
+    """
+    session = _require_session(runtime, session_id)
+    destination = raw_path(runtime.settings.sessions_dir, session.id, index=0)
+
+    try:
+        runtime.camera.capture_still(destination)
+    except CameraError as exc:
+        logger.error("capture échouée pour la session %s : %s", session.id, exc)
+        runtime.machine.fail(str(exc))
+        return _status(runtime)
+
+    session.raw_paths = [destination]
+    try:
+        runtime.machine.capture()
+    except InvalidTransitionError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+    _compose(runtime, session, runtime.default_filter)
+    return _status(runtime)
+
+
+class FilterChoice(BaseModel):
+    name: FilterName
+
+
+@router.post("/session/{session_id}/filter", response_model=SessionStatus)
+def choose_filter(
+    session_id: str,
+    choice: FilterChoice,
+    runtime: Runtime = Depends(get_runtime),
+) -> SessionStatus:
+    """Applique un filtre à la photo déjà prise. Rejouable autant que voulu."""
+    session = _require_session(runtime, session_id)
+
+    if not runtime.event.config.offers(choice.name):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=f"filtre non proposé pour cet événement : {choice.name}",
+        )
+
+    try:
+        runtime.machine.choose_filter(choice.name)
+    except InvalidTransitionError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+    _compose(runtime, session, choice.name)
+    return _status(runtime)
+
+
+@router.post("/session/{session_id}/retake", response_model=SessionStatus)
+def retake(session_id: str, runtime: Runtime = Depends(get_runtime)) -> SessionStatus:
+    """Repart en aperçu et efface la prise précédente.
+
+    Effacer tout de suite plutôt que de compter sur la politique de rétention : une photo
+    dont le visiteur ne voulait pas n'a pas à traîner dans la galerie de l'événement.
+    """
+    session = _require_session(runtime, session_id)
+    _purge(runtime, session)
+
+    try:
+        runtime.machine.retake()
+    except InvalidTransitionError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+    return _status(runtime)
+
+
+@router.get("/session/{session_id}/photo")
+def read_photo(session_id: str, runtime: Runtime = Depends(get_runtime)) -> FileResponse:
+    session = _require_session(runtime, session_id)
+    if session.final_path is None or not session.final_path.is_file():
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="aucune photo composée")
+    return FileResponse(
+        session.final_path,
+        media_type="image/jpeg",
+        # L'URL porte déjà une révision, mais le no-store évite qu'un proxy ou le
+        # navigateur conserve une image après un retake.
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 @router.get("/preview/stream")
@@ -116,7 +262,48 @@ def preview_stream(runtime: Runtime = Depends(get_runtime)) -> StreamingResponse
     )
 
 
+def _compose(runtime: Runtime, session: Session, filter_name: FilterName) -> None:
+    """Recompose l'image finale depuis les prises brutes et l'écrit sur disque.
+
+    Toujours depuis les prises brutes, jamais depuis une image déjà composée : c'est ce
+    qui garantit qu'un aller-retour entre filtres redonne exactement le même résultat, et
+    qu'aucune compression JPEG ne s'empile.
+    """
+    try:
+        image = runtime.pipeline.compose(session.raw_paths, filter_name)
+    except CompositionError as exc:
+        logger.error("composition échouée pour la session %s : %s", session.id, exc)
+        runtime.machine.fail(str(exc))
+        return
+
+    destination = final_path(runtime.settings.sessions_dir, session.id)
+    save_jpeg(image, destination)
+    session.final_path = destination
+    session.selected_filter = filter_name
+    session.photo_revision += 1
+
+
+def _purge(runtime: Runtime, session: Session) -> None:
+    directory = session_dir(runtime.settings.sessions_dir, session.id)
+    for path in (*session.raw_paths, session.final_path):
+        if path is not None:
+            path.unlink(missing_ok=True)
+    if directory.is_dir() and not any(directory.iterdir()):
+        directory.rmdir()
+
+
 def _mjpeg_frames(runtime: Runtime) -> Iterator[bytes]:
     header = f"--{MJPEG_BOUNDARY}\r\nContent-Type: image/jpeg\r\n".encode()
     for frame in runtime.camera.preview_frames():
         yield header + f"Content-Length: {len(frame)}\r\n\r\n".encode() + frame + b"\r\n"
+
+
+__all__ = [
+    "MJPEG_BOUNDARY",
+    "EventInfo",
+    "NoActiveSessionError",
+    "SessionStatus",
+    "SystemStatus",
+    "get_runtime",
+    "router",
+]

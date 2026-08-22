@@ -75,7 +75,7 @@ def _mount_frontend(app: FastAPI, directory: Path, document: str) -> None:
     autant, l'API reste utilisable seule.
     """
     if not directory.is_dir():
-        logger.warning("frontend non construit : %s (lancer `npm run build`)", directory)
+        logger.warning("frontend non construit : %s (lancer `pnpm build`)", directory)
         return
 
     entrypoint = directory / document

@@ -58,19 +58,24 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      # La version de pnpm vient du champ packageManager de package.json : une seule
+      # source de vérité pour la machine de développement, la CI et le Pi.
+      - uses: pnpm/action-setup@v6
+
       - uses: actions/setup-node@v5
         with:
           node-version: "22"
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
 
+      # --frozen-lockfile échoue si pnpm-lock.yaml ne correspond plus à package.json.
       - name: Installer les dépendances
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Contrôle de types
-        run: npm run typecheck
+        run: pnpm run typecheck
 
       # Le déploiement sur le Pi passe par ce même build : le vérifier ici évite de
       # découvrir une compilation cassée sur place, au moment de brancher la borne.
       - name: Build
-        run: npm run build
+        run: pnpm run build

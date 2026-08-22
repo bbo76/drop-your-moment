@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 
 from dropyourmoment.apps import build_admin_app, build_kiosk_app
 from dropyourmoment.config import Settings
-from dropyourmoment.core.print_format import BUILTIN_FORMATS, DEFAULT_FORMAT_KEY
+from dropyourmoment.core.event_config import EventStore
 from dropyourmoment.core.session import SessionMachine
 from dropyourmoment.hardware.camera.factory import CameraDriverName
 from dropyourmoment.hardware.camera.mock_driver import MockCameraDriver
@@ -35,11 +35,13 @@ def camera() -> MockCameraDriver:
 
 @pytest.fixture
 def runtime(settings: Settings, camera: MockCameraDriver) -> Iterator[Runtime]:
+    store = EventStore(settings.event_dir)
     runtime = Runtime(
         settings=settings,
         camera=camera,
         machine=SessionMachine(timeouts=settings.state_timeouts()),
-        print_format=BUILTIN_FORMATS[DEFAULT_FORMAT_KEY],
+        event_store=store,
+        event=store.load(),
     )
     runtime.start()
     yield runtime

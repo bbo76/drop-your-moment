@@ -1,4 +1,5 @@
 import { PreviewScreen } from "./components/PreviewScreen";
+import { ReviewScreen } from "./components/ReviewScreen";
 import {
   CenteredScreen,
   GhostButton,
@@ -10,7 +11,8 @@ import {
 import { useKioskState } from "./useKioskState";
 
 export function App() {
-  const { session, system, connection, start, cancel } = useKioskState();
+  const { session, system, event, connection, start, cancel, capture, chooseFilter, retake } =
+    useKioskState();
 
   if (connection === "offline") {
     return (
@@ -22,7 +24,7 @@ export function App() {
     );
   }
 
-  if (!session || !system) {
+  if (!session || !system || !event) {
     return (
       <CenteredScreen>
         <Muted>Démarrage…</Muted>
@@ -34,7 +36,7 @@ export function App() {
     case "idle":
       return (
         <CenteredScreen>
-          <Title>Drop Your Moment</Title>
+          <Title>{event.event_name}</Title>
           <Lede>Touchez l'écran pour prendre une photo</Lede>
           <PrimaryButton onClick={start} disabled={!system.camera_ok}>
             Commencer
@@ -50,10 +52,30 @@ export function App() {
     case "preview":
       return (
         <PreviewScreen
-          system={system}
+          previewSize={system.preview_size}
+          printAspectRatio={event.print_aspect_ratio}
           remainingSeconds={session.remaining_seconds}
+          onCapture={capture}
           onCancel={cancel}
         />
+      );
+
+    case "review":
+      // photo_url est renseigné dès la capture, mais la boucle de polling peut livrer un
+      // état `review` une fraction de seconde avant la réponse de capture.
+      return session.photo_url ? (
+        <ReviewScreen
+          photoUrl={session.photo_url}
+          availableFilters={event.available_filters}
+          selectedFilter={session.selected_filter}
+          remainingSeconds={session.remaining_seconds}
+          onChooseFilter={chooseFilter}
+          onRetake={retake}
+        />
+      ) : (
+        <CenteredScreen>
+          <Muted>Développement de votre photo…</Muted>
+        </CenteredScreen>
       );
 
     case "error":
@@ -65,9 +87,8 @@ export function App() {
         </CenteredScreen>
       );
 
-    // Ces états existent déjà côté serveur mais n'ont pas encore d'écran : la capture
-    // arrive au jalon 2. On le dit clairement au lieu d'afficher un écran vide.
-    case "review":
+    // Ces états existent côté serveur mais n'ont pas encore d'écran : l'enregistrement
+    // définitif arrive au jalon suivant. On le dit au lieu d'afficher une page blanche.
     case "printing":
     case "done":
       return (
