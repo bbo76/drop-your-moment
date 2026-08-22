@@ -22,7 +22,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: astral-sh/setup-uv@v10
+      # Version complète et non un tag majeur mobile : setup-uv ne publie plus de tag
+      # court depuis la v8, et `@v10` ne se résout pas.
+      - uses: astral-sh/setup-uv@v10.0.1
         with:
           enable-cache: true
           cache-dependency-glob: backend/uv.lock
