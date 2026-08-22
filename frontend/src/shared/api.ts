@@ -79,6 +79,7 @@ export const api = {
   chooseFilter: (sessionId: string, name: FilterName) =>
     post<SessionStatus>(`/api/session/${sessionId}/filter`, { name }),
   retake: (sessionId: string) => post<SessionStatus>(`/api/session/${sessionId}/retake`),
+  printPhoto: (sessionId: string) => post<SessionStatus>(`/api/session/${sessionId}/print`),
 };
 
 /** URL du flux MJPEG.

@@ -1,3 +1,4 @@
+import { ConfirmationScreen } from "./components/ConfirmationScreen";
 import { PreviewScreen } from "./components/PreviewScreen";
 import { ReviewScreen } from "./components/ReviewScreen";
 import {
@@ -11,8 +12,18 @@ import {
 import { useKioskState } from "./useKioskState";
 
 export function App() {
-  const { session, system, event, connection, start, cancel, capture, chooseFilter, retake } =
-    useKioskState();
+  const {
+    session,
+    system,
+    event,
+    connection,
+    start,
+    cancel,
+    capture,
+    chooseFilter,
+    retake,
+    keepPhoto,
+  } = useKioskState();
 
   if (connection === "offline") {
     return (
@@ -71,6 +82,7 @@ export function App() {
           remainingSeconds={session.remaining_seconds}
           onChooseFilter={chooseFilter}
           onRetake={retake}
+          onKeep={keepPhoto}
         />
       ) : (
         <CenteredScreen>
@@ -87,15 +99,14 @@ export function App() {
         </CenteredScreen>
       );
 
-    // Ces états existent côté serveur mais n'ont pas encore d'écran : l'enregistrement
-    // définitif arrive au jalon suivant. On le dit au lieu d'afficher une page blanche.
     case "printing":
     case "done":
       return (
-        <CenteredScreen>
-          <Muted>État « {session.state} » — écran pas encore implémenté.</Muted>
-          <GhostButton onClick={cancel}>Retour à l'accueil</GhostButton>
-        </CenteredScreen>
+        <ConfirmationScreen
+          printing={session.state === "printing"}
+          photoUrl={session.photo_url}
+          remainingSeconds={session.remaining_seconds}
+        />
       );
   }
 }

@@ -110,6 +110,67 @@ intervention manuelle. Rédhibitoire pour un fonctionnement non surveillé. `PRI
 a pas : il dépend de l'imprimante, pas du visiteur, et c'est le pilote qui porte son propre
 timeout de job.
 
+### Le flux d'impression est asynchrone dès le pilote neutre
+
+`POST /api/session/{id}/print` soumet un job et rend la main. C'est `PrintFlow.poll()` qui
+constate la fin et fait avancer la machine à états vers `DONE` ou `ERROR`.
+
+Pour un pilote qui répond « terminé » immédiatement, un endpoint bloquant aurait été plus
+court à écrire. Mais la CP1500 est une sublimation quatre passes d'environ 40 secondes :
+le contrat synchrone serait à réécrire au jalon 7, en emportant avec lui la machine à
+états et le polling du frontend. La feuille de route promet que le branchement de CUPS ne
+demande « aucune restructuration » — cette promesse se paie ici, pas plus tard.
+
+Conséquence visible : avec le pilote neutre, l'état `PRINTING` ne dure qu'un aller-retour
+et le visiteur ne le voit pas. C'est le comportement honnête — un écran d'attente n'a de
+sens que quand il y a vraiment quelque chose à attendre.
+
+### Le job d'impression est sondé aux deux mêmes endroits que les timeouts
+
+`poll()` est appelé à chaque lecture de statut **et** par le ticker de fond, exactement
+comme `SessionMachine.tick()`.
+
+Même raison qu'à l'origine : l'état reste juste sans dépendre de la cadence du ticker, le
+frontend voit la fin du tirage à son prochain sondage à 500 ms plutôt qu'au prochain tour
+de seconde, et les tests n'ont pas besoin de faire tourner une boucle asyncio pour
+observer une transition. Un mécanisme de moins à comprendre, puisque c'est le même.
+
+### Rétention : l'âge *et* le plafond d'espace
+
+Les sessions sont purgées si elles dépassent 30 jours, **et** les plus anciennes le sont
+aussi tant que le dossier dépasse 8 Go.
+
+Un seul des deux laisserait un trou. Sans plafond, deux événements chargés dans la même
+semaine remplissent la carte SD alors qu'aucune session n'a atteint l'âge limite. Sans
+âge, on supprime des photos le jour même d'un gros événement, avant que l'opérateur ait
+récupéré la galerie. L'âge est ce qu'un opérateur règle et comprend ; le plafond est le
+filet.
+
+La purge tourne au démarrage et après chaque tirage terminé — moment où le visiteur
+regarde sa confirmation et où personne n'attend un balayage de répertoire. La session en
+cours est toujours épargnée : on ne purge pas sous les pieds d'un visiteur.
+
+### « Je garde cette photo », pas « Imprimer »
+
+Pendant la phase numérique, rien ne sort physiquement. Un bouton « Imprimer » promettrait
+au visiteur un tirage qu'il n'aura pas, et il attendrait devant la borne.
+
+Le libellé deviendra « Imprimer » au jalon 7. C'est une chaîne de caractères, pas un
+parcours : la transition, l'état `PRINTING` et l'écran de confirmation ne bougent pas.
+
+### Deux compteurs de tirages, pas un
+
+`data/counters.json` porte un cumul et un compteur depuis remise à zéro.
+
+Ce sont deux questions différentes. « Combien de photos cet événement a-t-il produit »
+relève du cumul ; « me reste-t-il du papier » relève du compteur de cartouche, remis à
+zéro à chaque changement. Les cartouches de la CP1500 font 36, 54 ou 108 tirages : sans le
+second, l'opérateur découvre la fin de cartouche en pleine soirée.
+
+Fichier absent ou corrompu : on repart de zéro en journalisant, jamais un refus de
+démarrer. Même arbitrage que pour la configuration d'événement — un compteur faux se
+corrige, une borne éteinte un samedi soir non.
+
 ## Outillage
 
 ### Frontend en React + Tailwind, un projet à deux points d'entrée

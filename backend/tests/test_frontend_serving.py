@@ -17,6 +17,7 @@ from dropyourmoment.config import Settings
 from dropyourmoment.core.event_config import EventStore
 from dropyourmoment.core.session import SessionMachine
 from dropyourmoment.hardware.camera.mock_driver import MockCameraDriver
+from dropyourmoment.hardware.printer.null_driver import NullPrinterDriver
 from dropyourmoment.runtime import Runtime
 
 
@@ -34,6 +35,7 @@ def built_runtime(tmp_path: Path) -> Runtime:
     return Runtime(
         settings=settings,
         camera=MockCameraDriver(fps=60),
+        printer=NullPrinterDriver(),
         machine=SessionMachine(timeouts=settings.state_timeouts()),
         event_store=store,
         event=store.load(),
@@ -82,6 +84,7 @@ def test_backend_utilisable_sans_frontend_construit(tmp_path: Path) -> None:
     runtime = Runtime(
         settings=settings,
         camera=MockCameraDriver(fps=60),
+        printer=NullPrinterDriver(),
         machine=SessionMachine(timeouts=settings.state_timeouts()),
         event_store=store,
         event=store.load(),
