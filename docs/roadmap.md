@@ -68,6 +68,23 @@ documentation et **n'a jamais été exécuté**.
 - Service systemd, autostart de Chromium en kiosque sous **labwc** (Wayland, pas X11)
 - Réglages finaux : résolution d'aperçu, qualité JPEG, timeouts
 
+### ⬜ Pilote webcam universel — macOS, Windows, USB
+
+Hors séquence : ne bloque aucun autre jalon, et peut se faire à tout moment.
+
+L'abstraction `CameraDriver` est déjà la bonne — il manque une implémentation, pas une
+restructuration. `cv2.VideoCapture` couvre AVFoundation, MSMF/DirectShow et V4L2 : un seul
+pilote pour macOS, Windows et n'importe quelle webcam USB.
+
+Ce n'est pas le scénario « navigateur comme caméra » écarté plus bas : celui-là inverse le
+flux de contrôle, une webcam reste côté serveur avec le même propriétaire unique.
+
+- `opencv_driver.py`, encodage JPEG via `cv2.imencode`
+- `DYM_CAMERA_DEVICE` — aucun pilote n'en avait besoin jusqu'ici
+- Ordre d'autodétection `picamera2 → opencv → mock`
+- `opencv-python` en groupe optionnel : 90 Mo qui n'ont rien à faire sur le Pi
+- Décision à écrire : une webcam n'a qu'un flux, donc `still_size == preview_size`
+
 ## Phase 2 — Impression
 
 ### ⬜ Jalon 7 — Impression CUPS
