@@ -144,6 +144,22 @@ export function HealthSection() {
           />
           <Row label="Un événement pèse" value="environ 2 Go" />
         </Group>
+
+        <Group title="Ressources">
+          <Row label="CPU" value={`${health.cpu_percent.toFixed(1)} %`} />
+          <Row
+            label="Mémoire"
+            value={`${gigabytes(health.memory_used_bytes)} sur ${gigabytes(health.memory_total_bytes)} · ${health.memory_percent.toFixed(1)} %`}
+          />
+          <Row
+            label="Température"
+            value={
+              health.temperature_c === null
+                ? "indisponible"
+                : `${health.temperature_c.toFixed(1)} °C`
+            }
+          />
+        </Group>
       </div>
 
       <div className="mt-6 flex flex-wrap items-center gap-3">

@@ -27,6 +27,7 @@ def test_lecture_de_la_configuration_active(admin: TestClient) -> None:
     assert body["event_name"] == "Événement"
     assert body["available_filters"] == ["original", "bw", "sepia"]
     assert body["copies_per_print"] == 1
+    assert body["flash_duration_ms"] == 180
 
 
 def test_aller_retour_de_la_configuration(admin: TestClient) -> None:
@@ -34,6 +35,7 @@ def test_aller_retour_de_la_configuration(admin: TestClient) -> None:
     config["event_name"] = "Mariage Camille & Théo"
     config["available_filters"] = ["original", "bw"]
     config["copies_per_print"] = 2
+    config["flash_duration_ms"] = 320
 
     assert admin.put("/admin/event-config", json=config).status_code == 200
 
@@ -41,6 +43,7 @@ def test_aller_retour_de_la_configuration(admin: TestClient) -> None:
     assert relu["event_name"] == "Mariage Camille & Théo"
     assert relu["available_filters"] == ["original", "bw"]
     assert relu["copies_per_print"] == 2
+    assert relu["flash_duration_ms"] == 320
 
 
 def test_le_kiosque_voit_le_changement_sans_redemarrage(
@@ -55,12 +58,14 @@ def test_le_kiosque_voit_le_changement_sans_redemarrage(
     config = admin.get("/admin/event-config").json()
     config["event_name"] = "Anniversaire de Lou"
     config["available_filters"] = ["bw"]
+    config["flash_duration_ms"] = 450
     admin.put("/admin/event-config", json=config)
 
     vu_par_le_kiosque = kiosk.get("/api/event").json()
 
     assert vu_par_le_kiosque["event_name"] == "Anniversaire de Lou"
     assert vu_par_le_kiosque["available_filters"] == ["bw"]
+    assert vu_par_le_kiosque["flash_duration_ms"] == 450
 
 
 def test_un_filtre_retire_est_refuse_au_kiosque(admin: TestClient, kiosk: TestClient) -> None:
@@ -94,6 +99,10 @@ def test_valeur_hors_bornes_refusee(admin: TestClient) -> None:
     config = admin.get("/admin/event-config").json()
     config["copies_per_print"] = 999
 
+    assert admin.put("/admin/event-config", json=config).status_code == 422
+
+    config = admin.get("/admin/event-config").json()
+    config["flash_duration_ms"] = 2001
     assert admin.put("/admin/event-config", json=config).status_code == 422
 
 
@@ -318,6 +327,10 @@ def test_la_sante_repond_a_tenir_la_soiree(admin: TestClient) -> None:
     assert body["counters"] == {"prints_total": 0, "prints_since_reset": 0, "reset_at": None}
     assert body["disk_free_bytes"] > 0
     assert body["disk_total_bytes"] >= body["disk_free_bytes"]
+    assert 0 <= body["cpu_percent"] <= 100
+    assert 0 < body["memory_used_bytes"] <= body["memory_total_bytes"]
+    assert 0 <= body["memory_percent"] <= 100
+    assert body["temperature_c"] is None or isinstance(body["temperature_c"], float)
 
 
 def test_la_sante_distingue_un_apercu_vivant_d_un_apercu_gele(

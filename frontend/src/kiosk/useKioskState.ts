@@ -9,10 +9,9 @@ import {
 } from "../shared/api";
 
 const POLL_INTERVAL_MS = 500;
-// Le backend local répond souvent en quelques dizaines de millisecondes. Sans plancher,
-// le voile blanc de PreviewScreen disparaît avant même que l'écran ait eu le temps de le
-// peindre. Assez long pour être perçu, assez bref pour garder un déclenchement naturel.
-const MINIMUM_FLASH_MS = 180;
+// Repli pour une ancienne réponse d'API ou le tout premier rendu. La valeur normale vient
+// de la configuration d'événement, relue au démarrage de chaque session.
+const DEFAULT_FLASH_MS = 180;
 
 export type Connection = "connecting" | "online" | "offline";
 
@@ -96,7 +95,10 @@ export function useKioskState(): KioskState {
   /* Les transitions sont appliquées immédiatement depuis la réponse, sans attendre le
    * prochain tour de boucle : un demi-tour de retard sur un appui se verrait. */
   const start = useCallback(async () => {
-    setSession(await api.startSession());
+    const [freshSession, freshEvent] = await Promise.all([api.startSession(), api.event()]);
+    eventRef.current = freshEvent;
+    setEvent(freshEvent);
+    setSession(freshSession);
   }, []);
 
   const cancel = useCallback(async () => {
@@ -125,13 +127,15 @@ export function useKioskState(): KioskState {
     try {
       const [status] = await Promise.all([
         api.capture(id),
-        new Promise<void>((resolve) => setTimeout(resolve, MINIMUM_FLASH_MS)),
+        new Promise<void>((resolve) =>
+          setTimeout(resolve, event?.flash_duration_ms ?? DEFAULT_FLASH_MS),
+        ),
       ]);
       setSession(status);
     } catch (error) {
       console.warn(error);
     }
-  }, []);
+  }, [event?.flash_duration_ms]);
   const retake = useCallback(() => withSession(api.retake), [withSession]);
   const keepPhoto = useCallback(() => withSession(api.printPhoto), [withSession]);
   const chooseFilter = useCallback(
