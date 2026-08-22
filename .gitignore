@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Données d'exécution : photos, config d'événement, compteurs.
+# Le contenu est propre à une installation, jamais versionné.
+/data/
+
+.DS_Store

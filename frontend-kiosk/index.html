@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Drop Your Moment</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <!-- Un seul écran est visible à la fois : celui qui correspond à l'état renvoyé par
+         le backend. Le frontend ne décide jamais d'une transition tout seul. -->
+    <main id="app">
+      <section class="screen" data-screen="loading">
+        <p class="muted">Démarrage…</p>
+      </section>
+
+      <section class="screen" data-screen="idle">
+        <div class="stack">
+          <h1>Drop Your Moment</h1>
+          <p class="lede">Touchez l'écran pour prendre une photo</p>
+          <button class="cta" data-action="start">Commencer</button>
+        </div>
+        <p class="banner" data-role="hardware-warning" hidden></p>
+      </section>
+
+      <section class="screen" data-screen="preview">
+        <div class="viewport">
+          <!-- Le flux MJPEG s'affiche nativement dans une balise img : pas de décodage
+               JavaScript, donc quasiment aucun coût CPU côté navigateur. -->
+          <img data-role="preview" alt="" />
+          <div class="framing" data-role="framing">
+            <div class="framing-mask framing-mask--start"></div>
+            <div class="framing-window"></div>
+            <div class="framing-mask framing-mask--end"></div>
+          </div>
+        </div>
+        <footer class="hud">
+          <span class="muted" data-role="framing-hint"></span>
+          <span class="muted" data-role="countdown"></span>
+          <button class="ghost" data-action="cancel">Annuler</button>
+        </footer>
+      </section>
+
+      <section class="screen" data-screen="error">
+        <div class="stack">
+          <h1>Oups</h1>
+          <p class="lede" data-role="error-message">Une erreur est survenue.</p>
+          <p class="muted">Retour à l'accueil dans un instant…</p>
+        </div>
+      </section>
+
+      <section class="screen" data-screen="offline">
+        <div class="stack">
+          <h1>Hors service</h1>
+          <p class="lede">Le backend ne répond pas.</p>
+          <p class="muted">Prévenez l'organisateur.</p>
+        </div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>

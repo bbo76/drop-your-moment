@@ -1,0 +1,50 @@
+[project]
+name = "drop-your-moment"
+version = "0.1.0"
+description = "Drop Your Moment — backend du photobooth : kiosque tactile + portail d'administration"
+requires-python = ">=3.11"
+
+# picamera2 et pycups ne figurent pas ici volontairement : sur Raspberry Pi OS ce sont
+# des paquets apt (python3-picamera2, python3-cups) liés aux bibliothèques système, et
+# le venv du Pi doit être créé avec --system-site-packages pour les voir. Les installer
+# par pip n'est pas fiable, et le backend doit démarrer sans eux (driver mock sur Mac).
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn>=0.32",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    "pillow>=11.0",
+    "python-multipart>=0.0.12",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "httpx>=0.28",
+    "ruff>=0.8",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["dropyourmoment*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+# `Depends(...)` en valeur par défaut est l'idiome d'injection de FastAPI : c'est le
+# framework qui résout l'appel par requête, pas Python à la définition. B008 ne s'applique
+# donc pas ici.
+"dropyourmoment/api/*.py" = ["B008"]
