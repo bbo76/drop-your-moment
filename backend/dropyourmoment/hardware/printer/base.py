@@ -47,7 +47,17 @@ class PrinterDriver(ABC):
 
     Contrairement au driver caméra, il n'y a pas de cycle de vie à ouvrir : une imprimante
     ne se réserve pas, elle se découvre au moment où on lui parle.
+
+    Pas de `get_status()` ici, malgré ce qu'une page de santé aimerait afficher : avec le
+    pilote neutre elle rendrait une constante à vie. Le contrat viendra avec le driver
+    CUPS, quand `printer-state-reasons` donnera enfin quelque chose à traduire — figer une
+    forme avant de savoir ce que pycups expose reviendrait à la réécrire.
     """
+
+    # Nom lisible du pilote actif, en miroir de `CameraCapabilities.driver_name`. C'est le
+    # minimum qu'une page de santé doit dire : savoir qu'aucune imprimante n'est branchée
+    # explique un état PRINTING qui ne dure qu'un aller-retour.
+    name: str = "inconnu"
 
     @abstractmethod
     def print_image(self, path: Path, copies: int) -> PrintJob:

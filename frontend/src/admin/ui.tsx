@@ -26,9 +26,17 @@ export function Row({ label, value }: { label: string; value: ReactNode }) {
   );
 }
 
-export function Field({ label, children }: { label: string; children: ReactNode }) {
+export function Field({
+  label,
+  children,
+  className,
+}: {
+  label: string;
+  children: ReactNode;
+  className?: string;
+}) {
   return (
-    <label className="block">
+    <label className={`block ${className ?? ""}`}>
       <span className="mb-1 block text-sm text-muted">{label}</span>
       {children}
     </label>

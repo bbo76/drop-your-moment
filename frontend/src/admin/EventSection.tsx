@@ -119,8 +119,8 @@ export function EventSection() {
           <legend className="mb-1 text-sm text-muted">
             Format de sortie — fixe le recadrage et le cadre de visée, même sans imprimante
           </legend>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <Field label="Nom">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+            <Field label="Nom" className="sm:col-span-2">
               <input
                 className={inputClass}
                 value={draft.print_format.name}
@@ -172,7 +172,7 @@ export function EventSection() {
                 alt="Overlay de l'événement"
                 /* Le damier rend la transparence visible : sur fond uni, un overlay opaque
                    et un overlay ajouré se ressemblent. */
-                className="h-24 rounded border border-edge bg-[repeating-conic-gradient(#333846_0_25%,transparent_0_50%)] bg-[length:16px_16px]"
+                className="h-36 rounded border border-edge bg-[repeating-conic-gradient(#333846_0_25%,transparent_0_50%)] bg-[length:16px_16px]"
               />
               <Button onClick={() => void runOverlayAction(api.deleteOverlay)}>Retirer</Button>
             </div>

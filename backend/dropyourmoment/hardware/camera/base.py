@@ -57,6 +57,16 @@ class CameraDriver(ABC):
     @abstractmethod
     def get_capabilities(self) -> CameraCapabilities: ...
 
+    @property
+    @abstractmethod
+    def active_streams(self) -> int:
+        """Nombre de flux de preview réellement consommés en ce moment.
+
+        Compté par activité et non par cycle de vie — voir `preview_activity.py`. C'est ce
+        qui distingue, sur une page de santé, un aperçu vivant d'un aperçu gelé : la
+        caméra peut être ouverte et disponible sans que plus personne ne tire de frame.
+        """
+
     @abstractmethod
     def preview_frames(self) -> Iterator[bytes]:
         """Flux infini de frames JPEG encodées, consommé par l'endpoint MJPEG.

@@ -63,13 +63,34 @@ export interface EventInfo {
   print_aspect_ratio: number;
 }
 
-/** Diagnostic servi par le portail d'administration, sur l'autre socket. */
+/** Les deux compteurs de tirages : le cumul de l'événement et celui de la cartouche. */
+export interface CounterReading {
+  prints_total: number;
+  prints_since_reset: number;
+  /** ISO 8601, ou null si la cartouche n'a jamais été réarmée. */
+  reset_at: string | null;
+}
+
+/** Diagnostic servi par le portail d'administration, sur l'autre socket.
+ *
+ * Une seule requête porte tout : l'opérateur veut un état cohérent à un instant donné,
+ * pas cinq lectures décalées.
+ */
 export interface AdminHealth {
   camera_ok: boolean;
   camera_driver: string;
+  /** 0 signifie aperçu gelé : la caméra peut être ouverte sans que personne ne la lise. */
+  preview_streams: number;
+  preview_size: [number, number];
+  still_size: [number, number];
+  printer_driver: string;
   session_state: SessionState;
+  event_name: string;
   print_format_name: string;
   print_aspect_ratio: number;
+  counters: CounterReading;
+  disk_free_bytes: number;
+  disk_total_bytes: number;
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -129,6 +150,7 @@ export const api = {
   printPhoto: (sessionId: string) => post<SessionStatus>(`/api/session/${sessionId}/print`),
 
   health: () => request<AdminHealth>("/admin/system/health"),
+  resetCartridge: () => post<CounterReading>("/admin/counters/reset"),
   eventConfig: () => request<EventConfigPayload>("/admin/event-config"),
   uploadOverlay: (file: File) => {
     const form = new FormData();

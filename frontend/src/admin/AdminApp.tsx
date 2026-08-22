@@ -16,12 +16,12 @@ export function AdminApp() {
         <p className="text-muted">Administration</p>
       </header>
 
-      <div className="max-w-3xl">
+      <div className="max-w-5xl">
         <HealthSection />
         <EventSection />
       </div>
 
-      <p className="mt-8 text-sm text-muted">Overlay et galerie : jalon 5, à venir.</p>
+      <p className="mt-8 text-sm text-muted">Galerie : à venir.</p>
     </div>
   );
 }

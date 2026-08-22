@@ -12,6 +12,7 @@ sans que rien ne le signale.
 from __future__ import annotations
 
 import logging
+import shutil
 from io import BytesIO
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
@@ -25,6 +26,7 @@ from dropyourmoment.core.session import SessionState
 from dropyourmoment.imaging.steps import overlay_matches_ratio
 from dropyourmoment.runtime import Runtime
 from dropyourmoment.storage.atomic import write_atomic
+from dropyourmoment.storage.counters import Counters
 
 logger = logging.getLogger(__name__)
 
@@ -36,26 +38,88 @@ router = APIRouter(prefix="/admin")
 MAX_OVERLAY_BYTES = 20 * 1024 * 1024
 
 
+class CounterReading(BaseModel):
+    """Les deux compteurs, en miroir de `storage.counters.Counters`."""
+
+    prints_total: int
+    prints_since_reset: int
+    reset_at: str | None
+
+
 class AdminHealth(BaseModel):
+    """Tout ce qu'il faut pour répondre à « est-ce que la borne va tenir la soirée ? ».
+
+    Une seule requête plutôt que cinq : c'est une page qu'on rafraîchit en boucle, et
+    l'opérateur veut un état cohérent à un instant donné, pas cinq lectures décalées.
+    """
+
     camera_ok: bool
     camera_driver: str
+    # Un aperçu vivant se distingue d'un aperçu gelé ici : la caméra peut être ouverte et
+    # disponible sans que plus personne ne consomme de frame.
+    preview_streams: int
+    preview_size: tuple[int, int]
+    still_size: tuple[int, int]
+
+    printer_driver: str
+
     session_state: SessionState
     event_name: str
     print_format_name: str
     print_aspect_ratio: float
 
+    counters: CounterReading
+
+    # `statvfs` du système de fichiers portant `data_dir`. Un événement pèse environ 2 Go :
+    # c'est à cette échelle que l'espace restant se lit.
+    disk_free_bytes: int
+    disk_total_bytes: int
+
 
 @router.get("/system/health", response_model=AdminHealth)
 def read_health(runtime: Runtime = Depends(get_runtime)) -> AdminHealth:
+    """Diagnostic complet, sans effet de bord.
+
+    Rien ici ne sonde de périphérique ni ne balaye de répertoire : la page est rafraîchie
+    en boucle pendant un événement, et un balayage du dossier des sessions à chaque
+    passage coûterait des centaines d'appels `stat` toutes les deux secondes sur une carte
+    SD. `disk_usage` est un seul `statvfs`, et il répond à la même question.
+    """
     caps = runtime.camera.get_capabilities()
+    config = runtime.event.config
+    usage = shutil.disk_usage(runtime.settings.data_dir)
     return AdminHealth(
         camera_ok=runtime.camera.is_available(),
         camera_driver=caps.driver_name,
+        preview_streams=runtime.camera.active_streams,
+        preview_size=caps.preview_size,
+        still_size=caps.still_size,
+        printer_driver=runtime.printer.name,
         session_state=runtime.machine.state,
-        event_name=runtime.event.config.event_name,
-        print_format_name=runtime.event.config.print_format.name,
-        print_aspect_ratio=runtime.event.config.print_format.aspect_ratio,
+        event_name=config.event_name,
+        print_format_name=config.print_format.name,
+        print_aspect_ratio=config.print_format.aspect_ratio,
+        counters=_reading(runtime.counters.read()),
+        disk_free_bytes=usage.free,
+        disk_total_bytes=usage.total,
     )
+
+
+@router.post("/counters/reset", response_model=CounterReading)
+def reset_cartridge_counter(runtime: Runtime = Depends(get_runtime)) -> CounterReading:
+    """Réarme le compteur de cartouche. Le cumul de l'événement ne bouge pas.
+
+    Le bouton sans lequel le second compteur n'aurait aucune raison d'exister : il
+    vaudrait toujours exactement le cumul.
+    """
+    return _reading(runtime.counters.reset_cartridge())
+
+
+def _reading(counters: Counters) -> CounterReading:
+    # `vars()` plutôt qu'une recopie champ par champ : les deux structures sont un miroir
+    # l'une de l'autre, et un champ ajouté d'un côté seulement lèvera au lieu de manquer
+    # en silence.
+    return CounterReading(**vars(counters))
 
 
 @router.get("/event-config", response_model=EventConfig)

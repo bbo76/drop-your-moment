@@ -14,6 +14,7 @@ from PIL import Image
 
 from dropyourmoment.core.event_config import CONFIG_FILENAME, OVERLAY_FILENAME
 from dropyourmoment.core.print_format import POSTCARD_LANDSCAPE
+from dropyourmoment.core.session import SessionState
 from dropyourmoment.runtime import Runtime
 
 # Au ratio de la carte postale paysage (1.48), le format par défaut de l'événement.
@@ -300,3 +301,58 @@ def _photo_apres_capture(kiosk: TestClient) -> bytes:
     photo = kiosk.get(f"/api/session/{session_id}/photo").content
     kiosk.post("/api/session/cancel")
     return photo
+
+
+# --- Page de santé ------------------------------------------------------------------
+
+
+def test_la_sante_repond_a_tenir_la_soiree(admin: TestClient) -> None:
+    """Une seule requête doit suffire à l'opérateur : caméra, imprimante, papier, disque."""
+    body = admin.get("/admin/system/health").json()
+
+    assert body["camera_ok"] is True
+    assert body["camera_driver"] == "mock"
+    assert body["preview_size"] == [640, 360]
+    assert body["printer_driver"], "savoir qu'aucune imprimante n'est branchée explique tout"
+    assert body["session_state"] == SessionState.IDLE
+    assert body["counters"] == {"prints_total": 0, "prints_since_reset": 0, "reset_at": None}
+    assert body["disk_free_bytes"] > 0
+    assert body["disk_total_bytes"] >= body["disk_free_bytes"]
+
+
+def test_la_sante_distingue_un_apercu_vivant_d_un_apercu_gele(
+    admin: TestClient, runtime: Runtime
+) -> None:
+    """La caméra peut être ouverte et disponible sans que personne ne tire de frame."""
+    assert admin.get("/admin/system/health").json()["preview_streams"] == 0
+
+    frames = runtime.camera.preview_frames()
+    next(frames)
+
+    assert admin.get("/admin/system/health").json()["preview_streams"] == 1
+    frames.close()
+
+
+def test_le_tirage_fait_monter_les_deux_compteurs(admin: TestClient, kiosk: TestClient) -> None:
+    session_id = kiosk.post("/api/session").json()["session_id"]
+    kiosk.post(f"/api/session/{session_id}/capture")
+    kiosk.post(f"/api/session/{session_id}/print")
+
+    counters = admin.get("/admin/system/health").json()["counters"]
+
+    assert counters["prints_total"] == 1
+    assert counters["prints_since_reset"] == 1
+
+
+def test_la_remise_a_zero_depuis_le_portail(admin: TestClient, kiosk: TestClient) -> None:
+    """Le bouton sans lequel le second compteur serait une copie du cumul."""
+    session_id = kiosk.post("/api/session").json()["session_id"]
+    kiosk.post(f"/api/session/{session_id}/capture")
+    kiosk.post(f"/api/session/{session_id}/print")
+
+    apres = admin.post("/admin/counters/reset").json()
+
+    assert apres["prints_total"] == 1, "le cumul de l'événement ne bouge pas"
+    assert apres["prints_since_reset"] == 0
+    assert apres["reset_at"] is not None
+    assert admin.get("/admin/system/health").json()["counters"] == apres
