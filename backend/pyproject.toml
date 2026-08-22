@@ -16,6 +16,13 @@ dependencies = [
     "pillow>=11.0",
 ]
 
+# Extra et non groupe PEP 735 : opencv est bien une dépendance d'exécution — pour qui
+# l'installe. ~90 Mo avec numpy, qui n'ont rien à faire sur le Pi, dont le capteur CSI
+# passe par picamera2. `uv sync --no-dev` sur la borne ne le prend pas ; sur un poste de
+# bureau, `uv sync --extra webcam` active le driver webcam universel.
+[project.optional-dependencies]
+webcam = ["opencv-python>=4.10"]
+
 # Groupe de dépendances au sens PEP 735 plutôt qu'un extra : ces outils servent au
 # développement, jamais à l'exécution, et n'ont donc rien à faire dans la distribution.
 # `uv sync` les installe par défaut, `uv sync --no-dev` les laisse de côté — ce qui est

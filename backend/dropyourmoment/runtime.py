@@ -54,7 +54,7 @@ class Runtime:
         store = EventStore(settings.event_dir)
         return cls(
             settings=settings,
-            camera=build_camera_driver(settings.camera_driver),
+            camera=build_camera_driver(settings.camera_driver, settings.camera_device),
             # Pilote neutre pendant toute la phase numérique : le parcours va jusqu'au
             # bout sans imprimante branchée. Le jalon 7 branche ici le pilote CUPS.
             printer=NullPrinterDriver(),

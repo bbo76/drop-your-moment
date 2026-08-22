@@ -70,9 +70,20 @@ différent de chaque côté.
 ## Développement
 
 Le développement se fait sur une machine de bureau ; le Pi reçoit le code par git aux
-points de contrôle matériels. Sans `picamera2` installé, une **caméra de synthèse animée**
-prend le relais automatiquement — animée à dessein, car un mock statique ne permettrait
-pas de distinguer un flux MJPEG vivant d'un flux gelé.
+points de contrôle matériels. Deux caméras sont disponibles hors du Pi :
+
+- **Une webcam** — celle du Mac, du PC, ou n'importe quel périphérique USB. C'est le mode
+  recommandé pour juger un cadrage ou un filtre sur un vrai visage. Installer l'extra :
+  `uv sync --extra webcam`, et l'autodétection la prendra.
+- **Une caméra de synthèse animée**, sans rien à installer. Animée à dessein : un mock
+  statique ne permettrait pas de distinguer un flux MJPEG vivant d'un flux gelé.
+  `DYM_CAMERA_DRIVER=mock` la force même quand une webcam est présente.
+
+Sur macOS, l'application qui lance le backend — Terminal, iTerm, l'IDE — doit avoir
+l'autorisation caméra (Réglages système → Confidentialité et sécurité → Caméra). Sans
+elle, l'ouverture échoue et l'autodétection retombe silencieusement sur la mire : si
+l'aperçu affiche des barres de couleur alors que vous attendiez votre visage, c'est là
+qu'il faut regarder.
 
 ### Backend
 
@@ -131,7 +142,8 @@ Variables d'environnement préfixées `DYM_` (voir
 
 | variable | défaut | rôle |
 |---|---|---|
-| `CAMERA_DRIVER` | `auto` | `mock` ou `picamera2` ; `auto` détecte le Pi et retombe sur `mock` |
+| `CAMERA_DRIVER` | `auto` | `mock`, `picamera2` ou `opencv` ; `auto` essaie `picamera2 → opencv → mock` |
+| `CAMERA_DEVICE` | `0` | index de webcam, ou chemin `/dev/videoN` ; driver `opencv` seulement |
 | `PREVIEW_TIMEOUT_S` | `60` | retour à l'accueil si le visiteur s'éloigne devant l'aperçu |
 | `REVIEW_TIMEOUT_S` | `90` | idem sur l'écran de review |
 | `KIOSK_HOST` / `ADMIN_HOST` | `127.0.0.1` / `0.0.0.0` | adresses de bind |

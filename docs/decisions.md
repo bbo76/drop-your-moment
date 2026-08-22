@@ -86,6 +86,59 @@ Une seule configuration : flux `main` pour les captures, `lores` pour l'aperçu.
 le temps de reconfigurer — pour rien, puisqu'une carte postale à 300 dpi demande environ
 1181×1748 px et que le surplus partirait au recadrage puis au tirage.
 
+### Une webcam n'a qu'un flux, donc `still_size == preview_size`
+
+Le pilote Pi expose deux flux du même capteur : `main` pour la capture, `lores` pour
+l'aperçu. Une webcam UVC n'offre pas cet étage — la capture et l'aperçu sortent de la même
+négociation de mode. Le pilote OpenCV annonce donc une seule taille pour les deux, et
+`CameraCapabilities` le supporte déjà sans modification.
+
+La conséquence se paie sur la résolution. À 1280×720, le recadrage au ratio de tirage
+donne 1066×720, sous les 1748×1181 d'une carte postale à 300 dpi. C'est accepté : ce
+pilote sert le développement et la démonstration sur poste de bureau, pas le tirage, qui
+viendra du Pi. Demander 1080p aurait rendu l'aperçu saccadé sur une webcam USB modeste —
+or l'aperçu est précisément ce qu'on vient regarder ici.
+
+**La taille demandée est relue après ouverture.** Un pilote de webcam retient
+silencieusement le mode supporté le plus proche sans jamais le signaler. Annoncer la
+taille demandée plutôt que la taille réelle ferait mentir le cadre de visée du frontend,
+qui se dimensionne sur `preview_size` — on couperait des têtes en croyant l'inverse.
+
+**À rouvrir si** une webcam devait alimenter de vrais tirages, ou si l'aperçu s'avérait
+saccadé sur un périphérique donné. Le paramètre de construction est là pour ça.
+
+### Pas de thread lecteur pour la webcam, contrairement au Pi
+
+Le pilote Pi maintient un tampon partagé alimenté par un thread : son encodeur MJPEG
+tourne de toute façon en continu dès `start_recording()`, et le tampon évite que chaque
+consommateur HTTP déclenche son propre encodage.
+
+Rien de tel ici : sans lecteur, `cv2.VideoCapture` ne produit rien. Les frames sont donc
+tirées à la demande dans le générateur d'aperçu, sous un verrou partagé avec la capture.
+Un thread lecteur n'économiserait aucun encodage et ajouterait un cycle de vie à gérer.
+
+Deux plafonds connus, tous deux hors du parcours réel : chaque flux d'aperçu
+supplémentaire paie son propre encodage — mais un seul kiosque lit — et une frame peut
+être périmée si plus personne ne draine la file du pilote — mais la capture arrive à la
+fin du décompte, aperçu vivant. Le jour où l'un des deux se produit, la réponse est le
+tampon partagé du pilote Pi, pas une invention nouvelle.
+
+### Autodétection : la webcam se sonde en l'ouvrant, picamera2 non
+
+L'ordre est `picamera2 → opencv → mock`, mais les deux sondes ne posent pas la même
+question. Pour picamera2, l'import suffit : le paquet n'existe que là où le capteur CSI
+existe. Pour OpenCV, l'import ne prouve rien — `opencv-python` peut être installé sur une
+machine sans webcam, ou avec une webcam déjà prise par une visioconférence. Seule
+l'ouverture du périphérique répond.
+
+Le pilote est laissé **ouvert** quand la sonde réussit. `start()` étant idempotent,
+`Runtime.start()` n'ouvre pas une seconde fois — ce qui évite, sur macOS, un second
+dialogue d'autorisation caméra au démarrage.
+
+Conséquence à connaître : sur un poste où l'extra `webcam` est installé, `auto` prend la
+vraie webcam et non plus la mire. `DYM_CAMERA_DRIVER=mock` reste le moyen sûr de
+travailler sans matériel, et ne tente aucune sonde.
+
 ### Comptage des flux d'aperçu par activité, pas par cycle de vie
 
 À une déconnexion client, Starlette annule la tâche qui pompe le générateur mais **ne le

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from dropyourmoment.core.session import StateTimeouts
@@ -17,6 +18,9 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="DYM_", extra="ignore")
 
     camera_driver: CameraDriverName = CameraDriverName.AUTO
+    # Index de webcam (macOS, Windows) ou chemin `/dev/videoN` (Linux). Ne concerne
+    # que le driver opencv : le capteur CSI du Pi n'a pas de sélection à faire.
+    camera_device: int | str = 0
 
     # Le kiosque n'écoute que sur la boucle locale et l'admin sur toutes les interfaces.
     # C'est cette paire d'adresses de bind — et non une frontière de process — qui porte
@@ -44,6 +48,18 @@ class Settings(BaseSettings):
     # `index.html` pour le kiosque, `admin.html` pour l'administration, avec les mêmes
     # jetons de design et le même client d'API.
     frontend_dist_dir: Path = REPO_ROOT / "frontend" / "dist"
+
+    @field_validator("camera_device", mode="before")
+    @classmethod
+    def _device_index_or_path(cls, value: object) -> object:
+        """`DYM_CAMERA_DEVICE=1` désigne l'index 1, pas un fichier nommé « 1 ».
+
+        Une variable d'environnement arrive toujours en chaîne, et `int | str` retient
+        alors `str` — le type qui correspond exactement. OpenCV traiterait cette chaîne
+        comme un chemin de fichier, échouerait à l'ouvrir, et l'autodétection retomberait
+        silencieusement sur la mire de synthèse. La panne serait muette et déroutante.
+        """
+        return int(value) if isinstance(value, str) and value.isdigit() else value
 
     def retention_policy(self) -> RetentionPolicy:
         return RetentionPolicy.from_gb(
