@@ -14,7 +14,7 @@ import { HealthSection } from "./HealthSection";
 
 export function AdminApp() {
   return (
-    <div className="min-h-full overflow-auto p-8">
+    <div className="min-h-full p-8">
       <header className="mb-8">
         <h1 className="text-2xl font-semibold">Drop Your Moment</h1>
         <p className="text-muted">Administration</p>

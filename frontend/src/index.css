@@ -23,12 +23,20 @@ body,
 }
 
 body {
-  /* La borne n'a rien à faire défiler : chaque écran tient dans la fenêtre. */
+  background-color: var(--color-ink);
+  color: var(--color-body);
+}
+
+/* Durcissement réservé au kiosque, activé par `<body class="kiosk">` dans index.html.
+
+   Cette feuille de style sert les deux interfaces. « Rien ne défile » est vrai de la borne,
+   où chaque écran tient dans la fenêtre, et faux du portail d'administration, qui est une
+   page qu'on parcourt. Sans cette portée, l'admin se faisait couper au bas de la fenêtre —
+   et `overflow: hidden` ne laisse même pas de barre de défilement pour le signaler. */
+body.kiosk {
   overflow: hidden;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
-  background-color: var(--color-ink);
-  color: var(--color-body);
 }
 
 /* Durcissement kiosque, appliqué uniquement sur un véritable écran tactile.
@@ -39,7 +47,7 @@ body {
    Filet de sécurité côté système : si le pilote tactile du Pi ne rapportait pas ces
    caractéristiques, le masquage du curseur se fait au niveau du compositeur (labwc). */
 @media (hover: none) and (pointer: coarse) {
-  body {
+  body.kiosk {
     cursor: none;
     user-select: none;
     -webkit-user-select: none;
