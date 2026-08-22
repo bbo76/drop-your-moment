@@ -68,22 +68,23 @@ documentation et **n'a jamais été exécuté**.
 - Service systemd, autostart de Chromium en kiosque sous **labwc** (Wayland, pas X11)
 - Réglages finaux : résolution d'aperçu, qualité JPEG, timeouts
 
-### ⬜ Pilote webcam universel — macOS, Windows, USB
+### ✅ Pilote webcam universel — macOS, Windows, USB
 
-Hors séquence : ne bloque aucun autre jalon, et peut se faire à tout moment.
+Hors séquence, pris avant le jalon 5 : la galerie et le refus d'overlay du jalon 5 se
+valident en regardant des photos, et la mire de synthèse n'a ni visage ni bord de cadre
+risqué. Un vrai recadrage ne se juge pas sur des barres de couleur.
 
-L'abstraction `CameraDriver` est déjà la bonne — il manque une implémentation, pas une
-restructuration. `cv2.VideoCapture` couvre AVFoundation, MSMF/DirectShow et V4L2 : un seul
+L'abstraction `CameraDriver` était déjà la bonne : il manquait une implémentation, pas une
+restructuration. `cv2.VideoCapture` couvre AVFoundation, MSMF/DirectShow et V4L2 — un seul
 pilote pour macOS, Windows et n'importe quelle webcam USB.
 
 Ce n'est pas le scénario « navigateur comme caméra » écarté plus bas : celui-là inverse le
 flux de contrôle, une webcam reste côté serveur avec le même propriétaire unique.
 
-- `opencv_driver.py`, encodage JPEG via `cv2.imencode`
-- `DYM_CAMERA_DEVICE` — aucun pilote n'en avait besoin jusqu'ici
-- Ordre d'autodétection `picamera2 → opencv → mock`
-- `opencv-python` en groupe optionnel : 90 Mo qui n'ont rien à faire sur le Pi
-- Décision à écrire : une webcam n'a qu'un flux, donc `still_size == preview_size`
+`opencv_driver.py` avec encodage JPEG par `cv2.imencode`, `DYM_CAMERA_DEVICE`, ordre
+d'autodétection `picamera2 → opencv → mock`, et `opencv-python` en extra `webcam` — 90 Mo
+qui n'ont rien à faire sur le Pi. Une webcam n'ayant qu'un flux, `still_size ==
+preview_size` : voir [decisions.md](decisions.md).
 
 ## Phase 2 — Impression
 
@@ -111,6 +112,7 @@ Aucun changement d'API ni de machine à états attendu : le pilote neutre est re
 | **Pilote picamera2 jamais exécuté** | Écrit contre la documentation. Configuration à un seul mode capteur, encodeur MJPEG sur le flux `lores`, capture depuis `main` sans changement de mode : tout cela est à confirmer sur le Pi. |
 | **Rendu visuel du kiosque** | Le rythme du décompte et la taille des cibles tactiles sur 7 pouces sont des jugements qui demandent l'écran réel. |
 | **uv + `--system-site-packages` sur le Pi** | Le mécanisme est vérifié (`include-system-site-packages` survit à `uv sync`), mais la combinaison exacte avec `python3-picamera2` reste à confirmer sur place. |
+| **Pilote webcam sur une vraie webcam** | Validé de bout en bout contre un flux vidéo de test — relecture de la résolution négociée, encodage JPEG, capture, fin de flux propre à la déconnexion. L'ouverture d'un périphérique physique demande l'autorisation caméra du terminal (macOS), pas encore accordée sur la machine de développement. |
 | **Impression CP1500 depuis ce logiciel** | L'impression via CUPS est confirmée fonctionnelle sur le Pi, mais pas encore depuis cette application. |
 
 ## Hors périmètre
