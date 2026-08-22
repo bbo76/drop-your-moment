@@ -28,6 +28,9 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: backend/uv.lock
+          # Sans suffixe, les deux jobs de la matrice se disputent la même clé et
+          # l'un échoue à écrire le cache.
+          cache-suffix: py${{ matrix.python-version }}
 
       # --locked échoue si uv.lock ne correspond plus à pyproject.toml : une dépendance
       # ajoutée sans relock ne passera pas inaperçue.
