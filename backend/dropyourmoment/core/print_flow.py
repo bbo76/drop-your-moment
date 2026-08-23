@@ -17,7 +17,7 @@ import logging
 from collections.abc import Callable
 from pathlib import Path
 
-from dropyourmoment.core.errors import PrinterError
+from dropyourmoment.core.errors import InsufficientPaperError, PrinterError
 from dropyourmoment.core.session import SessionMachine, SessionState
 from dropyourmoment.hardware.printer.base import JobState, PrinterDriver, PrintJob
 from dropyourmoment.storage.counters import CounterStore
@@ -46,6 +46,11 @@ class PrintFlow:
 
     def submit(self, image_path: Path, copies: int) -> PrintJob:
         """Soumet le tirage. Lève `PrinterError` si l'imprimante refuse la demande."""
+        counters = self._counters.read()
+        if copies > counters.paper_remaining:
+            raise InsufficientPaperError(
+                "papier insuffisant : rechargez le bac ou remplacez la cartouche"
+            )
         job = self._printer.print_image(image_path, copies)
         self._job = job
         logger.info("tirage %s soumis (%d copie(s))", job.id, job.copies)

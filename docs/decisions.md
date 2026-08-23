@@ -50,7 +50,7 @@ tirage fera son propre échantillonnage.
 Le format de sortie reste néanmoins pertinent même sans imprimante branchée : c'est lui
 qui fixe le ratio de recadrage, le ratio attendu de l'overlay, et le cadre de visée
 affiché sur l'aperçu. Trois ratios cohabitent dans la chaîne — capteur 16:9, tirage 1,48,
-écran 5:3 — et sans repère explicite on coupe des têtes en bord de cadre.
+écran Waveshare 1024:600 — et sans repère explicite on coupe des têtes en bord de cadre.
 
 ### Configuration d'événement en JSON, pas en base
 
@@ -337,6 +337,13 @@ au visiteur un tirage qu'il n'aura pas, et il attendrait devant la borne.
 Le libellé deviendra « Imprimer » au jalon 7. C'est une chaîne de caractères, pas un
 parcours : la transition, l'état `PRINTING` et l'écran de confirmation ne bougent pas.
 
+Avant de soumettre ce futur tirage, le backend devra comparer le nombre de copies demandé
+au papier restant estimé. S'il n'y en a pas assez, aucun job ne sera créé : la photo reste
+conservée et l'interface propose de prévenir l'organisateur ou de terminer sans impression.
+Ce garde-fou appartient au serveur, même si le bouton est aussi désactivé côté kiosque.
+Le compteur reste une estimation réarmée manuellement après chaque recharge ; il protège
+contre une demande impossible mais ne prétend pas être un capteur physique.
+
 ### Un compteur n'existe qu'accompagné de ce qui le remet à zéro
 
 `data/counters.json` porte deux compteurs : le cumul de l'événement et celui de la
@@ -357,6 +364,13 @@ passer tous les tirages. Repartir de zéro annoncerait du papier qui n'existe pa
 Fichier absent ou corrompu : on repart de zéro en journalisant, jamais un refus de
 démarrer. Même arbitrage que pour la configuration d'événement — un compteur faux se
 corrige, une borne éteinte un samedi soir non.
+
+La CP1500 ne peut charger que **18 feuilles à la fois**. Ce stock physique est suivi
+séparément du kit 36/54/108 : chaque tirage décrémente les deux estimations, une nouvelle
+cartouche réarme les deux, et l'action « bac rechargé » ne réarme que le bac. Avant la
+soumission, le serveur retient le minimum des deux stocks et refuse une demande qui le
+dépasserait. Pour un ancien fichier sans compteur de bac, le repli est conservateur : il
+demande un rechargement explicite plutôt que d'inventer 18 feuilles disponibles.
 
 ## Outillage
 

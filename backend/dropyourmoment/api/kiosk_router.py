@@ -11,6 +11,7 @@ de ne pas figer la boucle d'événements, et donc le flux d'aperçu servi en par
 from __future__ import annotations
 
 import logging
+import shutil
 from collections.abc import Iterator
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -53,6 +54,7 @@ class SessionStatus(BaseModel):
 
 class SystemStatus(BaseModel):
     camera_ok: bool
+    operator_attention: bool
     camera_driver: str
     preview_size: tuple[int, int]
     still_size: tuple[int, int]
@@ -73,6 +75,7 @@ class EventInfo(BaseModel):
     available_filters: list[FilterName]
     print_format_name: str
     print_aspect_ratio: float
+    default_shot_timer_seconds: int
     screen_flash_enabled: bool
 
 
@@ -126,8 +129,14 @@ def read_status(runtime: Runtime = Depends(get_runtime)) -> SessionStatus:
 @router.get("/system/status", response_model=SystemStatus)
 def read_system_status(runtime: Runtime = Depends(get_runtime)) -> SystemStatus:
     caps = runtime.camera.get_capabilities()
+    disk = shutil.disk_usage(runtime.settings.data_dir)
+    camera_ok = runtime.camera.is_available()
+    paper_ok = runtime.counters.read().paper_remaining >= runtime.event.config.copies_per_print
     return SystemStatus(
-        camera_ok=runtime.camera.is_available(),
+        camera_ok=camera_ok,
+        # Le kiosque n'expose ici qu'un signal discret. Les causes et les actions
+        # restent derrière le PIN de maintenance.
+        operator_attention=not camera_ok or disk.free / disk.total <= 0.1 or not paper_ok,
         camera_driver=caps.driver_name,
         preview_size=caps.preview_size,
         still_size=caps.still_size,
@@ -145,6 +154,7 @@ def read_event(runtime: Runtime = Depends(get_runtime)) -> EventInfo:
         available_filters=config.available_filters,
         print_format_name=config.print_format.name,
         print_aspect_ratio=config.print_format.aspect_ratio,
+        default_shot_timer_seconds=config.default_shot_timer_seconds,
         screen_flash_enabled=config.screen_flash_enabled,
     )
 

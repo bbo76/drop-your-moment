@@ -43,6 +43,7 @@ def test_les_reglages_utiles_s_appliquent_au_kiosque(kiosk: TestClient) -> None:
         "/api/maintenance/settings",
         json={
             "copies_per_print": 2,
+            "default_shot_timer_seconds": 10,
             "screen_flash_enabled": False,
             "accent_color": "#8b5cf6",
             "launch_font": "prestigious",
@@ -50,6 +51,7 @@ def test_les_reglages_utiles_s_appliquent_au_kiosque(kiosk: TestClient) -> None:
     )
 
     assert response.status_code == 200
+    assert kiosk.get("/api/event").json()["default_shot_timer_seconds"] == 10
     assert kiosk.get("/api/event").json()["screen_flash_enabled"] is False
     assert kiosk.get("/api/event").json()["accent_color"] == "#8b5cf6"
     assert kiosk.get("/api/event").json()["launch_font"] == "prestigious"
@@ -71,14 +73,22 @@ def test_une_capacite_inconnue_est_refusee(kiosk: TestClient) -> None:
     assert kiosk.post("/api/maintenance/cartridge", json={"capacity": 72}).status_code == 422
 
 
-def test_l_operateur_peut_liberer_la_borne(kiosk: TestClient, runtime: Runtime) -> None:
-    kiosk.post("/api/session")
+def test_le_rechargement_du_bac_est_memorise(kiosk: TestClient, runtime: Runtime) -> None:
+    runtime.counters.record_prints(18)
     _unlock(kiosk)
 
-    response = kiosk.post("/api/maintenance/home")
+    response = kiosk.post("/api/maintenance/cassette/reload")
 
-    assert response.json()["state"] == "idle"
-    assert runtime.machine.session is None
+    assert response.status_code == 200
+    assert response.json()["cassette_capacity"] == 18
+    assert response.json()["prints_since_cassette_reload"] == 0
+    assert response.json()["prints_since_reset"] == 18
+
+
+def test_la_maintenance_locale_ne_peut_pas_liberer_la_borne(kiosk: TestClient) -> None:
+    _unlock(kiosk)
+
+    assert kiosk.post("/api/maintenance/home").status_code == 404
 
 
 def test_la_galerie_locale_est_protegee_et_liste_les_photos(kiosk: TestClient) -> None:

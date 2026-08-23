@@ -13,12 +13,20 @@ import { useKioskState } from "./useKioskState";
 import { MaintenanceAccess } from "./components/MaintenanceAccess";
 import { useEffect, useState } from "react";
 import { applyAccentTheme, LAUNCH_FONT_FAMILIES } from "../shared/theme";
+import {
+  DEBUG_FAILURES,
+  debugFailuresEnabled,
+  mockSystemStatus,
+  type DebugFailure,
+} from "./debugFailures";
 
 export function App() {
   const [maintenanceOpen, setMaintenanceOpen] = useState(false);
+  const [debugFailure, setDebugFailure] = useState<DebugFailure>("none");
+  const debugEnabled = debugFailuresEnabled();
   const {
     session,
-    system,
+    system: realSystem,
     event,
     connection,
     start,
@@ -28,6 +36,7 @@ export function App() {
     retake,
     keepPhoto,
   } = useKioskState();
+  const system = mockSystemStatus(realSystem, debugFailure);
 
   useEffect(() => {
     if (!event) return;
@@ -42,7 +51,15 @@ export function App() {
   }, [event]);
 
   if (maintenanceOpen) {
-    return <MaintenanceAccess onExit={() => setMaintenanceOpen(false)} />;
+    return (
+      <>
+        <MaintenanceAccess
+          debugFailure={debugFailure}
+          onExit={() => setMaintenanceOpen(false)}
+        />
+        {debugEnabled && <DebugFailureBar value={debugFailure} onChange={setDebugFailure} />}
+      </>
+    );
   }
 
   const maintenanceButton = (
@@ -55,13 +72,14 @@ export function App() {
       <svg viewBox="0 0 24 24" aria-hidden="true" className="size-7" fill="none" stroke="currentColor" strokeWidth="2">
         <path d="M14.7 6.3a4 4 0 0 0-5 5L3.5 17.5a2.1 2.1 0 0 0 3 3l6.2-6.2a4 4 0 0 0 5-5l-2.4 2.4-3-3 2.4-2.4Z" />
       </svg>
+      {system?.operator_attention && <span className="maintenance-attention" aria-hidden="true" />}
+      {system?.operator_attention && <span className="sr-only">Une intervention est à vérifier</span>}
     </button>
   );
 
   if (connection === "offline") {
     return (
       <CenteredScreen>
-        {maintenanceButton}
         <Title>Hors service</Title>
         <Lede>Le backend ne répond pas.</Lede>
         <Muted>Prévenez l'organisateur.</Muted>
@@ -72,7 +90,6 @@ export function App() {
   if (!session || !system || !event) {
     return (
       <CenteredScreen>
-        {maintenanceButton}
         <Muted>Démarrage…</Muted>
       </CenteredScreen>
     );
@@ -83,6 +100,7 @@ export function App() {
       return (
         <CenteredScreen>
           {maintenanceButton}
+          {debugEnabled && <DebugFailureBar value={debugFailure} onChange={setDebugFailure} />}
           <Title>{event.launch_message}</Title>
           <Lede>Touchez l'écran pour prendre une photo</Lede>
           <PrimaryButton onClick={start} disabled={!system.camera_ok}>
@@ -98,26 +116,22 @@ export function App() {
 
     case "preview":
       return (
-        <>
-          {maintenanceButton}
-          <PreviewScreen
+        <PreviewScreen
             previewSize={system.preview_size}
             printAspectRatio={event.print_aspect_ratio}
             remainingSeconds={session.remaining_seconds}
+            defaultShotTimerSeconds={event.default_shot_timer_seconds}
             screenFlashEnabled={event.screen_flash_enabled}
             onCapture={capture}
             onCancel={cancel}
           />
-        </>
       );
 
     case "review":
       // photo_url est renseigné dès la capture, mais la boucle de polling peut livrer un
       // état `review` une fraction de seconde avant la réponse de capture.
       return session.photo_url ? (
-        <>
-          {maintenanceButton}
-          <ReviewScreen
+        <ReviewScreen
             photoUrl={session.photo_url}
             availableFilters={event.available_filters}
             selectedFilter={session.selected_filter}
@@ -126,10 +140,8 @@ export function App() {
             onRetake={retake}
             onKeep={keepPhoto}
           />
-        </>
       ) : (
         <CenteredScreen>
-          {maintenanceButton}
           <Muted>Développement de votre photo…</Muted>
         </CenteredScreen>
       );
@@ -145,6 +157,30 @@ export function App() {
 
     case "printing":
     case "done":
-      return <><ConfirmationScreen printing={session.state === "printing"} photoUrl={session.photo_url} remainingSeconds={session.remaining_seconds} />{maintenanceButton}</>;
+      return <ConfirmationScreen printing={session.state === "printing"} photoUrl={session.photo_url} remainingSeconds={session.remaining_seconds} />;
   }
+}
+
+function DebugFailureBar({
+  value,
+  onChange,
+}: {
+  value: DebugFailure;
+  onChange: (failure: DebugFailure) => void;
+}) {
+  return (
+    <aside className="debug-failure-bar" aria-label="Simulation visuelle des pannes">
+      <strong>Simulation</strong>
+      {DEBUG_FAILURES.map((failure) => (
+        <button
+          key={failure.value}
+          type="button"
+          aria-pressed={value === failure.value}
+          onClick={() => onChange(failure.value)}
+        >
+          {failure.label}
+        </button>
+      ))}
+    </aside>
+  );
 }

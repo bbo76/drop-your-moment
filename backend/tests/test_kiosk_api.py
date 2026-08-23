@@ -42,8 +42,17 @@ def test_statut_systeme_decrit_le_materiel(kiosk: TestClient) -> None:
     body = kiosk.get("/api/system/status").json()
 
     assert body["camera_ok"] is True
+    assert body["operator_attention"] is False
     assert body["camera_driver"] == "mock"
     assert body["preview_size"] == [640, 360]
+
+
+def test_statut_systeme_signale_un_bac_papier_vide(kiosk: TestClient, runtime: Runtime) -> None:
+    runtime.counters.record_prints(18)
+
+    body = kiosk.get("/api/system/status").json()
+
+    assert body["operator_attention"] is True
 
 
 def test_info_evenement_separee_du_materiel(kiosk: TestClient) -> None:
@@ -56,6 +65,7 @@ def test_info_evenement_separee_du_materiel(kiosk: TestClient) -> None:
 
     assert body["print_aspect_ratio"] == POSTCARD_LANDSCAPE.aspect_ratio
     assert body["available_filters"] == ["original", "bw", "sepia"]
+    assert body["default_shot_timer_seconds"] == 3
     assert body["event_name"]
 
 
@@ -70,6 +80,7 @@ def test_camera_absente_signalee_sans_faire_tomber_l_api(runtime: Runtime) -> No
         body = client.get("/api/system/status").json()
 
     assert body["camera_ok"] is False
+    assert body["operator_attention"] is True
 
 
 def _parse_frames(stream: Iterator[bytes], wanted: int) -> list[bytes]:

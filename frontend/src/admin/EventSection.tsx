@@ -8,6 +8,7 @@ import {
   type FilterName,
   type LaunchFont,
   type PrintFormatPayload,
+  type ShotTimerSeconds,
 } from "../shared/api";
 import { Button, Feedback, Field, inputClass, Section } from "./ui";
 import { applyAccentTheme } from "../shared/theme";
@@ -23,6 +24,7 @@ import { applyAccentTheme } from "../shared/theme";
  * enregistrement. Seul le téléversement écrit ce champ. */
 
 const ALL_FILTERS = Object.keys(FILTER_LABELS) as FilterName[];
+const SHOT_TIMER_OPTIONS: ShotTimerSeconds[] = [3, 5, 10];
 const LAUNCH_FONTS: Array<{ value: LaunchFont; label: string; sample: string }> = [
   { value: "modern", label: "Moderne", sample: "Un moment à vous" },
   { value: "geometric", label: "Graphique", sample: "Place à la fête" },
@@ -300,6 +302,30 @@ export function EventSection() {
             onChange={(e) => patch({ copies_per_print: Number(e.target.value) })}
           />
         </Field>
+
+        <fieldset>
+          <legend className="mb-1 text-sm text-muted">Minuteur photo par défaut</legend>
+          <div className="inline-flex rounded-panel border-2 border-edge bg-surface p-1">
+            {SHOT_TIMER_OPTIONS.map((seconds) => (
+              <button
+                key={seconds}
+                type="button"
+                aria-pressed={draft.default_shot_timer_seconds === seconds}
+                onClick={() => patch({ default_shot_timer_seconds: seconds })}
+                className={`min-h-11 min-w-16 rounded-lg px-4 font-bold transition-colors ${
+                  draft.default_shot_timer_seconds === seconds
+                    ? "bg-accent text-accent-ink"
+                    : "text-body"
+                }`}
+              >
+                {seconds} s
+              </button>
+            ))}
+          </div>
+          <span className="mt-1 block text-xs text-muted">
+            Présélectionné sur la borne ; chaque visiteur peut encore choisir 3, 5 ou 10 secondes.
+          </span>
+        </fieldset>
 
         <Field label="Flash écran">
           <label className="flex items-start gap-3 text-sm">

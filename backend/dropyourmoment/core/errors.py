@@ -34,6 +34,10 @@ class PrintJobFailedError(PrinterError):
     """Le job a été accepté puis a échoué (bourrage, plus de papier, déconnexion)."""
 
 
+class InsufficientPaperError(PrinterError):
+    """Le stock estimé du bac ou de la cartouche ne couvre pas le tirage demandé."""
+
+
 class InvalidTransitionError(PhotoboothError):
     """Événement inapplicable dans l'état courant de la session."""
 

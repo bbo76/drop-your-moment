@@ -1,6 +1,11 @@
 ---
 name: Drop Your Moment — Kiosk
 description: Un système de signalétique événementielle tactile, direct et hospitalier.
+viewport:
+  canonicalWidth: 1024
+  canonicalHeight: 600
+  devicePixelRatio: 1
+  orientation: landscape
 colors:
   action-yellow: "#ffd400"
   night-field: "#101418"
@@ -86,7 +91,7 @@ components:
 
 **Creative North Star: "Le Quai des Moments"**
 
-Le kiosk transpose la clarté d'une grande signalétique de transport dans un photobooth événementiel chaleureux. Chaque écran conduit vers une décision évidente avec une composition stricte, une typographie monumentale et des contrôles dimensionnés pour le doigt sur un écran paysage de 7 pouces.
+Le kiosk transpose la clarté d'une grande signalétique de transport dans un photobooth événementiel chaleureux. Chaque écran conduit vers une décision évidente avec une composition stricte, une typographie monumentale et des contrôles dimensionnés pour le doigt sur le Waveshare 7 pouces paysage de 1024×600 px à DPR 1.
 
 Le champ presque noir calme l'environnement tandis que le jaune saturé agit comme un signal opérationnel rare et immédiat. Le matériau reste plat et franc : aplats, bordures structurelles et changements d'état nets remplacent les effets décoratifs. La voix française est brève, rassurante et hospitalière, sans jargon pour les invités.
 
@@ -166,9 +171,23 @@ opérationnels présentent chaque information comme également urgente.
 
 ## Layout
 
-Le kiosk occupe exactement la fenêtre et ne défile pas. Les écrans invités suivent une composition centrée ou une séparation image/action en deux colonnes ; l'aperçu réserve une barre d'action horizontale en pied. Les espacements récurrents vont de 0.5rem à 2.5rem et restent réguliers à l'intérieur d'une même zone.
+Le kiosk occupe exactement une matrice canonique de **1024×600 px à DPR 1** et ne défile
+pas. Les écrans invités suivent une composition centrée ou une séparation image/action en
+deux colonnes ; l'aperçu réserve une barre d'action horizontale en pied. Les espacements
+récurrents vont de 0.5rem à 2.5rem et restent réguliers à l'intérieur d'une même zone.
 
-L'accès PIN est un écran partagé : contenu et état de saisie à gauche, clavier jaune fixe de 22rem à droite. La maintenance s'ouvre sur quatre grandes tuiles en grille 2×2 — Santé, Impression, Galerie et Réglages borne — puis chaque tuile conduit à un écran spécialisé avec un retour permanent. Les détails restent en deux zones lorsque cela facilite le balayage visuel. Sous 600px de hauteur, les marges et blocs se resserrent sans changer la hiérarchie ni introduire de défilement.
+La grille de référence utilise un bord de 12 à 20 px selon l'écran, des gouttières de 12 à
+16 px et des cibles tactiles de **56 px minimum**. L'action principale mesure 64 px de
+haut. À cette densité, les quatre zones de l'aperçu — consigne, minuteur, déclenchement,
+sortie — tiennent sur une ligne et partagent le même axe vertical. Les aides temporelles
+peuvent s'effacer avant qu'une cible tactile ne soit réduite.
+
+L'accès PIN est un écran partagé : contenu et état de saisie à gauche, clavier de signal
+fixe de 22rem à droite. La maintenance s'ouvre sur quatre grandes tuiles en grille 2×2 —
+Santé, Impression, Galerie et Réglages borne — puis chaque tuile conduit à un écran
+spécialisé avec un retour permanent. Les détails restent en deux zones lorsque cela
+facilite le balayage visuel. À 600 px de hauteur, les marges et blocs adoptent directement
+leur densité d'exploitation sans changer la hiérarchie ni introduire de défilement.
 
 **The One Decision Rule.** Une composition peut exposer plusieurs informations, mais une seule action doit dominer visuellement chaque étape du parcours invité.
 
@@ -188,7 +207,8 @@ Les panneaux et contrôles utilisent des rectangles légèrement arrondis : 0.75
 
 ### Buttons
 
-- **Shape:** rectangle tactile légèrement arrondi, minimum 4rem pour l'action principale et 3.5rem pour l'action secondaire.
+- **Shape:** rectangle tactile légèrement arrondi, 64 px pour l'action principale et
+  56 px minimum pour toute action secondaire ou tout choix permanent.
 - **Primary:** couleur événementielle, texte contrasté en graisse 500 et padding horizontal ample.
 - **Hover / Focus:** transition couleur de 160ms, contour jaune de 4px décalé de 4px au clavier ; pression tactile à 97% pendant 120ms.
 - **Ghost:** fond transparent, bordure structurelle de 2px et texte blanc chaud.
@@ -210,7 +230,33 @@ La tuile Impression porte le résumé des copies et consommables. Réglages born
 **Apparence** de **Écran & session** : l'apparence propose dix teintes événementielles
 nommées et contrastées plutôt qu'un color picker impraticable au doigt, ainsi que les dix
 fontes du launch screen. Le portail PC reste la surface de réglage avancé pour une couleur
-hexadécimale libre.
+hexadécimale libre. **Écran & session** regroupe uniquement le flash d’appoint et la durée
+présélectionnée du minuteur. L’interruption forcée d’une session appartient au portail
+distant : une commande locale pour « libérer » l’écran sur lequel elle s’affiche serait
+une fausse action.
+
+### Action Rail
+
+Au repos, la barre d’aperçu aligne la consigne, le minuteur, le déclenchement et la sortie
+sur une ligne de base unique. Pendant le décompte, ces contrôles s’effacent et
+**« Souriez… » est centré sur la barre entière**, indépendamment des colonnes précédentes.
+Le texte transitoire ne déplace jamais le flux vidéo ni la zone de décision.
+
+L’accès maintenance par clé à molette appartient uniquement à l’accueil. Il disparaît dès
+qu’une session commence afin de ne jamais recouvrir l’aperçu, la photo ou la confirmation,
+et pour éviter qu’un invité interrompe le parcours au milieu d’une prise.
+Un point corail sur la clé signale qu’une vérification opérateur est nécessaire, sans
+exposer le diagnostic aux invités. Dans la maintenance, chaque incident associe un picto
+matériel, un libellé explicite et une couleur d’état ; le picto ne remplace jamais le texte.
+
+### Portail complet
+
+Le portail PC reprend les mêmes couleurs et la même typographie, mais pas la densité
+tactile du kiosque. Sa colonne d’exploitation est centrée et plafonnée à 1152 px. Dans un
+groupe de commandes, l’accent plein désigne l’action courante, le contour acier un
+diagnostic sans conséquence et le contour corail une interruption de parcours. La
+commande distante « Libérer la borne » n’apparaît que lorsqu’une session est active et
+demande confirmation avant de la remettre à l’accueil.
 
 ### Inputs / Fields
 
@@ -226,7 +272,10 @@ Le chiffre monumental apparaît dans un carré d'accent parfaitement centré au 
 
 ### Framing Guide
 
-Deux masques noirs translucides assombrissent les zones rognées de l'aperçu. Une paire de pointillés blancs délimite la zone conservée, soutenue par la consigne concise « Cadrez-vous entre les pointillés ».
+Deux masques noirs translucides assombrissent les zones rognées de l'aperçu. Une paire de
+pointillés blancs délimite la zone conservée, soutenue par la consigne concise
+« Cadrez-vous entre les pointillés ». Le guide compare le flux caméra et le format de
+tirage ; le ratio 1024:600 de l'écran ne doit jamais être confondu avec l'un ou l'autre.
 
 ## Do's and Don'ts
 

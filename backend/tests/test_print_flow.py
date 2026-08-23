@@ -125,6 +125,18 @@ def test_le_compteur_ne_bouge_pas_sans_tirage(kiosk: TestClient, runtime: Runtim
     assert runtime.counters.read().prints_total == 0
 
 
+def test_le_bac_cp1500_refuse_un_dix_neuvieme_tirage(
+    kiosk: TestClient, runtime: Runtime, printer: FakePrinterDriver
+) -> None:
+    runtime.counters.record_prints(18)
+    session_id = capture(kiosk)
+
+    body = kiosk.post(f"/api/session/{session_id}/print").json()
+
+    assert body["state"] == SessionState.ERROR
+    assert printer.printed == []
+
+
 def test_le_tirage_conserve_les_fichiers(kiosk: TestClient, runtime: Runtime) -> None:
     """Contrairement à « refaire » : une photo tirée appartient à la galerie."""
     session_id = capture(kiosk)
