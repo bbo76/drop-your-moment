@@ -9,7 +9,7 @@ import type { ReactNode } from "react";
 
 export function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="mb-6 rounded-panel border border-edge bg-surface p-6">
+    <section className="mb-6 rounded-panel border border-edge bg-surface p-4 sm:p-6">
       <h2 className="mb-4 text-lg font-medium">{title}</h2>
       {children}
     </section>
@@ -52,18 +52,25 @@ export function Button({
   onClick,
   disabled,
   type = "button",
+  tone = "primary",
 }: {
   children: ReactNode;
   onClick?: () => void;
   disabled?: boolean;
   type?: "button" | "submit";
+  tone?: "primary" | "secondary" | "warning";
 }) {
+  const toneClass = {
+    primary: "border-accent bg-accent text-accent-ink",
+    secondary: "border-edge bg-transparent text-body",
+    warning: "border-warn bg-transparent text-warn",
+  }[tone];
   return (
     <button
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className="rounded bg-accent px-4 py-2 font-medium text-accent-ink disabled:opacity-40"
+      className={`rounded border px-4 py-2 font-medium disabled:opacity-40 ${toneClass}`}
     >
       {children}
     </button>

@@ -8,13 +8,16 @@ import {
   type LaunchFont,
   type MaintenanceSettings,
   type MaintenanceSnapshot,
+  type ShotTimerSeconds,
 } from "../../shared/api";
 import { applyAccentTheme, LAUNCH_FONT_FAMILIES } from "../../shared/theme";
-import { GhostButton, PrimaryButton } from "./Screen";
+import { mockMaintenanceSnapshot, type DebugFailure } from "../debugFailures";
+import { GhostButton } from "./Screen";
 
 const PIN_LENGTH = 4;
 const POLL_INTERVAL_MS = 2000;
 const CAPACITIES = [36, 54, 108];
+const SHOT_TIMER_OPTIONS: ShotTimerSeconds[] = [3, 5, 10];
 const EVENT_PALETTE = [
   { name: "Or", value: "#ffd400" },
   { name: "Champagne", value: "#d9b66f" },
@@ -40,10 +43,11 @@ const KIOSK_FONTS: Array<{ value: LaunchFont; label: string }> = [
   { value: "spooky", label: "Halloween" },
 ];
 
-export function MaintenanceAccess({ onExit }: { onExit: () => void }) {
+export function MaintenanceAccess({ onExit, debugFailure = "none" }: { onExit: () => void; debugFailure?: DebugFailure }) {
   const [unlocked, setUnlocked] = useState(false);
   return unlocked ? (
     <MaintenancePanel
+      debugFailure={debugFailure}
       onExpired={onExit}
       onExit={async () => {
         try {
@@ -91,8 +95,8 @@ function PinScreen({ onUnlocked, onCancel }: { onUnlocked: () => void; onCancel:
     <main className="maintenance-shell grid h-full grid-cols-[1fr_22rem]">
       <section className="flex flex-col justify-between p-10">
         <div>
-          <p className="type-kiosk-label mb-4 text-lg text-accent">Accès réservé</p>
           <h1 className="type-kiosk-display max-w-[9ch] text-6xl">Maintenance</h1>
+          <p className="type-kiosk-label mt-3 text-lg text-muted">Accès réservé à l’organisateur</p>
         </div>
         <div>
           <p className="type-kiosk-section-title text-xl">Saisissez le code de la borne</p>
@@ -128,7 +132,7 @@ function PinScreen({ onUnlocked, onCancel }: { onUnlocked: () => void; onCancel:
 
 type MaintenanceView = "home" | "health" | "printing" | "gallery" | "settings";
 
-function MaintenancePanel({ onExpired, onExit }: { onExpired: () => void; onExit: () => void }) {
+function MaintenancePanel({ onExpired, onExit, debugFailure }: { onExpired: () => void; onExit: () => void; debugFailure: DebugFailure }) {
   const [snapshot, setSnapshot] = useState<MaintenanceSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -136,13 +140,13 @@ function MaintenancePanel({ onExpired, onExit }: { onExpired: () => void; onExit
 
   const load = useCallback(async () => {
     try {
-      setSnapshot(await api.maintenanceStatus());
+      setSnapshot(mockMaintenanceSnapshot(await api.maintenanceStatus(), debugFailure));
       setError(null);
     } catch (cause) {
       if (String(cause).includes("expirée")) onExpired();
       else setError("Impossible de lire l’état de la borne.");
     }
-  }, [onExpired]);
+  }, [debugFailure, onExpired]);
 
   useEffect(() => {
     void load();
@@ -151,7 +155,7 @@ function MaintenancePanel({ onExpired, onExit }: { onExpired: () => void; onExit
   }, [load]);
 
   const saveSettings = async (changes: Partial<MaintenanceSettings>) => {
-    if (!snapshot) return;
+    if (!snapshot || debugFailure !== "none") return;
     setSaving(true);
     try {
       const settings = await api.saveMaintenanceSettings({ ...snapshot.settings, ...changes });
@@ -171,13 +175,23 @@ function MaintenancePanel({ onExpired, onExit }: { onExpired: () => void; onExit
 
   const { health, settings } = snapshot;
   const freeRatio = health.disk_free_bytes / health.disk_total_bytes;
-  const ready = health.camera_ok && freeRatio > 0.1;
+  const paperReady = paperRemaining(health.counters) >= settings.copies_per_print;
+  const status: MaintenanceStatus = !paperReady
+    ? "paper"
+    : !health.camera_ok
+      ? "camera"
+      : freeRatio <= 0.1
+        ? "disk"
+        : health.printer_driver === "offline"
+          ? "printer"
+          : "ready";
+  const controlsDisabled = saving || debugFailure !== "none";
 
   const updateSnapshot = (fresh: MaintenanceSnapshot) => setSnapshot(fresh);
 
   if (view === "health") {
     return (
-      <MaintenanceFrame title="Santé de la borne" ready={ready} onBack={() => setView("home")}>
+      <MaintenanceFrame title="Santé de la borne" status={status} onBack={() => setView("home")}>
         <HealthView snapshot={snapshot} />
       </MaintenanceFrame>
     );
@@ -185,10 +199,10 @@ function MaintenancePanel({ onExpired, onExit }: { onExpired: () => void; onExit
 
   if (view === "printing") {
     return (
-      <MaintenanceFrame title="Impression" ready={ready} onBack={() => setView("home")}>
+      <MaintenanceFrame title="Impression" status={status} onBack={() => setView("home")}>
         <PrintingView
           snapshot={snapshot}
-          saving={saving}
+          saving={controlsDisabled}
           setSaving={setSaving}
           setError={setError}
           onChange={updateSnapshot}
@@ -200,7 +214,7 @@ function MaintenancePanel({ onExpired, onExit }: { onExpired: () => void; onExit
 
   if (view === "gallery") {
     return (
-      <MaintenanceFrame title="Galerie photo" ready={ready} onBack={() => setView("home")}>
+      <MaintenanceFrame title="Galerie photo" status={status} onBack={() => setView("home")}>
         <KioskGallery onExpired={onExpired} />
       </MaintenanceFrame>
     );
@@ -208,15 +222,11 @@ function MaintenancePanel({ onExpired, onExit }: { onExpired: () => void; onExit
 
   if (view === "settings") {
     return (
-      <MaintenanceFrame title="Réglages borne" ready={ready} onBack={() => setView("home")}>
+      <MaintenanceFrame title="Réglages borne" status={status} onBack={() => setView("home")}>
         <SettingsView
           snapshot={snapshot}
-          saving={saving}
+          saving={controlsDisabled}
           onSaveSettings={saveSettings}
-          onRelease={async () => {
-            await api.forceHome();
-            onExit();
-          }}
         />
       </MaintenanceFrame>
     );
@@ -230,9 +240,7 @@ function MaintenancePanel({ onExpired, onExit }: { onExpired: () => void; onExit
           <p className="text-base text-muted">Que voulez-vous vérifier ?</p>
         </div>
         <div className="flex items-center gap-3">
-          <div className={`status-banner ${ready ? "status-ready" : "status-warning"}`}>
-            <span className="status-dot" />{ready ? "Borne prête" : "Intervention requise"}
-          </div>
+          <MaintenanceStatusBanner status={status} />
           <GhostButton onClick={onExit}>Fermer</GhostButton>
         </div>
       </header>
@@ -240,13 +248,13 @@ function MaintenancePanel({ onExpired, onExit }: { onExpired: () => void; onExit
         <MaintenanceTile
           icon="health"
           title="Santé"
-          detail={`${Math.round(health.cpu_percent)} % CPU · ${Math.round(health.memory_percent)} % RAM`}
+          detail={healthTileDetail(health)}
           onClick={() => setView("health")}
         />
         <MaintenanceTile
           icon="print"
           title="Impression"
-          detail={`${settings.copies_per_print} copie${settings.copies_per_print > 1 ? "s" : ""} · ${Math.max(0, health.counters.cartridge_capacity - health.counters.prints_since_reset)} tirages restants`}
+          detail={health.printer_driver === "offline" ? "Imprimante hors ligne · vérifier la liaison" : printingTileDetail(health.counters, settings.copies_per_print)}
           onClick={() => setView("printing")}
         />
         <MaintenanceTile
@@ -269,12 +277,12 @@ function MaintenancePanel({ onExpired, onExit }: { onExpired: () => void; onExit
 
 function MaintenanceFrame({
   title,
-  ready,
+  status,
   onBack,
   children,
 }: {
   title: string;
-  ready: boolean;
+  status: MaintenanceStatus;
   onBack: () => void;
   children: ReactNode;
 }) {
@@ -285,13 +293,45 @@ function MaintenanceFrame({
           <GhostButton onClick={onBack}>Retour</GhostButton>
           <h1 className="type-kiosk-screen-title text-3xl">{title}</h1>
         </div>
-        <div className={`status-banner ${ready ? "status-ready" : "status-warning"}`}>
-          <span className="status-dot" />{ready ? "Borne prête" : "À vérifier"}
-        </div>
+        <MaintenanceStatusBanner status={status} />
       </header>
       {children}
     </main>
   );
+}
+
+type MaintenanceStatus = "ready" | "paper" | "camera" | "disk" | "printer";
+
+function MaintenanceStatusBanner({ status }: { status: MaintenanceStatus }) {
+  if (status !== "ready") {
+    const labels = {
+      paper: "Papier à recharger",
+      camera: "Caméra absente",
+      disk: "Stockage presque plein",
+      printer: "Imprimante déconnectée",
+    } as const;
+    return (
+      <div className="hardware-alert" role="status" aria-label={labels[status]}>
+        <HardwareAlertIcon kind={status} />
+      </div>
+    );
+  }
+  return (
+    <div className="status-banner status-ready">
+      <span className="status-dot" />
+      Borne prête
+    </div>
+  );
+}
+
+function HardwareAlertIcon({ kind }: { kind: Exclude<MaintenanceStatus, "ready"> }) {
+  if (kind === "camera") {
+    return <svg viewBox="0 0 24 24" aria-hidden="true" className="hardware-alert-icon"><rect x="3" y="6" width="14" height="12" rx="2" /><path d="m17 10 4-2v8l-4-2" /></svg>;
+  }
+  if (kind === "disk") {
+    return <svg viewBox="0 0 24 24" aria-hidden="true" className="hardware-alert-icon"><ellipse cx="12" cy="5" rx="8" ry="3" /><path d="M4 5v7c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12v7c0 1.7 3.6 3 8 3s8-1.3 8-3v-7" /></svg>;
+  }
+  return <MaintenanceIcon name="print" className="hardware-alert-icon" />;
 }
 
 function MaintenanceTile({
@@ -319,14 +359,14 @@ function MaintenanceTile({
   );
 }
 
-function MaintenanceIcon({ name }: { name: "health" | "print" | "gallery" | "settings" }) {
+function MaintenanceIcon({ name, className = "tile-icon" }: { name: "health" | "print" | "gallery" | "settings"; className?: string }) {
   const paths = {
     health: <path d="M3 12h4l2-6 4 12 2-6h6" />,
     print: <><path d="M7 9V3h10v6M7 18H5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><path d="M7 14h10v7H7z" /></>,
     gallery: <><rect x="3" y="4" width="18" height="16" rx="2" /><path d="m3 16 5-5 4 4 2-2 7 7M16 8h.01" /></>,
     settings: <><path d="M4 7h10M18 7h2M4 17h2M10 17h10" /><circle cx="16" cy="7" r="2" /><circle cx="8" cy="17" r="2" /></>,
   };
-  return <svg viewBox="0 0 24 24" aria-hidden="true" className="tile-icon">{paths[name]}</svg>;
+  return <svg viewBox="0 0 24 24" aria-hidden="true" className={className}>{paths[name]}</svg>;
 }
 
 function HealthView({ snapshot }: { snapshot: MaintenanceSnapshot }) {
@@ -365,13 +405,13 @@ function PrintingView({
 }) {
   const [pendingCapacity, setPendingCapacity] = useState<number | null>(null);
   const { health, settings } = snapshot;
-  const remaining = Math.max(0, health.counters.cartridge_capacity - health.counters.prints_since_reset);
+  const remaining = paperRemaining(health.counters);
   return (
     <section className="maintenance-detail grid min-h-0 grid-cols-[0.8fr_1.2fr] gap-4">
       <div className="maintenance-block flex flex-col justify-between">
         <div><p className="type-kiosk-label text-lg text-muted">Papier restant</p><p className="type-kiosk-data text-7xl">{remaining}</p></div>
-        <div className="type-kiosk-meta text-lg text-muted"><p>{health.counters.prints_since_reset} tirages utilisés</p><p>{health.counters.prints_total} sur l’événement</p></div>
-        <p className="type-kiosk-section-title text-lg">{health.printer_driver === "null" ? "Mode numérique" : "CP1500 connectée"}</p>
+        <div className="type-kiosk-meta text-lg text-muted"><p>Bac CP1500 : {Math.max(0, health.counters.cassette_capacity - health.counters.prints_since_cassette_reload)} / {health.counters.cassette_capacity}</p><p>Cartouche : {Math.max(0, health.counters.cartridge_capacity - health.counters.prints_since_reset)} restantes</p><p>{health.counters.prints_total} sur l’événement</p></div>
+        <p className="type-kiosk-section-title text-lg">{health.printer_driver === "null" ? "Mode numérique" : health.printer_driver === "offline" ? "CP1500 déconnectée" : "CP1500 connectée"}</p>
       </div>
       <div className="maintenance-block flex flex-col justify-between">
         <Setting title="Copies par photo" description="Appliqué dès la prochaine photo">
@@ -380,15 +420,51 @@ function PrintingView({
           </div>
         </Setting>
         <div>
+          <button type="button" disabled={saving} className="maintenance-choice mb-3 w-full" onClick={async () => { setSaving(true); try { const counters = await api.reloadCassette(); onChange({ ...snapshot, health: { ...health, counters } }); setError(null); } catch { setError("Le rechargement du bac n’a pas été enregistré."); } finally { setSaving(false); } }}>Bac rechargé (18 feuilles)</button>
           <p className="type-kiosk-label mb-2 text-base">Nouvelle cartouche</p>
-          {pendingCapacity === null ? <div className="grid grid-cols-3 gap-2">{CAPACITIES.map((capacity) => <button key={capacity} type="button" className="maintenance-choice" onClick={() => setPendingCapacity(capacity)}>{capacity}</button>)}</div> : <div className="cartridge-confirm" role="alert"><strong>Cartouche {pendingCapacity}</strong><button type="button" onClick={() => setPendingCapacity(null)}>Annuler</button><button type="button" disabled={saving} onClick={async () => { setSaving(true); try { const counters = await api.changeCartridge(pendingCapacity); onChange({ ...snapshot, health: { ...health, counters } }); setPendingCapacity(null); setError(null); } catch { setError("Le compteur papier n’a pas été réinitialisé."); } finally { setSaving(false); } }}>Confirmer</button></div>}
+          {pendingCapacity === null ? <div className="grid grid-cols-3 gap-2">{CAPACITIES.map((capacity) => <button key={capacity} type="button" disabled={saving} className="maintenance-choice" onClick={() => setPendingCapacity(capacity)}>{capacity}</button>)}</div> : <div className="cartridge-confirm" role="alert"><strong>Cartouche {pendingCapacity}</strong><button type="button" onClick={() => setPendingCapacity(null)}>Annuler</button><button type="button" disabled={saving} onClick={async () => { setSaving(true); try { const counters = await api.changeCartridge(pendingCapacity); onChange({ ...snapshot, health: { ...health, counters } }); setPendingCapacity(null); setError(null); } catch { setError("Le compteur papier n’a pas été réinitialisé."); } finally { setSaving(false); } }}>Confirmer</button></div>}
         </div>
       </div>
     </section>
   );
 }
 
-function SettingsView({ snapshot, saving, onSaveSettings, onRelease }: { snapshot: MaintenanceSnapshot; saving: boolean; onSaveSettings: (changes: Partial<MaintenanceSettings>) => Promise<void>; onRelease: () => Promise<void> }) {
+function paperRemaining(counters: MaintenanceSnapshot["health"]["counters"]) {
+  return Math.max(0, Math.min(
+    counters.cartridge_capacity - counters.prints_since_reset,
+    counters.cassette_capacity - counters.prints_since_cassette_reload,
+  ));
+}
+
+function printingTileDetail(
+  counters: MaintenanceSnapshot["health"]["counters"],
+  copies: number,
+) {
+  const cassetteRemaining = Math.max(
+    0,
+    counters.cassette_capacity - counters.prints_since_cassette_reload,
+  );
+  const cartridgeRemaining = Math.max(
+    0,
+    counters.cartridge_capacity - counters.prints_since_reset,
+  );
+  const cassetteEmpty = cassetteRemaining < copies;
+  const cartridgeEmpty = cartridgeRemaining < copies;
+  if (cassetteEmpty && cartridgeEmpty) return "Papier épuisé · bac et cartouche à remplacer";
+  if (cassetteEmpty) return "Bac vide · rechargez 18 feuilles";
+  if (cartridgeEmpty) return "Cartouche épuisée · à remplacer";
+  return `${copies} copie${copies > 1 ? "s" : ""} · ${Math.min(cassetteRemaining, cartridgeRemaining)} feuilles disponibles`;
+}
+
+function healthTileDetail(health: MaintenanceSnapshot["health"]) {
+  if (!health.camera_ok) return "Caméra absente · vérifier la connexion";
+  if (health.disk_free_bytes / health.disk_total_bytes <= 0.1) {
+    return "Stockage presque plein · libérer de l’espace";
+  }
+  return `${Math.round(health.cpu_percent)} % CPU · ${Math.round(health.memory_percent)} % RAM`;
+}
+
+function SettingsView({ snapshot, saving, onSaveSettings }: { snapshot: MaintenanceSnapshot; saving: boolean; onSaveSettings: (changes: Partial<MaintenanceSettings>) => Promise<void> }) {
   const [section, setSection] = useState<"appearance" | "system">("appearance");
   const { settings } = snapshot;
   return (
@@ -440,7 +516,24 @@ function SettingsView({ snapshot, saving, onSaveSettings, onRelease }: { snapsho
               <button type="button" disabled={saving} aria-pressed={settings.screen_flash_enabled} className="maintenance-toggle" onClick={() => void onSaveSettings({ screen_flash_enabled: !settings.screen_flash_enabled })}><span>{settings.screen_flash_enabled ? "Activé" : "Désactivé"}</span><span className="toggle-track"><span className="toggle-thumb" /></span></button>
             </Setting>
           </div>
-          <div className="maintenance-block flex flex-col justify-center gap-3"><h2 className="type-kiosk-section-title text-2xl">Session bloquée ?</h2><p className="type-kiosk-meta text-lg text-muted">Annule la prise en cours et rend la borne aux invités.</p><PrimaryButton onClick={() => void onRelease()}>Libérer la borne</PrimaryButton></div>
+          <div className="maintenance-block flex flex-col justify-center">
+            <Setting title="Minuteur par défaut" description="Présélectionné pour chaque nouvelle photo">
+              <div className="grid grid-cols-3 gap-2">
+                {SHOT_TIMER_OPTIONS.map((seconds) => (
+                  <button
+                    key={seconds}
+                    type="button"
+                    disabled={saving}
+                    aria-pressed={settings.default_shot_timer_seconds === seconds}
+                    className="maintenance-choice"
+                    onClick={() => void onSaveSettings({ default_shot_timer_seconds: seconds })}
+                  >
+                    {seconds} s
+                  </button>
+                ))}
+              </div>
+            </Setting>
+          </div>
         </div>
       )}
     </section>

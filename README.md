@@ -73,7 +73,7 @@ Le bouton outil, présent dans le coin supérieur droit du kiosque, ouvre une ma
 tactile protégée par un PIN à quatre chiffres. Quatre grandes tuiles donnent accès à la
 santé (caméra, stockage, CPU, RAM), à l'impression (connexion CP1500, papier, compteurs,
 cartouche et copies), aux dernières photos et aux réglages de la borne (flash écran et
-retour forcé à l'accueil). La borne permet aussi de choisir rapidement son ambiance parmi
+minuteur par défaut). La borne permet aussi de choisir rapidement son ambiance parmi
 dix couleurs événementielles présélectionnées et les dix typographies du launch screen ;
 le portail PC conserve, lui, un sélecteur de couleur totalement libre. La maintenance se
 referme automatiquement après cinq minutes.
@@ -92,10 +92,12 @@ l'accès est censé rester limité au réseau d'un événement.
   imprimante, état de session, les deux compteurs de tirages face aux cartouches CP1500
   (36 / 54 / 108), espace disque, CPU, RAM et température quand le système l'expose. C'est
   la page qu'on laisse ouverte pendant un événement, et elle ne sonde ni périphérique ni
-  répertoire.
+  répertoire. Lorsqu’une session est active, elle permet aussi de ramener la borne à
+  l’accueil après confirmation.
 - **Événement** — nom, filtres proposés, format de sortie, nombre de copies, téléversement
-  de l'overlay, activation du flash écran. Une modification est vue par le kiosque **sans
-  redémarrage** : c'est la raison d'être du process unique à deux sockets.
+  de l'overlay, minuteur par défaut et activation du flash écran. Une modification est vue
+  par le kiosque **sans redémarrage** : c'est la raison d'être du process unique à deux
+  sockets.
 - **Galerie** — liste paginée, vignettes ouvrables en plein écran, téléchargement
   explicite, suppression définitive après confirmation, archive zip de l'événement servie
   en flux.
@@ -164,6 +166,12 @@ task run CAMERA=mock   # force la mire de synthèse
 Le kiosque est alors sur <http://127.0.0.1:8000> et l'administration sur
 <http://127.0.0.1:8001> — ou tous deux sur <http://localhost:5173> et
 <http://localhost:5173/admin.html> en mode `task dev`.
+
+Pour vérifier les états de panne sans consommer de papier ni prendre de photos, ouvrir le
+kiosque avec `?debug=1` (par exemple <http://127.0.0.1:8000/?debug=1>). Une barre permet
+de simuler visuellement un bac vide, une imprimante déconnectée, une caméra absente ou un disque
+presque plein. Les actions qui modifieraient les réglages ou consommables réels sont
+désactivées pendant une simulation ; « Réel » revient immédiatement aux données du backend.
 
 ### Backend
 

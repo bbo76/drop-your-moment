@@ -15,13 +15,13 @@ import { SecuritySection } from "./SecuritySection";
 
 export function AdminApp() {
   return (
-    <div className="min-h-full p-8">
+    <div className="mx-auto min-h-full max-w-6xl p-5 sm:p-8">
       <header className="mb-8">
         <h1 className="text-2xl font-semibold">Drop Your Moment</h1>
         <p className="text-muted">Administration</p>
       </header>
 
-      <div className="max-w-5xl">
+      <div>
         <HealthSection />
         <EventSection />
         <SecuritySection />

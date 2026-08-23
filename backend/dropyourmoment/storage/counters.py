@@ -25,6 +25,7 @@ from dropyourmoment.storage.atomic import write_atomic
 logger = logging.getLogger(__name__)
 
 COUNTERS_FILENAME = "counters.json"
+PAPER_CASSETTE_CAPACITY = 18
 
 
 @dataclass(frozen=True)
@@ -36,6 +37,18 @@ class Counters:
     # aucun calcul ne s'appuie dessus.
     reset_at: str | None = None
     cartridge_capacity: int = 108
+    prints_since_cassette_reload: int = 0
+
+    @property
+    def paper_remaining(self) -> int:
+        """Stock utilisable : le plus petit restant entre kit et bac physique."""
+        return max(
+            0,
+            min(
+                self.cartridge_capacity - self.prints_since_reset,
+                PAPER_CASSETTE_CAPACITY - self.prints_since_cassette_reload,
+            ),
+        )
 
 
 class CounterStore:
@@ -64,6 +77,9 @@ class CounterStore:
                 prints_since_reset=int(payload.get("prints_since_reset", total)),
                 reset_at=None if reset_at is None else str(reset_at),
                 cartridge_capacity=int(payload.get("cartridge_capacity", 108)),
+                prints_since_cassette_reload=int(
+                    payload.get("prints_since_cassette_reload", total)
+                ),
             )
         except (json.JSONDecodeError, KeyError, TypeError, ValueError, OSError) as exc:
             # Repartir de zéro plutôt que refuser de démarrer : même arbitrage que pour la
@@ -78,6 +94,7 @@ class CounterStore:
             current,
             prints_total=current.prints_total + copies,
             prints_since_reset=current.prints_since_reset + copies,
+            prints_since_cassette_reload=current.prints_since_cassette_reload + copies,
         )
         self._write(updated)
         logger.info(
@@ -101,11 +118,20 @@ class CounterStore:
             prints_since_reset=0,
             reset_at=datetime.now(UTC).isoformat(timespec="seconds"),
             cartridge_capacity=capacity if capacity is not None else current.cartridge_capacity,
+            prints_since_cassette_reload=0,
         )
         self._write(updated)
         logger.info(
             "compteur de cartouche remis à zéro (cumul inchangé : %d)", updated.prints_total
         )
+        return updated
+
+    def reload_cassette(self) -> Counters:
+        """Mémorise le rechargement du bac papier CP1500, limité à 18 feuilles."""
+        current = self.read()
+        updated = replace(current, prints_since_cassette_reload=0)
+        self._write(updated)
+        logger.info("bac papier CP1500 rechargé (%d feuilles max)", PAPER_CASSETTE_CAPACITY)
         return updated
 
     def _write(self, counters: Counters) -> None:

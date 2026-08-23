@@ -5,7 +5,7 @@ on coupe des têtes en bord de cadre :
 
     capteur IMX708 (2304×1296)          16:9   → 1.778
     tirage Selphy carte postale         148:100 → 1.480
-    écran tactile 7 pouces (800×480)    5:3    → 1.667
+    écran Waveshare 7 pouces (1024×600) 128:75 → 1.707
 
 Le format de sortie est l'autorité : c'est lui qui fixe le ratio de recadrage, le ratio
 attendu de l'overlay, et le cadre de visée affiché sur le preview. Il reste pertinent

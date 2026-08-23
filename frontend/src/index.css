@@ -152,9 +152,58 @@ input[type="radio"] {
 }
 
 .kiosk-button:active,
+.timer-choice:active,
 .keypad-key:active,
 .maintenance-choice:active {
   transform: scale(0.97);
+}
+
+.timer-choice {
+  cursor: pointer;
+  transition: background-color 160ms ease-out, color 160ms ease-out, transform 120ms ease-out;
+}
+
+/* Rail canonique du Waveshare 7 pouces. Les largeurs explicites donnent aux commandes une
+   cadence stable à 1024×600 au lieu de laisser le texte décider de leur géométrie. */
+.preview-action-bar {
+  min-height: 5.5rem;
+  grid-template-columns: minmax(0, 1fr) auto 14rem 8rem;
+}
+
+.preview-action-bar > .kiosk-button {
+  width: 100%;
+}
+
+.shot-timer-control {
+  height: 4rem;
+  align-items: stretch;
+}
+
+.timer-choice {
+  min-height: 3.25rem;
+}
+
+/* Filet de sécurité pour un écran de développement plus étroit. Les aides secondaires se
+   compactent avant les cibles tactiles ; la borne livrée reste, elle, à 1024×600. */
+@media (max-width: 900px) {
+  .preview-action-bar {
+    gap: 0.5rem;
+    padding: 0.5rem;
+  }
+
+  .preview-framing-hint {
+    max-width: 9rem;
+    font-size: 1rem;
+  }
+
+  .preview-return-hint {
+    display: none;
+  }
+
+  .timer-choice {
+    min-width: 3rem;
+    padding-inline: 0.5rem;
+  }
 }
 
 .kiosk-button-primary {
@@ -166,6 +215,53 @@ input[type="radio"] {
   border: 2px solid color-mix(in srgb, var(--color-body) 30%, transparent);
   background: color-mix(in srgb, var(--color-ink) 78%, transparent);
   color: var(--color-body);
+}
+
+.maintenance-attention {
+  position: absolute;
+  top: -0.3rem;
+  right: -0.3rem;
+  width: 1rem;
+  height: 1rem;
+  border: 3px solid var(--color-ink);
+  border-radius: 50%;
+  background: var(--color-warn);
+}
+
+.debug-failure-bar {
+  position: fixed;
+  z-index: 60;
+  bottom: 0.75rem;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 2px solid var(--color-warn);
+  border-radius: 0.75rem;
+  padding: 0.35rem;
+  background: var(--color-bg);
+  color: var(--color-body);
+  transform: translateX(-50%);
+}
+
+.debug-failure-bar strong {
+  padding: 0 0.45rem;
+  color: var(--color-warn);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+}
+
+.debug-failure-bar button {
+  min-height: 2.5rem;
+  border-radius: 0.55rem;
+  padding: 0 0.7rem;
+  color: var(--color-body);
+  font-weight: 600;
+}
+
+.debug-failure-bar button[aria-pressed="true"] {
+  background: var(--color-warn);
+  color: var(--color-ink);
 }
 
 .maintenance-shell {
@@ -257,6 +353,36 @@ input[type="radio"] {
 
 .status-dot-warn {
   background: var(--color-warn);
+}
+
+.hardware-alert {
+  position: relative;
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  flex: none;
+  place-items: center;
+  color: var(--color-body);
+}
+
+.hardware-alert::after {
+  position: absolute;
+  width: 2.65rem;
+  height: 0.25rem;
+  border-radius: 999px;
+  background: var(--color-warn);
+  content: "";
+  transform: rotate(-45deg);
+}
+
+.hardware-alert-icon {
+  width: 2.1rem;
+  height: 2.1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .health-signal {
@@ -513,7 +639,7 @@ input[type="radio"] {
 
 .cartridge-confirm button:last-child {
   background: var(--color-accent-ink);
-  color: var(--color-body);
+  color: var(--color-accent);
 }
 
 .capture-countdown {

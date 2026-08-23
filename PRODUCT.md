@@ -8,7 +8,8 @@ web
 
 ## Users
 
-- Les invités utilisent le photobooth debout, au doigt, sur un écran tactile de 7 pouces.
+- Les invités utilisent le photobooth debout, au doigt, sur un écran tactile Waveshare
+  7 pouces IPS de 1024×600 px, en paysage et à DPR 1.
   Ils doivent réussir leur photo sans explication ni présence permanente d'un opérateur.
 - L'organisateur ou le technicien intervient ponctuellement sur ce même écran pour
   diagnostiquer la borne et effectuer les gestes de maintenance urgents pendant un
@@ -31,7 +32,9 @@ maintenance tactile locale protégée et une administration complète sur le LAN
 
 ## Operating Context
 
-- Écran paysage 7 pouces intégré à un caisson, utilisé debout et principalement au doigt.
+- Écran Waveshare 7 pouces IPS 1024×600 intégré à un caisson, utilisé en paysage, debout
+  et principalement au doigt. Cette définition est le viewport canonique du kiosque ;
+  elle doit toujours être vérifiée à 100 %, sans mise à l’échelle du navigateur.
 - Raspberry Pi, module caméra Pi et Canon Selphy CP1500 sur la borne finale.
 - Webcam ou caméra synthétique sur MacBook pour développer et valider tout le logiciel qui
   ne dépend pas du matériel final.
@@ -47,7 +50,10 @@ maintenance tactile locale protégée et une administration complète sur le LAN
 - La maintenance locale est protégée par un code PIN et expose seulement les diagnostics
   et réglages utiles pendant l'événement.
 - La maintenance locale inclut au minimum la santé caméra, stockage et impression, les
-  consommables, le nombre de copies, le flash écran et le retour forcé à l'accueil.
+  consommables, le nombre de copies, le flash écran et le minuteur photo par défaut.
+- L’interruption forcée d’une session est une commande distante du portail complet ; elle
+  n’est pas présentée sur la borne, dont la fermeture de maintenance suffit à rendre la
+  main au parcours invité.
 - La configuration d'overlay, la galerie, l'archive et les réglages de format restent dans
   le portail d'administration complet.
 - L'authentification du portail LAN complet reste hors périmètre du MVP.

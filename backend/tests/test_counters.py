@@ -94,6 +94,16 @@ def test_la_capacite_de_cartouche_survit_a_un_redemarrage(tmp_path: Path) -> Non
     assert CounterStore(tmp_path).read().cartridge_capacity == 54
 
 
+def test_le_bac_cp1500_se_recharge_independamment_de_la_cartouche(tmp_path: Path) -> None:
+    store = CounterStore(tmp_path)
+    store.record_prints(18)
+
+    counters = store.reload_cassette()
+
+    assert counters.prints_since_cassette_reload == 0
+    assert counters.prints_since_reset == 18
+
+
 def test_un_fichier_de_l_ancien_format_se_relit(tmp_path: Path) -> None:
     """Migration : un `counters.json` écrit avant l'arrivée du second compteur n'a que le
     cumul. Aucune remise à zéro n'a eu lieu, donc la cartouche a vu passer tous les

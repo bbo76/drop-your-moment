@@ -9,7 +9,8 @@ export interface Framing {
 }
 
 /* Trois ratios cohabitent dans la chaîne et doivent être réconciliés explicitement :
- * le capteur (16:9), le format de sortie (1,48 pour une carte postale) et l'écran (5:3).
+ * le capteur (16:9), le format de sortie (1,48 pour une carte postale) et l'écran
+ * Waveshare (1024:600).
  * Sans repère visible, les visiteurs se cadrent sur toute la largeur de l'aperçu et se
  * retrouvent coupés une fois la photo recadrée au format de tirage.
  *

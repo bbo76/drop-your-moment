@@ -16,13 +16,13 @@ const POLL_INTERVAL_MS = 2000;
    Pas de sélecteur de capacité persisté non plus. Afficher les trois seuils en regard des
    tirages répond à « me reste-t-il du papier » sans inventer un état de plus à stocker,
    invalider et tenir à jour. */
-const CARTRIDGE_CAPACITIES = [36, 54, 108];
 
 export function HealthSection() {
   const [health, setHealth] = useState<AdminHealth | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [scan, setScan] = useState<CameraScan | null>(null);
   const [scanning, setScanning] = useState(false);
+  const [releasing, setReleasing] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -60,6 +60,15 @@ export function HealthSection() {
     }
   };
 
+  const reloadCassette = async () => {
+    try {
+      const counters = await api.reloadAdminCassette();
+      setHealth((current) => (current ? { ...current, counters } : current));
+    } catch (cause) {
+      setError(String(cause));
+    }
+  };
+
   /* Jamais au chargement, jamais en boucle : le sondage ouvre chaque périphérique tour à
      tour, et le capteur n'accepte qu'un propriétaire. Uniquement sur ce clic. */
   const scanCameras = async () => {
@@ -70,6 +79,22 @@ export function HealthSection() {
       setError(String(cause));
     } finally {
       setScanning(false);
+    }
+  };
+
+  const releaseKiosk = async () => {
+    if (!window.confirm("Interrompre la session en cours et ramener la borne à l’accueil ?")) {
+      return;
+    }
+    setReleasing(true);
+    try {
+      const session = await api.releaseKiosk();
+      setHealth((current) => (current ? { ...current, session_state: session.state } : current));
+      setError(null);
+    } catch (cause) {
+      setError(String(cause));
+    } finally {
+      setReleasing(false);
     }
   };
 
@@ -116,7 +141,8 @@ export function HealthSection() {
         <Group title="Tirages">
           <Row label="Cumul de l'événement" value={`${counters.prints_total}`} />
           <Row label="Depuis la cartouche" value={`${counters.prints_since_reset}`} />
-          <Row label="Restant estimé" value={<Remaining used={counters.prints_since_reset} />} />
+          <Row label="Bac CP1500" value={`${Math.max(0, counters.cassette_capacity - counters.prints_since_cassette_reload)} sur ${counters.cassette_capacity}`} />
+          <Row label="Cartouche restante" value={`${Math.max(0, counters.cartridge_capacity - counters.prints_since_reset)} sur ${counters.cartridge_capacity}`} />
           <Row
             label="Remise à zéro"
             value={
@@ -163,10 +189,16 @@ export function HealthSection() {
       </div>
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
+        <Button onClick={() => void reloadCassette()}>Bac rechargé (18 feuilles)</Button>
         <Button onClick={() => void resetCartridge()}>Nouvelle cartouche</Button>
-        <Button onClick={() => void scanCameras()} disabled={scanning}>
+        <Button onClick={() => void scanCameras()} disabled={scanning} tone="secondary">
           {scanning ? "Sondage…" : "Détecter les caméras"}
         </Button>
+        {health.session_state !== "idle" && (
+          <Button onClick={() => void releaseKiosk()} disabled={releasing} tone="warning">
+            {releasing ? "Libération…" : "Libérer la borne"}
+          </Button>
+        )}
       </div>
 
       {scan && <ScanResult scan={scan} />}
@@ -226,23 +258,6 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
       <h3 className="mb-2 text-sm font-medium text-muted uppercase">{title}</h3>
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">{children}</dl>
     </div>
-  );
-}
-
-/** Ce qu'il reste selon la cartouche montée — l'opérateur sait laquelle, pas la borne. */
-function Remaining({ used }: { used: number }) {
-  return (
-    <span>
-      {CARTRIDGE_CAPACITIES.map((capacity, index) => (
-        <span key={capacity}>
-          {index > 0 && " · "}
-          <span className={used >= capacity ? "text-warn" : undefined}>
-            {used >= capacity ? "épuisée" : Math.max(0, capacity - used)}
-          </span>
-          <span className="text-muted"> ({capacity})</span>
-        </span>
-      ))}
-    </span>
   );
 }
 

@@ -13,6 +13,7 @@ import logging
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
+from typing import Literal
 
 from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
@@ -60,6 +61,9 @@ class EventConfig(BaseModel):
     )
     print_format: PrintFormat = Field(default_factory=lambda: POSTCARD_LANDSCAPE.model_copy())
     copies_per_print: int = Field(default=1, ge=1, le=10)
+    # Durée présélectionnée sur la borne. Les visiteurs peuvent la changer pour leur
+    # prise, mais seules ces trois valeurs gardent l'interface prévisible et tactile.
+    default_shot_timer_seconds: Literal[3, 5, 10] = 3
     # Éclairage d'appoint produit par l'écran. À désactiver si la borne utilise un flash
     # physique ou si la lumière blanche gêne la scénographie.
     screen_flash_enabled: bool = True

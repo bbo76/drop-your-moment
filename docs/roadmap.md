@@ -96,8 +96,20 @@ section Sécurité du portail complet.
 Cette maintenance n'est montée que sur la socket locale du kiosque. Sa session expire au
 bout de cinq minutes et ramène au parcours invité. Le langage visuel du parcours photo a
 été repris dans le même mouvement pour le vrai contexte 7 pouces : contraste élevé,
-information lisible à distance et grandes cibles tactiles. Le rendu est validé à 800×480
+information lisible à distance et grandes cibles tactiles. Le rendu est validé à 1024×600
 sur le poste de développement ; le jugement final sur la dalle réelle reste au jalon 6.
+
+### ✅ Jalon 5.3 — Exploitation tactile et consommables CP1500
+
+Le kiosque est calé sur la dalle Waveshare 1024×600 : barre d'action stable, minuteur par
+défaut configurable et accès maintenance limité à l'accueil. Les alertes opérateur
+distinguent caméra, stockage, liaison imprimante et papier sans exposer le diagnostic aux
+invités.
+
+Le bac physique de la CP1500 est suivi séparément du kit de consommables : 18 feuilles au
+maximum, rechargement explicite et refus serveur d'un tirage impossible. Un simulateur
+activé par `?debug=1` permet de vérifier visuellement les principaux incidents sans prendre
+de photo, consommer de papier ni modifier les compteurs réels.
 
 ### ⬜ Jalon 6 — Validation sur le Raspberry Pi
 

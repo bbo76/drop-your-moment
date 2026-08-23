@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Query, Response, status
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
@@ -14,7 +16,7 @@ from dropyourmoment.api.admin_router import (
     _reading,
     read_health,
 )
-from dropyourmoment.api.kiosk_router import SessionStatus, _status, get_runtime
+from dropyourmoment.api.kiosk_router import get_runtime
 from dropyourmoment.core.event_config import LaunchFont
 from dropyourmoment.runtime import Runtime
 from dropyourmoment.storage.gallery import list_sessions, thumbnail_jpeg
@@ -30,6 +32,7 @@ class PinAttempt(BaseModel):
 
 class MaintenanceSettings(BaseModel):
     copies_per_print: int = Field(ge=1, le=10)
+    default_shot_timer_seconds: Literal[3, 5, 10]
     screen_flash_enabled: bool
     accent_color: str = Field(pattern=r"^#[0-9a-fA-F]{6}$")
     launch_font: LaunchFont
@@ -80,6 +83,7 @@ def maintenance_status(runtime: Runtime = Depends(_authorized)) -> MaintenanceSn
         health=read_health(runtime),
         settings=MaintenanceSettings(
             copies_per_print=config.copies_per_print,
+            default_shot_timer_seconds=config.default_shot_timer_seconds,
             screen_flash_enabled=config.screen_flash_enabled,
             accent_color=config.accent_color,
             launch_font=config.launch_font,
@@ -110,6 +114,11 @@ def change_cartridge(
     return _reading(runtime.counters.reset_cartridge(change.capacity))
 
 
+@router.post("/cassette/reload", response_model=CounterReading)
+def reload_paper_cassette(runtime: Runtime = Depends(_authorized)) -> CounterReading:
+    return _reading(runtime.counters.reload_cassette())
+
+
 @router.get("/gallery", response_model=GalleryPage)
 def read_gallery(
     offset: int = Query(0, ge=0),
@@ -136,9 +145,3 @@ def read_gallery_photo(session_id: str, runtime: Runtime = Depends(_authorized))
         media_type="image/jpeg",
         headers={"Cache-Control": "no-store"},
     )
-
-
-@router.post("/home", response_model=SessionStatus)
-def force_home(runtime: Runtime = Depends(_authorized)) -> SessionStatus:
-    runtime.machine.reset()
-    return _status(runtime)

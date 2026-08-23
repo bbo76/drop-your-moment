@@ -23,7 +23,7 @@ from fastapi.responses import FileResponse, Response, StreamingResponse
 from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel, Field
 
-from dropyourmoment.api.kiosk_router import get_runtime
+from dropyourmoment.api.kiosk_router import SessionStatus, _status, get_runtime
 from dropyourmoment.core.event_config import OVERLAY_FILENAME, EventConfig
 from dropyourmoment.core.session import SessionState
 from dropyourmoment.hardware.camera.discovery import (
@@ -35,7 +35,7 @@ from dropyourmoment.hardware.system_metrics import read_system_metrics
 from dropyourmoment.imaging.steps import crop_to_aspect
 from dropyourmoment.runtime import Runtime
 from dropyourmoment.storage.atomic import write_atomic
-from dropyourmoment.storage.counters import Counters
+from dropyourmoment.storage.counters import PAPER_CASSETTE_CAPACITY, Counters
 from dropyourmoment.storage.gallery import GalleryEntry, list_sessions, thumbnail_jpeg, zip_stream
 from dropyourmoment.storage.paths import FINAL_NAME
 
@@ -56,6 +56,8 @@ class CounterReading(BaseModel):
     prints_since_reset: int
     reset_at: str | None
     cartridge_capacity: int
+    prints_since_cassette_reload: int
+    cassette_capacity: int = PAPER_CASSETTE_CAPACITY
 
 
 class AdminHealth(BaseModel):
@@ -138,6 +140,19 @@ def reset_cartridge_counter(runtime: Runtime = Depends(get_runtime)) -> CounterR
     return _reading(runtime.counters.reset_cartridge())
 
 
+@router.post("/counters/cassette/reload", response_model=CounterReading)
+def reload_paper_cassette(runtime: Runtime = Depends(get_runtime)) -> CounterReading:
+    return _reading(runtime.counters.reload_cassette())
+
+
+@router.post("/session/home", response_model=SessionStatus)
+def force_kiosk_home(runtime: Runtime = Depends(get_runtime)) -> SessionStatus:
+    """Interrompt à distance une session bloquée et rend le kiosque disponible."""
+    runtime.machine.reset()
+    logger.info("session du kiosque interrompue depuis le portail d’administration")
+    return _status(runtime)
+
+
 class MaintenancePinChange(BaseModel):
     pin: str = Field(pattern=r"^\d{4}$")
 
@@ -154,7 +169,7 @@ def _reading(counters: Counters) -> CounterReading:
     # `vars()` plutôt qu'une recopie champ par champ : les deux structures sont un miroir
     # l'une de l'autre, et un champ ajouté d'un côté seulement lèvera au lieu de manquer
     # en silence.
-    return CounterReading(**vars(counters))
+    return CounterReading(**vars(counters), cassette_capacity=PAPER_CASSETTE_CAPACITY)
 
 
 @router.get("/event-config", response_model=EventConfig)

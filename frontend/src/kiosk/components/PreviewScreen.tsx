@@ -1,17 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 
-import { BLANK_PIXEL, previewStreamUrl } from "../../shared/api";
+import { BLANK_PIXEL, previewStreamUrl, type ShotTimerSeconds } from "../../shared/api";
 import { computeFraming, FramingGuide } from "./FramingGuide";
 import { GhostButton, PrimaryButton } from "./Screen";
 
 const RETURN_HINT_THRESHOLD_S = 20;
-const COUNTDOWN_FROM = 3;
 const COUNTDOWN_STEP_MS = 1000;
+const SHOT_TIMER_OPTIONS: ShotTimerSeconds[] = [3, 5, 10];
 
 interface Props {
   previewSize: [number, number];
   printAspectRatio: number;
   remainingSeconds: number | null;
+  defaultShotTimerSeconds: ShotTimerSeconds;
   screenFlashEnabled: boolean;
   onCapture: () => Promise<void>;
   onCancel: () => void;
@@ -32,12 +33,14 @@ export function PreviewScreen({
   previewSize,
   printAspectRatio,
   remainingSeconds,
+  defaultShotTimerSeconds,
   screenFlashEnabled,
   onCapture,
   onCancel,
 }: Props) {
   const framing = computeFraming(previewSize, printAspectRatio);
   const [phase, setPhase] = useState<Phase>({ kind: "waiting" });
+  const [shotTimerSeconds, setShotTimerSeconds] = useState(defaultShotTimerSeconds);
 
   // Figé à la première image du composant : recalculer l'URL à chaque rendu redémarrerait
   // le flux MJPEG.
@@ -112,23 +115,50 @@ export function PreviewScreen({
         )}
       </div>
 
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 rounded-panel bg-ink p-3">
-        <span className="type-kiosk-label text-lg leading-tight text-muted">
+      <div className="preview-action-bar relative grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-3 rounded-panel bg-ink p-3">
+        <span className="preview-framing-hint type-kiosk-label text-lg leading-tight text-muted">
           {framing.maskPercent > 0 && phase.kind === "waiting"
             ? "Cadrez-vous entre les pointillés"
             : ""}
         </span>
 
         {phase.kind === "waiting" ? (
-          <PrimaryButton onClick={() => setPhase({ kind: "counting", value: COUNTDOWN_FROM })}>
-            Prendre la photo
-          </PrimaryButton>
+          <fieldset>
+            <legend className="sr-only">Durée du minuteur</legend>
+            <div className="shot-timer-control flex rounded-panel border-2 border-edge bg-surface p-1">
+              {SHOT_TIMER_OPTIONS.map((seconds) => (
+                <button
+                  key={seconds}
+                  type="button"
+                  aria-pressed={shotTimerSeconds === seconds}
+                  onClick={() => setShotTimerSeconds(seconds)}
+                  className={`timer-choice type-kiosk-data min-w-14 rounded-lg px-3 text-lg ${
+                    shotTimerSeconds === seconds
+                      ? "bg-accent text-accent-ink"
+                      : "text-body"
+                  }`}
+                >
+                  {seconds} s
+                </button>
+              ))}
+            </div>
+          </fieldset>
         ) : (
-          <span className="type-kiosk-screen-title text-3xl text-accent">Souriez…</span>
+          <span className="pointer-events-none absolute inset-0 grid place-items-center type-kiosk-screen-title text-3xl text-accent">
+            Souriez…
+          </span>
         )}
 
-        <span className="flex items-center gap-4">
-          <span className="type-kiosk-meta text-base text-muted">
+        {phase.kind === "waiting" && (
+          <PrimaryButton
+            onClick={() => setPhase({ kind: "counting", value: shotTimerSeconds })}
+          >
+            Prendre la photo
+          </PrimaryButton>
+        )}
+
+        <span className="flex items-center justify-end gap-3">
+          <span className="preview-return-hint type-kiosk-meta text-base text-muted">
             {showReturnHint && `Retour à l'accueil dans ${Math.ceil(remainingSeconds)} s`}
           </span>
           {phase.kind === "waiting" && <GhostButton onClick={onCancel}>Annuler</GhostButton>}

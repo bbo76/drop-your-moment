@@ -9,6 +9,7 @@
 export type SessionState = "idle" | "preview" | "review" | "printing" | "done" | "error";
 
 export type FilterName = "original" | "bw" | "sepia";
+export type ShotTimerSeconds = 3 | 5 | 10;
 
 export const FILTER_LABELS: Record<FilterName, string> = {
   original: "Original",
@@ -30,6 +31,8 @@ export interface SessionStatus {
 /** Capacités du matériel. Ne changent qu'au rebranchement d'un périphérique. */
 export interface SystemStatus {
   camera_ok: boolean;
+  /** Signal opérateur discret ; le diagnostic détaillé reste en maintenance. */
+  operator_attention: boolean;
   preview_size: [number, number];
 }
 
@@ -56,6 +59,7 @@ export interface EventConfigPayload {
   available_filters: FilterName[];
   print_format: PrintFormatPayload;
   copies_per_print: number;
+  default_shot_timer_seconds: ShotTimerSeconds;
   screen_flash_enabled: boolean;
 }
 
@@ -68,6 +72,7 @@ export interface EventInfo {
   available_filters: FilterName[];
   print_format_name: string;
   print_aspect_ratio: number;
+  default_shot_timer_seconds: ShotTimerSeconds;
   screen_flash_enabled: boolean;
 }
 
@@ -90,10 +95,13 @@ export interface CounterReading {
   /** ISO 8601, ou null si la cartouche n'a jamais été réarmée. */
   reset_at: string | null;
   cartridge_capacity: number;
+  prints_since_cassette_reload: number;
+  cassette_capacity: number;
 }
 
 export interface MaintenanceSettings {
   copies_per_print: number;
+  default_shot_timer_seconds: ShotTimerSeconds;
   screen_flash_enabled: boolean;
   accent_color: string;
   launch_font: LaunchFont;
@@ -245,10 +253,11 @@ export const api = {
     }),
   changeCartridge: (capacity: number) =>
     post<CounterReading>("/api/maintenance/cartridge", { capacity }),
-  forceHome: () => post<SessionStatus>("/api/maintenance/home"),
-
+  reloadCassette: () => post<CounterReading>("/api/maintenance/cassette/reload"),
   health: () => request<AdminHealth>("/admin/system/health"),
+  releaseKiosk: () => post<SessionStatus>("/admin/session/home"),
   resetCartridge: () => post<CounterReading>("/admin/counters/reset"),
+  reloadAdminCassette: () => post<CounterReading>("/admin/counters/cassette/reload"),
   replaceMaintenancePin: async (pin: string) => {
     const path = "/admin/maintenance-pin";
     const response = await fetch(path, {

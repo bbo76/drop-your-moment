@@ -30,6 +30,7 @@ def test_lecture_de_la_configuration_active(admin: TestClient) -> None:
     assert body["accent_color"] == "#ffd400"
     assert body["available_filters"] == ["original", "bw", "sepia"]
     assert body["copies_per_print"] == 1
+    assert body["default_shot_timer_seconds"] == 3
     assert body["screen_flash_enabled"] is True
 
 
@@ -41,6 +42,7 @@ def test_aller_retour_de_la_configuration(admin: TestClient) -> None:
     config["accent_color"] = "#8b5cf6"
     config["available_filters"] = ["original", "bw"]
     config["copies_per_print"] = 2
+    config["default_shot_timer_seconds"] = 10
     config["screen_flash_enabled"] = False
 
     assert admin.put("/admin/event-config", json=config).status_code == 200
@@ -52,6 +54,7 @@ def test_aller_retour_de_la_configuration(admin: TestClient) -> None:
     assert relu["accent_color"] == "#8b5cf6"
     assert relu["available_filters"] == ["original", "bw"]
     assert relu["copies_per_print"] == 2
+    assert relu["default_shot_timer_seconds"] == 10
     assert relu["screen_flash_enabled"] is False
 
 
@@ -84,6 +87,7 @@ def test_le_kiosque_voit_le_changement_sans_redemarrage(
     config["launch_font"] = "handwritten"
     config["accent_color"] = "#f97316"
     config["available_filters"] = ["bw"]
+    config["default_shot_timer_seconds"] = 5
     config["screen_flash_enabled"] = False
     admin.put("/admin/event-config", json=config)
 
@@ -94,7 +98,26 @@ def test_le_kiosque_voit_le_changement_sans_redemarrage(
     assert vu_par_le_kiosque["launch_font"] == "handwritten"
     assert vu_par_le_kiosque["accent_color"] == "#f97316"
     assert vu_par_le_kiosque["available_filters"] == ["bw"]
+    assert vu_par_le_kiosque["default_shot_timer_seconds"] == 5
     assert vu_par_le_kiosque["screen_flash_enabled"] is False
+
+
+def test_une_duree_de_minuteur_non_proposee_est_refusee(admin: TestClient) -> None:
+    config = admin.get("/admin/event-config").json()
+    config["default_shot_timer_seconds"] = 4
+
+    assert admin.put("/admin/event-config", json=config).status_code == 422
+
+
+def test_l_operateur_distant_peut_liberer_la_borne(
+    admin: TestClient, kiosk: TestClient, runtime: Runtime
+) -> None:
+    kiosk.post("/api/session")
+
+    response = admin.post("/admin/session/home")
+
+    assert response.json()["state"] == "idle"
+    assert runtime.machine.session is None
 
 
 def test_un_filtre_retire_est_refuse_au_kiosque(admin: TestClient, kiosk: TestClient) -> None:
@@ -397,6 +420,8 @@ def test_la_sante_repond_a_tenir_la_soiree(admin: TestClient) -> None:
         "prints_since_reset": 0,
         "reset_at": None,
         "cartridge_capacity": 108,
+        "prints_since_cassette_reload": 0,
+        "cassette_capacity": 18,
     }
     assert body["disk_free_bytes"] > 0
     assert body["disk_total_bytes"] >= body["disk_free_bytes"]

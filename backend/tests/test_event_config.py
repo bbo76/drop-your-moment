@@ -28,6 +28,7 @@ def test_config_absente_cree_les_valeurs_par_defaut(tmp_path: Path) -> None:
     assert event.config.launch_message == "Bienvenue"
     assert event.config.launch_font == "modern"
     assert event.config.accent_color == "#ffd400"
+    assert event.config.default_shot_timer_seconds == 3
     assert event.config.screen_flash_enabled is True
     assert store.config_path.is_file()
 
@@ -42,6 +43,7 @@ def test_config_relue_a_l_identique(tmp_path: Path) -> None:
             accent_color="#8b5cf6",
             available_filters=[FilterName.ORIGINAL, FilterName.BW],
             copies_per_print=2,
+            default_shot_timer_seconds=10,
             screen_flash_enabled=False,
         )
     )
@@ -54,7 +56,19 @@ def test_config_relue_a_l_identique(tmp_path: Path) -> None:
     assert event.config.accent_color == "#8b5cf6"
     assert event.config.available_filters == [FilterName.ORIGINAL, FilterName.BW]
     assert event.config.copies_per_print == 2
+    assert event.config.default_shot_timer_seconds == 10
     assert event.config.screen_flash_enabled is False
+
+
+@pytest.mark.parametrize("seconds", [3, 5, 10])
+def test_durees_de_minuteur_autorisees(seconds: int) -> None:
+    assert EventConfig(default_shot_timer_seconds=seconds).default_shot_timer_seconds == seconds
+
+
+@pytest.mark.parametrize("seconds", [0, 4, 8, 30])
+def test_durees_de_minuteur_non_proposees_sont_refusees(seconds: int) -> None:
+    with pytest.raises(ValueError):
+        EventConfig(default_shot_timer_seconds=seconds)
 
 
 def test_ancienne_duree_de_flash_ne_casse_pas_la_configuration(tmp_path: Path) -> None:
