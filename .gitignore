@@ -17,3 +17,6 @@ node_modules/
 
 # Cache d'empreintes de go-task (sources/generates)
 .task/
+
+# Référentiel et configuration locale générés par Impeccable.
+.impeccable/
