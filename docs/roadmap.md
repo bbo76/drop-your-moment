@@ -88,8 +88,8 @@ information normale sur un poste de développement, pas une panne du portail.
 
 La borne elle-même donne maintenant accès, derrière un PIN, aux seuls gestes utiles sous
 la pression d'un événement. Quatre tuiles séparent le diagnostic caméra / stockage / CPU /
-RAM, l'impression (connexion CP1500, papier, compteurs, cartouche et copies), la galerie
-récente et les réglages de la borne. Overlay et format restent sur le portail complet. Le
+RAM, l'impression (connexion CP1500, stock total, bac de 18 feuilles, encre et copies), la
+galerie récente et les réglages de la borne. Overlay et format restent sur le portail complet. Le
 PIN initial vient de l'environnement puis peut être remplacé, sans être exposé, depuis la
 section Sécurité du portail complet.
 
@@ -110,6 +110,18 @@ Le bac physique de la CP1500 est suivi séparément du kit de consommables : 18 
 maximum, rechargement explicite et refus serveur d'un tirage impossible. Un simulateur
 activé par `?debug=1` permet de vérifier visuellement les principaux incidents sans prendre
 de photo, consommer de papier ni modifier les compteurs réels.
+
+### ✅ Jalon 5.4 — Administration mobile Jour J
+
+Deux points d'accès explicites partagent les API et composants du même projet frontend.
+`admin.html` reste le backoffice complet sur laptop pour l'identité du mariage, l'overlay,
+les filtres, le format, la sécurité et la galerie. `mobile.html` sert uniquement le Jour J :
+verdict global, session, caméra, stockage, température, consommables, retour à l'accueil,
+réglages rapides sûrs et six photos récentes.
+
+Le module administratif adopte un thème neutre fixe, indépendant du branding événementiel.
+La maintenance tactile du kiosque n'est pas modifiée. Le rendu est vérifié sans débordement
+à 320 et 390 px ainsi que sur desktop, sans application native ni PWA.
 
 ### ⬜ Jalon 6 — Validation sur le Raspberry Pi
 

@@ -23,7 +23,6 @@ from dropyourmoment.storage.gallery import list_sessions, thumbnail_jpeg
 
 router = APIRouter(prefix="/api/maintenance")
 COOKIE_NAME = "dym_maintenance"
-CARTRIDGE_CAPACITIES = (36, 54, 108)
 
 
 class PinAttempt(BaseModel):
@@ -101,22 +100,31 @@ def update_settings(
     return settings
 
 
-class CartridgeChange(BaseModel):
-    capacity: int
+class PaperStockChange(BaseModel):
+    capacity: int = Field(ge=1, le=9_999)
 
 
-@router.post("/cartridge", response_model=CounterReading)
-def change_cartridge(
-    change: CartridgeChange, runtime: Runtime = Depends(_authorized)
+class InkCartridgeChange(BaseModel):
+    capacity: Literal[36, 54]
+
+
+@router.post("/paper-stock", response_model=CounterReading)
+def set_paper_stock(
+    change: PaperStockChange, runtime: Runtime = Depends(_authorized)
 ) -> CounterReading:
-    if change.capacity not in CARTRIDGE_CAPACITIES:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, detail="capacité inconnue")
-    return _reading(runtime.counters.reset_cartridge(change.capacity))
+    return _reading(runtime.counters.set_paper_stock(change.capacity))
 
 
 @router.post("/cassette/reload", response_model=CounterReading)
 def reload_paper_cassette(runtime: Runtime = Depends(_authorized)) -> CounterReading:
     return _reading(runtime.counters.reload_cassette())
+
+
+@router.post("/ink/replace", response_model=CounterReading)
+def replace_ink_cartridge(
+    change: InkCartridgeChange, runtime: Runtime = Depends(_authorized)
+) -> CounterReading:
+    return _reading(runtime.counters.replace_ink_cartridge(change.capacity))
 
 
 @router.get("/gallery", response_model=GalleryPage)

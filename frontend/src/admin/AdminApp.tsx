@@ -3,30 +3,23 @@ import { GallerySection } from "./GallerySection";
 import { HealthSection } from "./HealthSection";
 import { SecuritySection } from "./SecuritySection";
 
-/* Portail d'administration.
- *
- * Contrairement au kiosque, cet écran s'adresse à un opérateur sur un PC : il peut
- * défiler, afficher des informations techniques et n'a aucune contrainte tactile.
- *
- * Une `<section>` par sujet, dans l'ordre où l'opérateur en a besoin : surveiller pendant
- * l'événement, régler avant, récupérer après. Pas d'onglets ni de routeur — trois sections
- * sur une page qui défile ne justifient pas un mécanisme de navigation. À reconsidérer le
- * jour où la page devient illisible. */
+/* Backoffice complet, destiné à la préparation sur laptop. Le pilotage mobile du jour J
+ * possède son propre point d'entrée et réutilise directement les mêmes API. */
 
 export function AdminApp() {
   return (
-    <div className="mx-auto min-h-full max-w-6xl p-5 sm:p-8">
-      <header className="mb-8">
-        <h1 className="text-2xl font-semibold">Drop Your Moment</h1>
-        <p className="text-muted">Administration</p>
+    <div className="admin-shell mx-auto min-h-full max-w-6xl px-4 py-5 sm:p-8">
+      <header className="mb-8 border-b border-edge pb-5">
+        <h1 className="text-2xl font-semibold tracking-[-0.02em]">Drop Your Moment</h1>
+        <p className="text-muted">Administration et préparation de l’événement</p>
       </header>
 
-      <div>
+      <main>
         <HealthSection />
         <EventSection />
         <SecuritySection />
         <GallerySection />
-      </div>
+      </main>
     </div>
   );
 }

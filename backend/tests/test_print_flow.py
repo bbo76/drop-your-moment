@@ -110,7 +110,7 @@ def test_le_tirage_transmet_le_fichier_fige(
 
 
 def test_le_compteur_suit_le_nombre_de_copies(kiosk: TestClient, runtime: Runtime) -> None:
-    """36, 54 ou 108 tirages par cartouche : le compte doit être juste, pas approximatif."""
+    """Le stock papier déclaré est décrémenté exactement du nombre de copies."""
     runtime.event.config = EventConfig(copies_per_print=3)
     session_id = capture(kiosk)
 

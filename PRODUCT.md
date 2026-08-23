@@ -14,8 +14,11 @@ web
 - L'organisateur ou le technicien intervient ponctuellement sur ce même écran pour
   diagnostiquer la borne et effectuer les gestes de maintenance urgents pendant un
   événement.
-- Un opérateur prépare l'événement et récupère les photos depuis le portail
-  d'administration complet sur un ordinateur du réseau local.
+- Un opérateur prépare l'événement et récupère les photos depuis le backoffice complet sur
+  un ordinateur du réseau local.
+- Le jour de l'événement, l'organisateur surveille la borne et effectue les interventions
+  urgentes depuis la console mobile dédiée, sur son smartphone connecté au hotspot local
+  du photobooth.
 
 ## Product Purpose
 
@@ -56,6 +59,10 @@ maintenance tactile locale protégée et une administration complète sur le LAN
   main au parcours invité.
 - La configuration d'overlay, la galerie, l'archive et les réglages de format restent dans
   le portail d'administration complet.
+- La console smartphone ne duplique pas la préparation : elle expose l'état global, la
+  session, les consommables, les réglages rapides sûrs et les dernières photos. L'identité
+  de l'événement, l'overlay, les filtres, le format et la sécurité restent dans le
+  backoffice complet.
 - L'authentification du portail LAN complet reste hors périmètre du MVP.
 - Les fonctions Raspberry Pi et impression réelle restent en attente du matériel.
 

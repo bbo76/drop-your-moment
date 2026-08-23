@@ -1,28 +1,26 @@
 import { useEffect, useState, type ReactNode } from "react";
 
 import { api, type AdminHealth, type CameraScan } from "../shared/api";
+import { InkCartridgeDialog } from "../shared/InkCartridgeDialog";
+import { PaperStockDialog } from "../shared/PaperStockDialog";
 import { Button, Row, Section } from "./ui";
 
 /* Tableau de bord : « est-ce que la borne va tenir la soirée ? »
  *
- * Tout est en lecture, sauf la remise à zéro du compteur de cartouche. Sondé en boucle,
+ * Tout est en lecture, sauf le stock papier et le bac. Sondé en boucle,
  * parce que c'est la page qu'on laisse ouverte pendant un événement. */
 
 const POLL_INTERVAL_MS = 2000;
-
-/* Cartouches de la Canon Selphy CP1500. Côté frontend et non dans l'API : une route qui
-   renvoie trois littéraux transporte de la mise en forme, pas de l'information.
-
-   Pas de sélecteur de capacité persisté non plus. Afficher les trois seuils en regard des
-   tirages répond à « me reste-t-il du papier » sans inventer un état de plus à stocker,
-   invalider et tenir à jour. */
-
 export function HealthSection() {
   const [health, setHealth] = useState<AdminHealth | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [scan, setScan] = useState<CameraScan | null>(null);
   const [scanning, setScanning] = useState(false);
   const [releasing, setReleasing] = useState(false);
+  const [stockDialogOpen, setStockDialogOpen] = useState(false);
+  const [inkDialogOpen, setInkDialogOpen] = useState(false);
+  const [savingStock, setSavingStock] = useState(false);
+  const [savingInk, setSavingInk] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -48,15 +46,16 @@ export function HealthSection() {
     };
   }, []);
 
-  const resetCartridge = async () => {
-    // Irréversible et invisible : sans confirmation, un clic de travers efface le seul
-    // repère qui dit combien de papier reste.
-    if (!window.confirm("Remettre le compteur de cartouche à zéro ?")) return;
+  const setPaperStock = async (total: number) => {
+    setSavingStock(true);
     try {
-      const counters = await api.resetCartridge();
+      const counters = await api.setPaperStock(total);
       setHealth((current) => (current ? { ...current, counters } : current));
+      setStockDialogOpen(false);
     } catch (cause) {
       setError(String(cause));
+    } finally {
+      setSavingStock(false);
     }
   };
 
@@ -66,6 +65,19 @@ export function HealthSection() {
       setHealth((current) => (current ? { ...current, counters } : current));
     } catch (cause) {
       setError(String(cause));
+    }
+  };
+
+  const replaceInk = async (capacity: 36 | 54) => {
+    setSavingInk(true);
+    try {
+      const counters = await api.replaceInk(capacity);
+      setHealth((current) => (current ? { ...current, counters } : current));
+      setInkDialogOpen(false);
+    } catch (cause) {
+      setError(String(cause));
+    } finally {
+      setSavingInk(false);
     }
   };
 
@@ -140,14 +152,14 @@ export function HealthSection() {
 
         <Group title="Tirages">
           <Row label="Cumul de l'événement" value={`${counters.prints_total}`} />
-          <Row label="Depuis la cartouche" value={`${counters.prints_since_reset}`} />
+          <Row label="Stock papier" value={`${Math.max(0, counters.paper_stock_capacity - counters.prints_since_stock_set)} sur ${counters.paper_stock_capacity}`} />
           <Row label="Bac CP1500" value={`${Math.max(0, counters.cassette_capacity - counters.prints_since_cassette_reload)} sur ${counters.cassette_capacity}`} />
-          <Row label="Cartouche restante" value={`${Math.max(0, counters.cartridge_capacity - counters.prints_since_reset)} sur ${counters.cartridge_capacity}`} />
+          <Row label="Cassette d’encre" value={`${Math.max(0, counters.cartridge_capacity - counters.prints_since_reset)} sur ${counters.cartridge_capacity}`} />
           <Row
-            label="Remise à zéro"
+            label="Stock défini"
             value={
-              counters.reset_at
-                ? new Date(counters.reset_at).toLocaleString("fr-FR")
+              counters.stock_set_at
+                ? new Date(counters.stock_set_at).toLocaleString("fr-FR")
                 : "jamais — le compteur porte tous les tirages"
             }
           />
@@ -190,7 +202,8 @@ export function HealthSection() {
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <Button onClick={() => void reloadCassette()}>Bac rechargé (18 feuilles)</Button>
-        <Button onClick={() => void resetCartridge()}>Nouvelle cartouche</Button>
+        <Button onClick={() => setInkDialogOpen(true)}>Cassette d’encre remplacée</Button>
+        <Button onClick={() => setStockDialogOpen(true)}>Définir le stock papier</Button>
         <Button onClick={() => void scanCameras()} disabled={scanning} tone="secondary">
           {scanning ? "Sondage…" : "Détecter les caméras"}
         </Button>
@@ -202,6 +215,19 @@ export function HealthSection() {
       </div>
 
       {scan && <ScanResult scan={scan} />}
+      <PaperStockDialog
+        open={stockDialogOpen}
+        initialValue={Math.max(1, counters.paper_stock_capacity - counters.prints_since_stock_set)}
+        saving={savingStock}
+        onClose={() => setStockDialogOpen(false)}
+        onConfirm={(total) => void setPaperStock(total)}
+      />
+      <InkCartridgeDialog
+        open={inkDialogOpen}
+        saving={savingInk}
+        onClose={() => setInkDialogOpen(false)}
+        onConfirm={(capacity) => void replaceInk(capacity)}
+      />
     </Section>
   );
 }

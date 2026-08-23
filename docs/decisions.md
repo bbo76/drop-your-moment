@@ -346,31 +346,27 @@ contre une demande impossible mais ne prétend pas être un capteur physique.
 
 ### Un compteur n'existe qu'accompagné de ce qui le remet à zéro
 
-`data/counters.json` porte deux compteurs : le cumul de l'événement et celui de la
-cartouche. Les deux questions sont distinctes — « combien de photos cet événement a-t-il
-produit » contre « me reste-t-il du papier », et les cartouches de la CP1500 font 36, 54
-ou 108 tirages.
+`data/counters.json` porte le cumul de l'événement et trois estimations de consommables :
+le stock papier total, le bac physique et la cassette d'encre active. L'opérateur saisit
+librement les feuilles disponibles pour couvrir l'événement ; le logiciel suit seulement
+la cassette engagée, de 36 ou 54 tirages selon le consommable Canon.
 
-Le second a été **retiré** au jalon 4 puis remis au jalon 5, et c'est la règle qui compte :
-il n'existait aucune interface pour le réarmer. Il valait donc toujours exactement le
-premier, avec un `reset_at` qui restait `null` à vie. Un compteur sans son bouton n'est pas
-la moitié de la fonctionnalité, c'est une copie du cumul sous un autre nom. Il est revenu
-avec `POST /admin/counters/reset` et le bouton qui l'appelle, pas avant.
+Chaque estimation correspond à un geste réel : définir le stock, recharger le bac ou
+remplacer la cassette d'encre. Un compteur sans ce geste dans l'interface ne serait qu'une
+valeur impossible à corriger.
 
-Un fichier écrit avant son retour se relit avec le compteur de cartouche replié sur le
-cumul, jamais sur zéro : aucune remise à zéro n'a eu lieu, donc la cartouche a bien vu
-passer tous les tirages. Repartir de zéro annoncerait du papier qui n'existe pas.
+Un fichier écrit avant son retour se relit avec la consommation du stock repliée sur le
+cumul, jamais sur zéro : aucune définition du stock n'a eu lieu. Repartir de zéro
+annoncerait du papier qui n'existe pas.
 
 Fichier absent ou corrompu : on repart de zéro en journalisant, jamais un refus de
 démarrer. Même arbitrage que pour la configuration d'événement — un compteur faux se
 corrige, une borne éteinte un samedi soir non.
 
-La CP1500 ne peut charger que **18 feuilles à la fois**. Ce stock physique est suivi
-séparément du kit 36/54/108 : chaque tirage décrémente les deux estimations, une nouvelle
-cartouche réarme les deux, et l'action « bac rechargé » ne réarme que le bac. Avant la
-soumission, le serveur retient le minimum des deux stocks et refuse une demande qui le
-dépasserait. Pour un ancien fichier sans compteur de bac, le repli est conservateur : il
-demande un rechargement explicite plutôt que d'inventer 18 feuilles disponibles.
+La CP1500 ne peut charger que **18 feuilles à la fois**. Chaque tirage décrémente les trois
+estimations et chaque action n'en réarme qu'une. Avant la soumission, le serveur retient
+leur minimum et refuse une demande qui le dépasserait. Pour un ancien fichier incomplet,
+le repli reste conservateur plutôt que d'inventer des consommables disponibles.
 
 ## Outillage
 

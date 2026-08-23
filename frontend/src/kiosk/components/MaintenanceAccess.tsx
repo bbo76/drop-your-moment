@@ -10,13 +10,14 @@ import {
   type MaintenanceSnapshot,
   type ShotTimerSeconds,
 } from "../../shared/api";
+import { InkCartridgeDialog } from "../../shared/InkCartridgeDialog";
+import { PaperStockDialog } from "../../shared/PaperStockDialog";
 import { applyAccentTheme, LAUNCH_FONT_FAMILIES } from "../../shared/theme";
 import { mockMaintenanceSnapshot, type DebugFailure } from "../debugFailures";
 import { GhostButton } from "./Screen";
 
 const PIN_LENGTH = 4;
 const POLL_INTERVAL_MS = 2000;
-const CAPACITIES = [36, 54, 108];
 const SHOT_TIMER_OPTIONS: ShotTimerSeconds[] = [3, 5, 10];
 const EVENT_PALETTE = [
   { name: "Or", value: "#ffd400" },
@@ -403,14 +404,15 @@ function PrintingView({
   onChange: (snapshot: MaintenanceSnapshot) => void;
   onSaveSettings: (changes: Partial<MaintenanceSettings>) => Promise<void>;
 }) {
-  const [pendingCapacity, setPendingCapacity] = useState<number | null>(null);
+  const [stockDialogOpen, setStockDialogOpen] = useState(false);
+  const [inkDialogOpen, setInkDialogOpen] = useState(false);
   const { health, settings } = snapshot;
   const remaining = paperRemaining(health.counters);
   return (
     <section className="maintenance-detail grid min-h-0 grid-cols-[0.8fr_1.2fr] gap-4">
       <div className="maintenance-block flex flex-col justify-between">
         <div><p className="type-kiosk-label text-lg text-muted">Papier restant</p><p className="type-kiosk-data text-7xl">{remaining}</p></div>
-        <div className="type-kiosk-meta text-lg text-muted"><p>Bac CP1500 : {Math.max(0, health.counters.cassette_capacity - health.counters.prints_since_cassette_reload)} / {health.counters.cassette_capacity}</p><p>Cartouche : {Math.max(0, health.counters.cartridge_capacity - health.counters.prints_since_reset)} restantes</p><p>{health.counters.prints_total} sur l’événement</p></div>
+        <div className="type-kiosk-meta text-lg text-muted"><p>Bac : {Math.max(0, health.counters.cassette_capacity - health.counters.prints_since_cassette_reload)} / {health.counters.cassette_capacity}</p><p>Encre : {Math.max(0, health.counters.cartridge_capacity - health.counters.prints_since_reset)} / {health.counters.cartridge_capacity}</p><p>Stock total : {Math.max(0, health.counters.paper_stock_capacity - health.counters.prints_since_stock_set)} feuilles</p></div>
         <p className="type-kiosk-section-title text-lg">{health.printer_driver === "null" ? "Mode numérique" : health.printer_driver === "offline" ? "CP1500 déconnectée" : "CP1500 connectée"}</p>
       </div>
       <div className="maintenance-block flex flex-col justify-between">
@@ -421,9 +423,13 @@ function PrintingView({
         </Setting>
         <div>
           <button type="button" disabled={saving} className="maintenance-choice mb-3 w-full" onClick={async () => { setSaving(true); try { const counters = await api.reloadCassette(); onChange({ ...snapshot, health: { ...health, counters } }); setError(null); } catch { setError("Le rechargement du bac n’a pas été enregistré."); } finally { setSaving(false); } }}>Bac rechargé (18 feuilles)</button>
-          <p className="type-kiosk-label mb-2 text-base">Nouvelle cartouche</p>
-          {pendingCapacity === null ? <div className="grid grid-cols-3 gap-2">{CAPACITIES.map((capacity) => <button key={capacity} type="button" disabled={saving} className="maintenance-choice" onClick={() => setPendingCapacity(capacity)}>{capacity}</button>)}</div> : <div className="cartridge-confirm" role="alert"><strong>Cartouche {pendingCapacity}</strong><button type="button" onClick={() => setPendingCapacity(null)}>Annuler</button><button type="button" disabled={saving} onClick={async () => { setSaving(true); try { const counters = await api.changeCartridge(pendingCapacity); onChange({ ...snapshot, health: { ...health, counters } }); setPendingCapacity(null); setError(null); } catch { setError("Le compteur papier n’a pas été réinitialisé."); } finally { setSaving(false); } }}>Confirmer</button></div>}
+          <div className="grid grid-cols-2 gap-3">
+            <button type="button" disabled={saving} className="maintenance-choice" onClick={() => setInkDialogOpen(true)}>Cassette d’encre remplacée</button>
+            <button type="button" disabled={saving} className="maintenance-choice" onClick={() => setStockDialogOpen(true)}>Définir le stock papier</button>
+          </div>
         </div>
+        <PaperStockDialog open={stockDialogOpen} initialValue={Math.max(1, health.counters.paper_stock_capacity - health.counters.prints_since_stock_set)} saving={saving} onClose={() => setStockDialogOpen(false)} onConfirm={async (total) => { setSaving(true); try { const counters = await api.setMaintenancePaperStock(total); onChange({ ...snapshot, health: { ...health, counters } }); setStockDialogOpen(false); setError(null); } catch { setError("Le stock papier n’a pas été enregistré."); } finally { setSaving(false); } }} />
+        <InkCartridgeDialog open={inkDialogOpen} saving={saving} onClose={() => setInkDialogOpen(false)} onConfirm={async (capacity) => { setSaving(true); try { const counters = await api.replaceMaintenanceInk(capacity); onChange({ ...snapshot, health: { ...health, counters } }); setInkDialogOpen(false); setError(null); } catch { setError("Le remplacement de la cassette d’encre n’a pas été enregistré."); } finally { setSaving(false); } }} />
       </div>
     </section>
   );
@@ -433,6 +439,7 @@ function paperRemaining(counters: MaintenanceSnapshot["health"]["counters"]) {
   return Math.max(0, Math.min(
     counters.cartridge_capacity - counters.prints_since_reset,
     counters.cassette_capacity - counters.prints_since_cassette_reload,
+    counters.paper_stock_capacity - counters.prints_since_stock_set,
   ));
 }
 
@@ -444,16 +451,21 @@ function printingTileDetail(
     0,
     counters.cassette_capacity - counters.prints_since_cassette_reload,
   );
-  const cartridgeRemaining = Math.max(
+  const inkRemaining = Math.max(
     0,
     counters.cartridge_capacity - counters.prints_since_reset,
   );
+  const stockRemaining = Math.max(
+    0,
+    counters.paper_stock_capacity - counters.prints_since_stock_set,
+  );
   const cassetteEmpty = cassetteRemaining < copies;
-  const cartridgeEmpty = cartridgeRemaining < copies;
-  if (cassetteEmpty && cartridgeEmpty) return "Papier épuisé · bac et cartouche à remplacer";
+  const inkEmpty = inkRemaining < copies;
+  const stockEmpty = stockRemaining < copies;
+  if (stockEmpty) return "Stock papier insuffisant · à mettre à jour";
+  if (inkEmpty) return "Cassette d’encre épuisée · à remplacer";
   if (cassetteEmpty) return "Bac vide · rechargez 18 feuilles";
-  if (cartridgeEmpty) return "Cartouche épuisée · à remplacer";
-  return `${copies} copie${copies > 1 ? "s" : ""} · ${Math.min(cassetteRemaining, cartridgeRemaining)} feuilles disponibles`;
+  return `${copies} copie${copies > 1 ? "s" : ""} · ${Math.min(cassetteRemaining, inkRemaining, stockRemaining)} tirages avant intervention`;
 }
 
 function healthTileDetail(health: MaintenanceSnapshot["health"]) {

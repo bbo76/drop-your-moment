@@ -419,8 +419,11 @@ def test_la_sante_repond_a_tenir_la_soiree(admin: TestClient) -> None:
         "prints_total": 0,
         "prints_since_reset": 0,
         "reset_at": None,
-        "cartridge_capacity": 108,
+        "cartridge_capacity": 36,
         "prints_since_cassette_reload": 0,
+        "paper_stock_capacity": 108,
+        "prints_since_stock_set": 0,
+        "stock_set_at": None,
         "cassette_capacity": 18,
     }
     assert body["disk_free_bytes"] > 0
@@ -461,9 +464,19 @@ def test_la_remise_a_zero_depuis_le_portail(admin: TestClient, kiosk: TestClient
     kiosk.post(f"/api/session/{session_id}/capture")
     kiosk.post(f"/api/session/{session_id}/print")
 
-    apres = admin.post("/admin/counters/reset").json()
+    apres = admin.post("/admin/counters/paper-stock", json={"capacity": 137}).json()
 
     assert apres["prints_total"] == 1, "le cumul de l'événement ne bouge pas"
+    assert apres["prints_since_stock_set"] == 0
+    assert apres["paper_stock_capacity"] == 137
+    assert apres["stock_set_at"] is not None
+    assert apres["prints_since_reset"] == 1
+    assert admin.get("/admin/system/health").json()["counters"] == apres
+
+
+def test_le_remplacement_d_encre_depuis_le_portail(admin: TestClient) -> None:
+    apres = admin.post("/admin/counters/ink/replace", json={"capacity": 54}).json()
+
+    assert apres["cartridge_capacity"] == 54
     assert apres["prints_since_reset"] == 0
     assert apres["reset_at"] is not None
-    assert admin.get("/admin/system/health").json()["counters"] == apres

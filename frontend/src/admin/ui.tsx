@@ -21,7 +21,7 @@ export function Row({ label, value }: { label: string; value: ReactNode }) {
   return (
     <>
       <dt className="text-muted">{label}</dt>
-      <dd>{value}</dd>
+      <dd className="min-w-0 break-words">{value}</dd>
     </>
   );
 }
@@ -70,7 +70,7 @@ export function Button({
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className={`rounded border px-4 py-2 font-medium disabled:opacity-40 ${toneClass}`}
+      className={`min-h-11 rounded border px-4 py-2 font-medium transition-colors disabled:opacity-40 ${toneClass}`}
     >
       {children}
     </button>

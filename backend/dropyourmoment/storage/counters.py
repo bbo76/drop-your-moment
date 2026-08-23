@@ -1,9 +1,8 @@
 """Compteurs de tirages, persistés sur disque.
 
 L'état de session vit en mémoire et se perd au redémarrage — sans gravité, le visiteur
-recommence. Le compteur de tirages, lui, ne peut pas se le permettre : les cartouches de
-la Canon Selphy CP1500 font 36, 54 ou 108 tirages, et sans compteur l'opérateur découvre
-la fin de cartouche en pleine soirée.
+recommence. Le compteur de tirages, lui, ne peut pas se le permettre : sans inventaire
+papier l'opérateur découvre la rupture en pleine soirée.
 
 Deux compteurs, parce que ce sont deux questions distinctes : « combien de photos cet
 événement a-t-il produit » et « me reste-t-il du papier ». Ils n'ont existé ensemble
@@ -31,22 +30,27 @@ PAPER_CASSETTE_CAPACITY = 18
 @dataclass(frozen=True)
 class Counters:
     prints_total: int = 0
+    # Ces trois noms historiques décrivent désormais la cassette d'encre active.
     prints_since_reset: int = 0
     # Horodatage ISO de la dernière remise à zéro, `None` si elle n'a jamais eu lieu.
     # En chaîne et non en `datetime` : ce champ ne sert qu'à être affiché et sérialisé,
     # aucun calcul ne s'appuie dessus.
     reset_at: str | None = None
-    cartridge_capacity: int = 108
+    cartridge_capacity: int = 36
     prints_since_cassette_reload: int = 0
+    paper_stock_capacity: int = 108
+    prints_since_stock_set: int = 0
+    stock_set_at: str | None = None
 
     @property
     def paper_remaining(self) -> int:
-        """Stock utilisable : le plus petit restant entre kit et bac physique."""
+        """Tirages possibles avant la prochaine intervention physique."""
         return max(
             0,
             min(
                 self.cartridge_capacity - self.prints_since_reset,
                 PAPER_CASSETTE_CAPACITY - self.prints_since_cassette_reload,
+                self.paper_stock_capacity - self.prints_since_stock_set,
             ),
         )
 
@@ -69,16 +73,25 @@ class CounterStore:
             payload = json.loads(self._path.read_text(encoding="utf-8"))
             total = int(payload["prints_total"])
             reset_at = payload.get("reset_at")
+            legacy_capacity = int(payload.get("cartridge_capacity", 108))
+            legacy_used = int(payload.get("prints_since_reset", total))
             return Counters(
                 prints_total=total,
-                # Un fichier écrit avant l'arrivée du second compteur n'a que le cumul.
-                # Le repli sur `total` est la lecture honnête : aucune remise à zéro n'a
-                # eu lieu, donc la cartouche a vu passer tous les tirages.
-                prints_since_reset=int(payload.get("prints_since_reset", total)),
+                prints_since_reset=min(
+                    legacy_used,
+                    legacy_capacity if legacy_capacity in (36, 54) else 36,
+                ),
                 reset_at=None if reset_at is None else str(reset_at),
-                cartridge_capacity=int(payload.get("cartridge_capacity", 108)),
+                cartridge_capacity=legacy_capacity if legacy_capacity in (36, 54) else 36,
                 prints_since_cassette_reload=int(
                     payload.get("prints_since_cassette_reload", total)
+                ),
+                paper_stock_capacity=int(payload.get("paper_stock_capacity", legacy_capacity)),
+                prints_since_stock_set=int(payload.get("prints_since_stock_set", legacy_used)),
+                stock_set_at=(
+                    None
+                    if payload.get("stock_set_at", reset_at) is None
+                    else str(payload.get("stock_set_at", reset_at))
                 ),
             )
         except (json.JSONDecodeError, KeyError, TypeError, ValueError, OSError) as exc:
@@ -95,35 +108,41 @@ class CounterStore:
             prints_total=current.prints_total + copies,
             prints_since_reset=current.prints_since_reset + copies,
             prints_since_cassette_reload=current.prints_since_cassette_reload + copies,
+            prints_since_stock_set=current.prints_since_stock_set + copies,
         )
         self._write(updated)
         logger.info(
-            "compteur de tirages : +%d (total %d, cartouche %d)",
+            "compteur de tirages : +%d (total %d, stock %d)",
             copies,
             updated.prints_total,
             updated.prints_since_reset,
         )
         return updated
 
-    def reset_cartridge(self, capacity: int | None = None) -> Counters:
-        """Réarme le compteur de cartouche, sans toucher au cumul.
+    def set_paper_stock(self, total: int) -> Counters:
+        """Définit le stock total disponible, sans toucher au cumul ni au bac."""
+        current = self.read()
+        updated = replace(
+            current,
+            prints_since_stock_set=0,
+            stock_set_at=datetime.now(UTC).isoformat(timespec="seconds"),
+            paper_stock_capacity=total,
+        )
+        self._write(updated)
+        logger.info("stock papier défini à %d (cumul inchangé : %d)", total, updated.prints_total)
+        return updated
 
-        Le geste que l'opérateur fait en changeant de papier. Le cumul, lui, répond à une
-        autre question et n'a aucune raison de bouger — c'est bien pour ça qu'il en faut
-        deux.
-        """
+    def replace_ink_cartridge(self, capacity: int) -> Counters:
+        """Mémorise une cassette d'encre neuve de 36 ou 54 tirages."""
         current = self.read()
         updated = replace(
             current,
             prints_since_reset=0,
             reset_at=datetime.now(UTC).isoformat(timespec="seconds"),
-            cartridge_capacity=capacity if capacity is not None else current.cartridge_capacity,
-            prints_since_cassette_reload=0,
+            cartridge_capacity=capacity,
         )
         self._write(updated)
-        logger.info(
-            "compteur de cartouche remis à zéro (cumul inchangé : %d)", updated.prints_total
-        )
+        logger.info("cassette d'encre remplacée (%d tirages)", capacity)
         return updated
 
     def reload_cassette(self) -> Counters:

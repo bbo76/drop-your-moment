@@ -17,6 +17,7 @@ import shutil
 import unicodedata
 from io import BytesIO
 from pathlib import Path
+from typing import Literal
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse, Response, StreamingResponse
@@ -57,7 +58,18 @@ class CounterReading(BaseModel):
     reset_at: str | None
     cartridge_capacity: int
     prints_since_cassette_reload: int
+    paper_stock_capacity: int
+    prints_since_stock_set: int
+    stock_set_at: str | None
     cassette_capacity: int = PAPER_CASSETTE_CAPACITY
+
+
+class PaperStockChange(BaseModel):
+    capacity: int = Field(ge=1, le=9_999)
+
+
+class InkCartridgeChange(BaseModel):
+    capacity: Literal[36, 54]
 
 
 class AdminHealth(BaseModel):
@@ -130,19 +142,24 @@ def read_health(runtime: Runtime = Depends(get_runtime)) -> AdminHealth:
     )
 
 
-@router.post("/counters/reset", response_model=CounterReading)
-def reset_cartridge_counter(runtime: Runtime = Depends(get_runtime)) -> CounterReading:
-    """Réarme le compteur de cartouche. Le cumul de l'événement ne bouge pas.
-
-    Le bouton sans lequel le second compteur n'aurait aucune raison d'exister : il
-    vaudrait toujours exactement le cumul.
-    """
-    return _reading(runtime.counters.reset_cartridge())
+@router.post("/counters/paper-stock", response_model=CounterReading)
+def set_paper_stock(
+    change: PaperStockChange, runtime: Runtime = Depends(get_runtime)
+) -> CounterReading:
+    """Définit le stock papier total. Le cumul et l'état du bac ne bougent pas."""
+    return _reading(runtime.counters.set_paper_stock(change.capacity))
 
 
 @router.post("/counters/cassette/reload", response_model=CounterReading)
 def reload_paper_cassette(runtime: Runtime = Depends(get_runtime)) -> CounterReading:
     return _reading(runtime.counters.reload_cassette())
+
+
+@router.post("/counters/ink/replace", response_model=CounterReading)
+def replace_ink_cartridge(
+    change: InkCartridgeChange, runtime: Runtime = Depends(get_runtime)
+) -> CounterReading:
+    return _reading(runtime.counters.replace_ink_cartridge(change.capacity))
 
 
 @router.post("/session/home", response_model=SessionStatus)

@@ -251,12 +251,19 @@ matériel, un libellé explicite et une couleur d’état ; le picto ne remplace
 
 ### Portail complet
 
-Le portail PC reprend les mêmes couleurs et la même typographie, mais pas la densité
-tactile du kiosque. Sa colonne d’exploitation est centrée et plafonnée à 1152 px. Dans un
-groupe de commandes, l’accent plein désigne l’action courante, le contour acier un
-diagnostic sans conséquence et le contour corail une interruption de parcours. La
-commande distante « Libérer la borne » n’apparaît que lorsqu’une session est active et
-demande confirmation avant de la remettre à l’accueil.
+L'administration est un outil neutre, distinct de la scénographie du kiosque. Elle utilise
+un fond gris froid, des surfaces blanches, une encre sombre, un bleu fonctionnel et un rouge
+d'incident fixes ; la couleur choisie pour le mariage n'y est jamais appliquée. La
+typographie reste Barlow Semi Condensed pour conserver une parenté discrète sans reprendre
+le branding événementiel.
+
+Deux points d'accès servent deux usages sans navigation entre eux. Le backoffice complet
+sur `admin.html` est destiné au laptop : identité, overlay, format, sécurité, diagnostic et
+galerie. La console `mobile.html` est strictement opérationnelle : un grand signal annonce
+si la borne est prête, occupée ou demande une intervention, puis parcours, matériel,
+impression, réglages rapides et photos récentes suivent l'ordre d'urgence. Les deux entrées
+partagent les API et les composants ; la maintenance tactile locale du kiosque conserve son
+interface et son thème propres.
 
 ### Inputs / Fields
 
