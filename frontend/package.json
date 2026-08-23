@@ -11,6 +11,16 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fontsource/barlow-semi-condensed": "^5.3.0",
+    "@fontsource/bodoni-moda": "^5.3.0",
+    "@fontsource/caveat": "^5.3.0",
+    "@fontsource/cormorant-garamond": "^5.3.0",
+    "@fontsource/creepster": "^5.3.0",
+    "@fontsource/dancing-script": "^5.3.0",
+    "@fontsource/fredoka": "^5.3.0",
+    "@fontsource/lobster": "^5.3.0",
+    "@fontsource/montserrat": "^5.3.0",
+    "@fontsource/playfair-display": "^5.3.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

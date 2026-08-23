@@ -35,6 +35,7 @@ class Counters:
     # En chaîne et non en `datetime` : ce champ ne sert qu'à être affiché et sérialisé,
     # aucun calcul ne s'appuie dessus.
     reset_at: str | None = None
+    cartridge_capacity: int = 108
 
 
 class CounterStore:
@@ -62,6 +63,7 @@ class CounterStore:
                 # eu lieu, donc la cartouche a vu passer tous les tirages.
                 prints_since_reset=int(payload.get("prints_since_reset", total)),
                 reset_at=None if reset_at is None else str(reset_at),
+                cartridge_capacity=int(payload.get("cartridge_capacity", 108)),
             )
         except (json.JSONDecodeError, KeyError, TypeError, ValueError, OSError) as exc:
             # Repartir de zéro plutôt que refuser de démarrer : même arbitrage que pour la
@@ -86,17 +88,19 @@ class CounterStore:
         )
         return updated
 
-    def reset_cartridge(self) -> Counters:
+    def reset_cartridge(self, capacity: int | None = None) -> Counters:
         """Réarme le compteur de cartouche, sans toucher au cumul.
 
         Le geste que l'opérateur fait en changeant de papier. Le cumul, lui, répond à une
         autre question et n'a aucune raison de bouger — c'est bien pour ça qu'il en faut
         deux.
         """
+        current = self.read()
         updated = replace(
-            self.read(),
+            current,
             prints_since_reset=0,
             reset_at=datetime.now(UTC).isoformat(timespec="seconds"),
+            cartridge_capacity=capacity if capacity is not None else current.cartridge_capacity,
         )
         self._write(updated)
         logger.info(

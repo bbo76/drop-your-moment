@@ -69,9 +69,9 @@ Th□o » ; et le test du sondage caméra en `GET` affirmait un 405 là où le v
 
 ### ✅ Jalon 5.1 — Finitions d'usage
 
-Trois gestes qui manquaient avant de passer au matériel : le flash logiciel blanc reste
-visible pendant la durée réglée depuis le portail, même quand le backend local répond
-immédiatement ;
+Trois gestes qui manquaient avant de passer au matériel : le flash logiciel blanc éclaire
+avant la capture et peut être désactivé depuis le portail lorsqu'un flash physique prend
+le relais ;
 un clic sur une vignette ouvre désormais la photo en grand, avec navigation et bouton de
 téléchargement explicite ; et l'opérateur peut supprimer définitivement une photo après
 confirmation.
@@ -83,6 +83,21 @@ dit avant l'action, et l'archive zip reste le moyen de sauvegarder l'événement
 La page de santé prépare aussi la surveillance du Pi : charge CPU, mémoire utilisée et
 température CPU lorsque le système expose un capteur. Une température absente est une
 information normale sur un poste de développement, pas une panne du portail.
+
+### ✅ Jalon 5.2 — Maintenance tactile locale
+
+La borne elle-même donne maintenant accès, derrière un PIN, aux seuls gestes utiles sous
+la pression d'un événement. Quatre tuiles séparent le diagnostic caméra / stockage / CPU /
+RAM, l'impression (connexion CP1500, papier, compteurs, cartouche et copies), la galerie
+récente et les réglages de la borne. Overlay et format restent sur le portail complet. Le
+PIN initial vient de l'environnement puis peut être remplacé, sans être exposé, depuis la
+section Sécurité du portail complet.
+
+Cette maintenance n'est montée que sur la socket locale du kiosque. Sa session expire au
+bout de cinq minutes et ramène au parcours invité. Le langage visuel du parcours photo a
+été repris dans le même mouvement pour le vrai contexte 7 pouces : contraste élevé,
+information lisible à distance et grandes cibles tactiles. Le rendu est validé à 800×480
+sur le poste de développement ; le jugement final sur la dalle réelle reste au jalon 6.
 
 ### ⬜ Jalon 6 — Validation sur le Raspberry Pi
 

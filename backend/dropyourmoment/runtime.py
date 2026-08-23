@@ -9,6 +9,9 @@ chargée côté kiosque.
 
 from __future__ import annotations
 
+import hmac
+import secrets
+import time
 from dataclasses import dataclass, field
 
 from dropyourmoment.config import Settings
@@ -22,6 +25,7 @@ from dropyourmoment.hardware.printer.null_driver import NullPrinterDriver
 from dropyourmoment.imaging.filters import FilterName
 from dropyourmoment.imaging.pipeline import ImagePipeline
 from dropyourmoment.storage.counters import CounterStore
+from dropyourmoment.storage.maintenance_pin import MaintenancePinStore
 from dropyourmoment.storage.retention import purge
 
 
@@ -36,10 +40,16 @@ class Runtime:
     pipeline: ImagePipeline = field(init=False)
     counters: CounterStore = field(init=False)
     print_flow: PrintFlow = field(init=False)
+    maintenance_pin: MaintenancePinStore = field(init=False)
+    _maintenance_token: str | None = field(default=None, init=False, repr=False)
+    _maintenance_expires_at: float = field(default=0.0, init=False, repr=False)
 
     def __post_init__(self) -> None:
         self.pipeline = ImagePipeline(self.event)
         self.counters = CounterStore(self.settings.data_dir)
+        self.maintenance_pin = MaintenancePinStore(
+            self.settings.data_dir, self.settings.maintenance_pin
+        )
         self.print_flow = PrintFlow(
             machine=self.machine,
             printer=self.printer,
@@ -102,3 +112,30 @@ class Runtime:
 
     def stop(self) -> None:
         self.camera.stop()
+
+    def unlock_maintenance(self, pin: str) -> str | None:
+        if not self.maintenance_pin.verify(pin):
+            return None
+        self._maintenance_token = secrets.token_urlsafe(32)
+        self._maintenance_expires_at = (
+            time.monotonic() + self.settings.maintenance_session_timeout_s
+        )
+        return self._maintenance_token
+
+    def authorize_maintenance(self, token: str | None) -> bool:
+        if (
+            token is None
+            or self._maintenance_token is None
+            or not hmac.compare_digest(token, self._maintenance_token)
+            or time.monotonic() >= self._maintenance_expires_at
+        ):
+            return False
+        return True
+
+    def lock_maintenance(self) -> None:
+        self._maintenance_token = None
+        self._maintenance_expires_at = 0.0
+
+    def replace_maintenance_pin(self, pin: str) -> None:
+        self.maintenance_pin.replace(pin)
+        self.lock_maintenance()

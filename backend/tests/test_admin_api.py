@@ -18,32 +18,55 @@ from dropyourmoment.core.session import SessionState
 from dropyourmoment.runtime import Runtime
 
 # Au ratio de la carte postale paysage (1.48), le format par défaut de l'événement.
-GOOD_SIZE = (1480, 1000)
+GOOD_SIZE = POSTCARD_LANDSCAPE.pixel_size
 
 
 def test_lecture_de_la_configuration_active(admin: TestClient) -> None:
     body = admin.get("/admin/event-config").json()
 
     assert body["event_name"] == "Événement"
+    assert body["launch_message"] == "Bienvenue"
+    assert body["launch_font"] == "modern"
+    assert body["accent_color"] == "#ffd400"
     assert body["available_filters"] == ["original", "bw", "sepia"]
     assert body["copies_per_print"] == 1
-    assert body["flash_duration_ms"] == 180
+    assert body["screen_flash_enabled"] is True
 
 
 def test_aller_retour_de_la_configuration(admin: TestClient) -> None:
     config = admin.get("/admin/event-config").json()
     config["event_name"] = "Mariage Camille & Théo"
+    config["launch_message"] = "Bienvenue à notre mariage"
+    config["launch_font"] = "prestigious"
+    config["accent_color"] = "#8b5cf6"
     config["available_filters"] = ["original", "bw"]
     config["copies_per_print"] = 2
-    config["flash_duration_ms"] = 320
+    config["screen_flash_enabled"] = False
 
     assert admin.put("/admin/event-config", json=config).status_code == 200
 
     relu = admin.get("/admin/event-config").json()
     assert relu["event_name"] == "Mariage Camille & Théo"
+    assert relu["launch_message"] == "Bienvenue à notre mariage"
+    assert relu["launch_font"] == "prestigious"
+    assert relu["accent_color"] == "#8b5cf6"
     assert relu["available_filters"] == ["original", "bw"]
     assert relu["copies_per_print"] == 2
-    assert relu["flash_duration_ms"] == 320
+    assert relu["screen_flash_enabled"] is False
+
+
+def test_une_couleur_dominante_invalide_est_refusee(admin: TestClient) -> None:
+    config = admin.get("/admin/event-config").json()
+    config["accent_color"] = "jaune"
+
+    assert admin.put("/admin/event-config", json=config).status_code == 422
+
+
+def test_un_style_de_titre_inconnu_est_refuse(admin: TestClient) -> None:
+    config = admin.get("/admin/event-config").json()
+    config["launch_font"] = "comic-sans"
+
+    assert admin.put("/admin/event-config", json=config).status_code == 422
 
 
 def test_le_kiosque_voit_le_changement_sans_redemarrage(
@@ -57,15 +80,21 @@ def test_le_kiosque_voit_le_changement_sans_redemarrage(
     """
     config = admin.get("/admin/event-config").json()
     config["event_name"] = "Anniversaire de Lou"
+    config["launch_message"] = "Faites les fous !"
+    config["launch_font"] = "handwritten"
+    config["accent_color"] = "#f97316"
     config["available_filters"] = ["bw"]
-    config["flash_duration_ms"] = 450
+    config["screen_flash_enabled"] = False
     admin.put("/admin/event-config", json=config)
 
     vu_par_le_kiosque = kiosk.get("/api/event").json()
 
     assert vu_par_le_kiosque["event_name"] == "Anniversaire de Lou"
+    assert vu_par_le_kiosque["launch_message"] == "Faites les fous !"
+    assert vu_par_le_kiosque["launch_font"] == "handwritten"
+    assert vu_par_le_kiosque["accent_color"] == "#f97316"
     assert vu_par_le_kiosque["available_filters"] == ["bw"]
-    assert vu_par_le_kiosque["flash_duration_ms"] == 450
+    assert vu_par_le_kiosque["screen_flash_enabled"] is False
 
 
 def test_un_filtre_retire_est_refuse_au_kiosque(admin: TestClient, kiosk: TestClient) -> None:
@@ -99,10 +128,6 @@ def test_valeur_hors_bornes_refusee(admin: TestClient) -> None:
     config = admin.get("/admin/event-config").json()
     config["copies_per_print"] = 999
 
-    assert admin.put("/admin/event-config", json=config).status_code == 422
-
-    config = admin.get("/admin/event-config").json()
-    config["flash_duration_ms"] = 2001
     assert admin.put("/admin/event-config", json=config).status_code == 422
 
 
@@ -156,6 +181,18 @@ def test_la_configuration_survit_a_un_redemarrage(admin: TestClient, runtime: Ru
     assert runtime.event_store.load().config.event_name == "Gala"
 
 
+def test_le_portail_remplace_le_pin_sans_l_exposer(admin: TestClient, kiosk: TestClient) -> None:
+    assert admin.put("/admin/maintenance-pin", json={"pin": "7391"}).status_code == 204
+
+    assert kiosk.post("/api/maintenance/unlock", json={"pin": "2580"}).status_code == 401
+    assert kiosk.post("/api/maintenance/unlock", json={"pin": "7391"}).status_code == 204
+
+
+def test_le_portail_refuse_un_pin_non_conforme(admin: TestClient) -> None:
+    for pin in ("123", "12345", "abcd"):
+        assert admin.put("/admin/maintenance-pin", json={"pin": pin}).status_code == 422
+
+
 # --- Téléversement de l'overlay -------------------------------------------------------
 
 
@@ -178,6 +215,37 @@ def test_overlay_au_bon_ratio_accepte(admin: TestClient, runtime: Runtime) -> No
     assert response.json()["overlay_file"] == OVERLAY_FILENAME
     assert runtime.event.overlay is not None, "le kiosque doit l'avoir chargé aussitôt"
     assert runtime.event_store.overlay_path.is_file()
+
+
+def test_overlay_plus_grand_est_reduit_a_la_sortie(admin: TestClient, runtime: Runtime) -> None:
+    large = (GOOD_SIZE[0] * 2, GOOD_SIZE[1] * 2)
+
+    assert _upload(admin, _png(large)).status_code == 200
+
+    with Image.open(runtime.event_store.overlay_path) as stored:
+        assert stored.size == GOOD_SIZE
+
+
+def test_overlay_plus_petit_est_conserve_sans_agrandissement(
+    admin: TestClient, runtime: Runtime
+) -> None:
+    small = (GOOD_SIZE[0] // 2, GOOD_SIZE[1] // 2)
+
+    response = _upload(admin, _png(small))
+
+    assert response.status_code == 200
+    with Image.open(runtime.event_store.overlay_path) as stored:
+        assert stored.size == small
+
+
+def test_overlay_paysage_au_ratio_proche_est_recadre_sans_deformation(
+    admin: TestClient, runtime: Runtime
+) -> None:
+    response = _upload(admin, _png((1536, 1024)))
+
+    assert response.status_code == 200
+    with Image.open(runtime.event_store.overlay_path) as stored:
+        assert stored.size == (1516, 1024)
 
 
 def test_overlay_au_mauvais_ratio_refuse_avec_les_deux_ratios(admin: TestClient) -> None:
@@ -324,7 +392,12 @@ def test_la_sante_repond_a_tenir_la_soiree(admin: TestClient) -> None:
     assert body["preview_size"] == [640, 360]
     assert body["printer_driver"], "savoir qu'aucune imprimante n'est branchée explique tout"
     assert body["session_state"] == SessionState.IDLE
-    assert body["counters"] == {"prints_total": 0, "prints_since_reset": 0, "reset_at": None}
+    assert body["counters"] == {
+        "prints_total": 0,
+        "prints_since_reset": 0,
+        "reset_at": None,
+        "cartridge_capacity": 108,
+    }
     assert body["disk_free_bytes"] > 0
     assert body["disk_total_bytes"] >= body["disk_free_bytes"]
     assert 0 <= body["cpu_percent"] <= 100

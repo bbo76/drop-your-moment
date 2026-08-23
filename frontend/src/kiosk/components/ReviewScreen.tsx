@@ -26,7 +26,7 @@ export function ReviewScreen({
     remainingSeconds !== null && remainingSeconds <= RETURN_HINT_THRESHOLD_S;
 
   return (
-    <div className="grid h-full grid-rows-[1fr_auto] gap-3 p-3">
+    <main className="grid h-full grid-cols-[1.3fr_1fr] gap-4 p-4">
       <div className="grid min-h-0 place-content-center">
         {/* L'URL porte déjà une révision côté serveur : elle change à chaque
             recomposition, ce qui suffit à écarter l'image précédente du cache. */}
@@ -37,8 +37,12 @@ export function ReviewScreen({
         />
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-2">
+      <section className="flex min-h-0 flex-col justify-between rounded-panel bg-surface p-5">
+        <div>
+          <h1 className="type-kiosk-screen-title text-3xl">Votre photo</h1>
+          <p className="mt-1 text-base text-muted">Choisissez un rendu, puis gardez-la.</p>
+        </div>
+        <div className="grid gap-2">
           {availableFilters.map((name) => (
             <FilterButton
               key={name}
@@ -48,8 +52,7 @@ export function ReviewScreen({
             />
           ))}
         </div>
-
-        <div className="flex items-center gap-4">
+        <div className="grid gap-2">
           <span className="text-sm text-muted">
             {showReturnHint && `Retour à l'accueil dans ${Math.ceil(remainingSeconds)} s`}
           </span>
@@ -59,8 +62,8 @@ export function ReviewScreen({
               deviendra « Imprimer » quand une imprimante sera branchée. */}
           <PrimaryButton onClick={onKeep}>Je garde cette photo</PrimaryButton>
         </div>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 }
 
@@ -78,9 +81,9 @@ function FilterButton({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`min-h-12 cursor-pointer rounded-panel border px-5 text-base ${
+      className={`type-kiosk-action min-h-14 cursor-pointer rounded-panel border-2 px-5 text-left text-lg ${
         active
-          ? "border-accent bg-accent font-semibold text-accent-ink"
+          ? "border-accent bg-accent text-accent-ink"
           : "border-edge text-body"
       }`}
     >

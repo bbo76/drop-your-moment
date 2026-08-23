@@ -1,6 +1,7 @@
 import { EventSection } from "./EventSection";
 import { GallerySection } from "./GallerySection";
 import { HealthSection } from "./HealthSection";
+import { SecuritySection } from "./SecuritySection";
 
 /* Portail d'administration.
  *
@@ -23,6 +24,7 @@ export function AdminApp() {
       <div className="max-w-5xl">
         <HealthSection />
         <EventSection />
+        <SecuritySection />
         <GallerySection />
       </div>
     </div>

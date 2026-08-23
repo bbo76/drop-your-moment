@@ -25,7 +25,10 @@ def test_config_absente_cree_les_valeurs_par_defaut(tmp_path: Path) -> None:
     event = store.load()
 
     assert event.config.event_name == "Événement"
-    assert event.config.flash_duration_ms == 180
+    assert event.config.launch_message == "Bienvenue"
+    assert event.config.launch_font == "modern"
+    assert event.config.accent_color == "#ffd400"
+    assert event.config.screen_flash_enabled is True
     assert store.config_path.is_file()
 
 
@@ -34,18 +37,37 @@ def test_config_relue_a_l_identique(tmp_path: Path) -> None:
     store.save_config(
         EventConfig(
             event_name="Mariage Camille & Théo",
+            launch_message="Venez créer un souvenir",
+            launch_font="prestigious",
+            accent_color="#8b5cf6",
             available_filters=[FilterName.ORIGINAL, FilterName.BW],
             copies_per_print=2,
-            flash_duration_ms=350,
+            screen_flash_enabled=False,
         )
     )
 
     event = store.load()
 
     assert event.config.event_name == "Mariage Camille & Théo"
+    assert event.config.launch_message == "Venez créer un souvenir"
+    assert event.config.launch_font == "prestigious"
+    assert event.config.accent_color == "#8b5cf6"
     assert event.config.available_filters == [FilterName.ORIGINAL, FilterName.BW]
     assert event.config.copies_per_print == 2
-    assert event.config.flash_duration_ms == 350
+    assert event.config.screen_flash_enabled is False
+
+
+def test_ancienne_duree_de_flash_ne_casse_pas_la_configuration(tmp_path: Path) -> None:
+    """Une configuration créée avant l'interrupteur reste utilisable après mise à jour."""
+    (tmp_path / CONFIG_FILENAME).write_text(
+        '{"event_name": "Ancien événement", "flash_duration_ms": 180}'
+    )
+
+    event = EventStore(tmp_path).load()
+
+    assert event.config.event_name == "Ancien événement"
+    assert event.config.launch_message == "Ancien événement"
+    assert event.config.screen_flash_enabled is True
 
 
 def test_config_corrompue_ne_bloque_pas_le_demarrage(

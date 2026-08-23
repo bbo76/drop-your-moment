@@ -49,6 +49,40 @@ photos, et se configure depuis le portail d'administration. Le filtre choisi par
 visiteur s'applique à la photo **avant** que l'overlay soit composé par-dessus : un
 branding en couleur ne doit pas partir en sépia.
 
+Un overlay doit être transparent, avoir la même orientation que le tirage et des
+proportions proches. Un petit écart est corrigé par un recadrage central sans déformation.
+Un fichier plus grand que la définition de sortie recommandée est réduit en haute qualité ;
+un fichier plus petit est conservé à sa définition d'origine et n'est jamais agrandi lors
+de l'import.
+
+La couleur dominante du kiosque se règle également par événement depuis le portail. Elle
+pilote les boutons, sélections et le décompte ; la couleur du texte est choisie
+automatiquement pour rester contrastée.
+
+Le message du launch screen est indépendant du nom de l'événement et de l'overlay. Le
+portail propose dix styles auto-hébergés pour ce grand titre : Moderne, Graphique,
+Prestigieuse, Romantique, Couture, Manuscrite, Calligraphique, Festive, Ludique et
+Halloween. Les consignes et contrôles conservent la typographie fonctionnelle de la borne.
+Le kiosque resynchronise automatiquement ces réglages en arrière-plan : un enregistrement
+depuis l'admin met à jour le message, la fonte et la couleur en quelques secondes, sans F5
+et sans interrompre une prise de vue.
+
+### Maintenance sur la borne
+
+Le bouton outil, présent dans le coin supérieur droit du kiosque, ouvre une maintenance
+tactile protégée par un PIN à quatre chiffres. Quatre grandes tuiles donnent accès à la
+santé (caméra, stockage, CPU, RAM), à l'impression (connexion CP1500, papier, compteurs,
+cartouche et copies), aux dernières photos et aux réglages de la borne (flash écran et
+retour forcé à l'accueil). La borne permet aussi de choisir rapidement son ambiance parmi
+dix couleurs événementielles présélectionnées et les dix typographies du launch screen ;
+le portail PC conserve, lui, un sélecteur de couleur totalement libre. La maintenance se
+referme automatiquement après cinq minutes.
+
+`DYM_MAINTENANCE_PIN` fournit le PIN initial (valeur de développement : `2580`). Il peut
+ensuite être remplacé depuis la section Sécurité du portail complet ; seule son empreinte
+est conservée sur disque. Il protège des manipulations par les invités ; la maintenance
+reste en plus limitée à la socket locale du kiosque et n'est jamais exposée sur le LAN.
+
 ## Portail d'administration
 
 Sur `0.0.0.0:8001`, depuis n'importe quel PC du LAN. Sans authentification : risque assumé,
@@ -60,7 +94,7 @@ l'accès est censé rester limité au réseau d'un événement.
   la page qu'on laisse ouverte pendant un événement, et elle ne sonde ni périphérique ni
   répertoire.
 - **Événement** — nom, filtres proposés, format de sortie, nombre de copies, téléversement
-  de l'overlay, durée du flash visuel. Une modification est vue par le kiosque **sans
+  de l'overlay, activation du flash écran. Une modification est vue par le kiosque **sans
   redémarrage** : c'est la raison d'être du process unique à deux sockets.
 - **Galerie** — liste paginée, vignettes ouvrables en plein écran, téléchargement
   explicite, suppression définitive après confirmation, archive zip de l'événement servie
@@ -193,6 +227,8 @@ Variables d'environnement préfixées `DYM_` (voir
 | `PREVIEW_TIMEOUT_S` | `60` | retour à l'accueil si le visiteur s'éloigne devant l'aperçu |
 | `REVIEW_TIMEOUT_S` | `90` | idem sur l'écran de review |
 | `KIOSK_HOST` / `ADMIN_HOST` | `127.0.0.1` / `0.0.0.0` | adresses de bind |
+| `MAINTENANCE_PIN` | `2580` | PIN à quatre chiffres de la maintenance tactile locale |
+| `MAINTENANCE_SESSION_TIMEOUT_S` | `300` | fermeture automatique de la maintenance locale |
 | `RETENTION_MAX_AGE_DAYS` | `30` | âge au-delà duquel une session est purgée |
 | `RETENTION_MAX_TOTAL_GB` | `8` | plafond du dossier `data/sessions`, filet contre le disque plein |
 

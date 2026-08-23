@@ -9,9 +9,9 @@ import {
 } from "../shared/api";
 
 const POLL_INTERVAL_MS = 500;
-// Repli pour une ancienne réponse d'API ou le tout premier rendu. La valeur normale vient
-// de la configuration d'événement, relue au démarrage de chaque session.
-const DEFAULT_FLASH_MS = 180;
+const EVENT_POLL_INTERVAL_MS = 2000;
+const SCREEN_FLASH_LEAD_MS = 300;
+const SCREEN_FLASH_HOLD_MS = 150;
 
 export type Connection = "connecting" | "online" | "offline";
 
@@ -43,6 +43,10 @@ export function useKioskState(): KioskState {
   // Lus dans la boucle sans la faire redémarrer à chaque changement d'état.
   const systemRef = useRef<SystemStatus | null>(null);
   const eventRef = useRef<EventInfo | null>(null);
+  // Le backend termine la capture avant la fin éventuelle du flash logiciel. Pendant
+  // cet intervalle, le polling ne doit pas appliquer l'état `review`, sinon React
+  // démonte PreviewScreen et fait disparaître le flash au prochain tick (500 ms).
+  const captureInFlightRef = useRef(false);
 
   // L'identifiant de session vient du serveur ; les actions le relisent ici pour éviter
   // de recréer les callbacks à chaque tour de boucle.
@@ -52,27 +56,31 @@ export function useKioskState(): KioskState {
   useEffect(() => {
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let nextEventPollAt = 0;
 
     const tick = async () => {
       try {
-        // Capacités matérielles et réglages d'événement ne sont relus que s'ils
-        // manquent : le premier ne change qu'au rebranchement, le second qu'au passage
-        // de l'opérateur sur le portail d'administration.
+        // Les capacités matérielles ne changent qu'au rebranchement. La configuration
+        // événementielle, elle, doit suivre le portail sans F5 : sur la vraie borne il
+        // n'y a ni clavier ni geste navigateur disponible pour rafraîchir la page.
         if (!systemRef.current) {
           const fresh = await api.systemStatus();
           if (cancelled) return;
           systemRef.current = fresh;
           setSystem(fresh);
         }
-        if (!eventRef.current) {
+        if (!eventRef.current || Date.now() >= nextEventPollAt) {
           const fresh = await api.event();
           if (cancelled) return;
-          eventRef.current = fresh;
-          setEvent(fresh);
+          nextEventPollAt = Date.now() + EVENT_POLL_INTERVAL_MS;
+          if (JSON.stringify(fresh) !== JSON.stringify(eventRef.current)) {
+            eventRef.current = fresh;
+            setEvent(fresh);
+          }
         }
         const status = await api.status();
         if (cancelled) return;
-        setSession(status);
+        if (!captureInFlightRef.current) setSession(status);
         setConnection("online");
       } catch (error) {
         if (cancelled) return;
@@ -124,18 +132,26 @@ export function useKioskState(): KioskState {
   const capture = useCallback(async () => {
     const id = sessionIdRef.current;
     if (!id) return;
+    captureInFlightRef.current = true;
     try {
-      const [status] = await Promise.all([
-        api.capture(id),
-        new Promise<void>((resolve) =>
-          setTimeout(resolve, event?.flash_duration_ms ?? DEFAULT_FLASH_MS),
-        ),
-      ]);
+      const screenFlashEnabled = eventRef.current?.screen_flash_enabled ?? true;
+      if (screenFlashEnabled) {
+        // L'écran doit être blanc avant l'exposition pour que sa lumière atteigne le
+        // capteur et que l'exposition automatique ait le temps de réagir.
+        await new Promise<void>((resolve) => setTimeout(resolve, SCREEN_FLASH_LEAD_MS));
+      }
+      const status = await api.capture(id);
+      if (screenFlashEnabled) {
+        // Un bref maintien rend le déclenchement perceptible sans retarder la revue.
+        await new Promise<void>((resolve) => setTimeout(resolve, SCREEN_FLASH_HOLD_MS));
+      }
       setSession(status);
     } catch (error) {
       console.warn(error);
+    } finally {
+      captureInFlightRef.current = false;
     }
-  }, [event?.flash_duration_ms]);
+  }, []);
   const retake = useCallback(() => withSession(api.retake), [withSession]);
   const keepPhoto = useCallback(() => withSession(api.printPhoto), [withSession]);
   const chooseFilter = useCallback(

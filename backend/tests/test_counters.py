@@ -88,6 +88,12 @@ def test_la_remise_a_zero_survit_a_un_redemarrage(tmp_path: Path) -> None:
     assert CounterStore(tmp_path).read().prints_since_reset == 0
 
 
+def test_la_capacite_de_cartouche_survit_a_un_redemarrage(tmp_path: Path) -> None:
+    CounterStore(tmp_path).reset_cartridge(54)
+
+    assert CounterStore(tmp_path).read().cartridge_capacity == 54
+
+
 def test_un_fichier_de_l_ancien_format_se_relit(tmp_path: Path) -> None:
     """Migration : un `counters.json` écrit avant l'arrivée du second compteur n'a que le
     cumul. Aucune remise à zéro n'a eu lieu, donc la cartouche a vu passer tous les
