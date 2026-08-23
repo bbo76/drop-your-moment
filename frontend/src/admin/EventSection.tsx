@@ -11,7 +11,6 @@ import {
   type ShotTimerSeconds,
 } from "../shared/api";
 import { Button, Feedback, Field, inputClass, Section } from "./ui";
-import { applyAccentTheme } from "../shared/theme";
 
 /* Réglages de l'événement.
  *
@@ -50,10 +49,6 @@ export function EventSection() {
   useEffect(() => {
     api.eventConfig().then(setDraft, (cause) => setError(String(cause)));
   }, []);
-
-  useEffect(() => {
-    if (draft) applyAccentTheme(draft.accent_color);
-  }, [draft?.accent_color]);
 
   if (!draft) {
     return (
@@ -249,7 +244,7 @@ export function EventSection() {
             du format de sortie
           </legend>
           {draft.overlay_file ? (
-            <div className="flex items-start gap-4">
+            <div className="flex flex-wrap items-start gap-4">
               <img
                 src={overlayUrl(overlayRevision)}
                 alt="Overlay de l'événement"
@@ -266,7 +261,7 @@ export function EventSection() {
           ) : (
             <p className="text-sm text-muted">Aucun overlay — les photos sortiront sans cadre.</p>
           )}
-          <div className="mt-3 flex items-center gap-3">
+          <div className="mt-3 flex flex-wrap items-center gap-3">
             <label className="inline-flex min-h-12 cursor-pointer items-center rounded-panel bg-accent px-5 font-bold text-accent-ink transition-transform active:scale-[0.98]">
               {draft.overlay_file ? "Remplacer l’overlay" : "Choisir un overlay PNG"}
               <input

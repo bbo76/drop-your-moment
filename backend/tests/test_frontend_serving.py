@@ -28,6 +28,7 @@ def built_runtime(tmp_path: Path) -> Runtime:
     (dist / "assets").mkdir(parents=True)
     (dist / "index.html").write_text("<title>kiosque</title>")
     (dist / "admin.html").write_text("<title>administration</title>")
+    (dist / "mobile.html").write_text("<title>pilotage mobile</title>")
     (dist / "assets" / "app.css").write_text("body{color:red}")
 
     settings = Settings(data_dir=tmp_path / "data", frontend_dist_dir=dist)
@@ -56,6 +57,14 @@ def test_l_admin_sert_son_propre_document(built_runtime: Runtime) -> None:
 
     assert response.status_code == 200
     assert "administration" in response.text, "l'admin ne doit pas servir le kiosque"
+
+
+def test_l_admin_sert_le_point_d_entree_mobile(built_runtime: Runtime) -> None:
+    with TestClient(build_admin_app(built_runtime)) as client:
+        response = client.get("/mobile.html")
+
+    assert response.status_code == 200
+    assert "pilotage mobile" in response.text
 
 
 def test_les_assets_partages_sont_servis(built_runtime: Runtime) -> None:

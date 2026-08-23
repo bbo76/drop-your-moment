@@ -57,20 +57,31 @@ def test_les_reglages_utiles_s_appliquent_au_kiosque(kiosk: TestClient) -> None:
     assert kiosk.get("/api/event").json()["launch_font"] == "prestigious"
 
 
-def test_le_changement_de_cartouche_memorise_la_capacite(kiosk: TestClient) -> None:
+def test_le_stock_papier_libre_est_memorise(kiosk: TestClient) -> None:
     _unlock(kiosk)
 
-    response = kiosk.post("/api/maintenance/cartridge", json={"capacity": 54})
+    response = kiosk.post("/api/maintenance/paper-stock", json={"capacity": 137})
+
+    assert response.status_code == 200
+    assert response.json()["paper_stock_capacity"] == 137
+    assert response.json()["prints_since_stock_set"] == 0
+
+
+def test_un_stock_hors_limites_est_refuse(kiosk: TestClient) -> None:
+    _unlock(kiosk)
+
+    assert kiosk.post("/api/maintenance/paper-stock", json={"capacity": 0}).status_code == 422
+    assert kiosk.post("/api/maintenance/paper-stock", json={"capacity": 10_000}).status_code == 422
+
+
+def test_le_remplacement_de_cassette_d_encre_est_memorise(kiosk: TestClient) -> None:
+    _unlock(kiosk)
+
+    response = kiosk.post("/api/maintenance/ink/replace", json={"capacity": 54})
 
     assert response.status_code == 200
     assert response.json()["cartridge_capacity"] == 54
     assert response.json()["prints_since_reset"] == 0
-
-
-def test_une_capacite_inconnue_est_refusee(kiosk: TestClient) -> None:
-    _unlock(kiosk)
-
-    assert kiosk.post("/api/maintenance/cartridge", json={"capacity": 72}).status_code == 422
 
 
 def test_le_rechargement_du_bac_est_memorise(kiosk: TestClient, runtime: Runtime) -> None:

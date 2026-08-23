@@ -35,7 +35,7 @@ class PrintJobFailedError(PrinterError):
 
 
 class InsufficientPaperError(PrinterError):
-    """Le stock estimé du bac ou de la cartouche ne couvre pas le tirage demandé."""
+    """Le bac ou le stock papier déclaré ne couvre pas le tirage demandé."""
 
 
 class InvalidTransitionError(PhotoboothError):

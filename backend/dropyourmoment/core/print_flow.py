@@ -49,7 +49,7 @@ class PrintFlow:
         counters = self._counters.read()
         if copies > counters.paper_remaining:
             raise InsufficientPaperError(
-                "papier insuffisant : rechargez le bac ou remplacez la cartouche"
+                "papier insuffisant : rechargez le bac ou augmentez le stock papier"
             )
         job = self._printer.print_image(image_path, copies)
         self._job = job

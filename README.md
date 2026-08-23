@@ -71,9 +71,9 @@ et sans interrompre une prise de vue.
 
 Le bouton outil, présent dans le coin supérieur droit du kiosque, ouvre une maintenance
 tactile protégée par un PIN à quatre chiffres. Quatre grandes tuiles donnent accès à la
-santé (caméra, stockage, CPU, RAM), à l'impression (connexion CP1500, papier, compteurs,
-cartouche et copies), aux dernières photos et aux réglages de la borne (flash écran et
-minuteur par défaut). La borne permet aussi de choisir rapidement son ambiance parmi
+santé (caméra, stockage, CPU, RAM), à l'impression (connexion CP1500, stock total, bac
+de 18 feuilles, cassette d'encre 36/54 et copies), aux dernières photos et aux réglages de
+la borne (flash écran et minuteur par défaut). La borne permet aussi de choisir rapidement son ambiance parmi
 dix couleurs événementielles présélectionnées et les dix typographies du launch screen ;
 le portail PC conserve, lui, un sélecteur de couleur totalement libre. La maintenance se
 referme automatiquement après cinq minutes.
@@ -88,9 +88,17 @@ reste en plus limitée à la socket locale du kiosque et n'est jamais exposée s
 Sur `0.0.0.0:8001`, depuis n'importe quel PC du LAN. Sans authentification : risque assumé,
 l'accès est censé rester limité au réseau d'un événement.
 
+Deux accès partagent les mêmes API avec un thème administratif neutre, indépendant de la
+couleur du mariage :
+
+- `http://<adresse-du-pi>:8001/` — backoffice complet sur laptop, pour préparer l'événement
+  et récupérer les photos ;
+- `http://<adresse-du-pi>:8001/mobile.html` — console Jour J sur smartphone, limitée à la
+  surveillance et aux interventions utiles pendant la soirée.
+
 - **État du système** — pilote caméra et résolutions négociées, aperçu vivant ou gelé,
-  imprimante, état de session, les deux compteurs de tirages face aux cartouches CP1500
-  (36 / 54 / 108), espace disque, CPU, RAM et température quand le système l'expose. C'est
+  imprimante, état de session, cumul des tirages, stock papier déclaré et bac CP1500,
+  espace disque, CPU, RAM et température quand le système l'expose. C'est
   la page qu'on laisse ouverte pendant un événement, et elle ne sonde ni périphérique ni
   répertoire. Lorsqu’une session est active, elle permet aussi de ramener la borne à
   l’accueil après confirmation.
@@ -120,7 +128,7 @@ frontend/     Vite + React + Tailwind, deux points d'entrée dans un seul projet
 data/         données d'exécution, jamais versionnées
                 sessions/   une photo brute et une composée par passage
                 events/     configuration et overlay de l'événement en cours
-                counters.json  cumul de l'événement et compteur de cartouche
+                counters.json  cumul de l'événement, stock papier et état du bac
 ```
 
 Un seul projet frontend pour les deux interfaces : jetons de design, client d'API et

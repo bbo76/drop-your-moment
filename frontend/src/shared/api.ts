@@ -88,15 +88,18 @@ export type LaunchFont =
   | "playful"
   | "spooky";
 
-/** Les deux compteurs de tirages : le cumul de l'événement et celui de la cartouche. */
+/** Les trois limites physiques de l'impression, plus le cumul de l'événement. */
 export interface CounterReading {
   prints_total: number;
   prints_since_reset: number;
-  /** ISO 8601, ou null si la cartouche n'a jamais été réarmée. */
+  /** ISO 8601, ou null si la cassette d'encre n'a jamais été remplacée. */
   reset_at: string | null;
   cartridge_capacity: number;
   prints_since_cassette_reload: number;
   cassette_capacity: number;
+  paper_stock_capacity: number;
+  prints_since_stock_set: number;
+  stock_set_at: string | null;
 }
 
 export interface MaintenanceSettings {
@@ -251,12 +254,17 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(settings),
     }),
-  changeCartridge: (capacity: number) =>
-    post<CounterReading>("/api/maintenance/cartridge", { capacity }),
+  setMaintenancePaperStock: (capacity: number) =>
+    post<CounterReading>("/api/maintenance/paper-stock", { capacity }),
+  replaceMaintenanceInk: (capacity: 36 | 54) =>
+    post<CounterReading>("/api/maintenance/ink/replace", { capacity }),
   reloadCassette: () => post<CounterReading>("/api/maintenance/cassette/reload"),
   health: () => request<AdminHealth>("/admin/system/health"),
   releaseKiosk: () => post<SessionStatus>("/admin/session/home"),
-  resetCartridge: () => post<CounterReading>("/admin/counters/reset"),
+  setPaperStock: (capacity: number) =>
+    post<CounterReading>("/admin/counters/paper-stock", { capacity }),
+  replaceInk: (capacity: 36 | 54) =>
+    post<CounterReading>("/admin/counters/ink/replace", { capacity }),
   reloadAdminCassette: () => post<CounterReading>("/admin/counters/cassette/reload"),
   replaceMaintenancePin: async (pin: string) => {
     const path = "/admin/maintenance-pin";

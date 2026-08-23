@@ -57,44 +57,43 @@ def test_l_ecriture_ne_laisse_pas_de_temporaire(tmp_path: Path) -> None:
     assert list(tmp_path.glob("*.tmp")) == []
 
 
-def test_la_remise_a_zero_n_entame_pas_le_cumul(tmp_path: Path) -> None:
-    """Les deux compteurs répondent à deux questions : changer de papier n'efface pas
-    le nombre de photos que l'événement a produites."""
+def test_definir_le_stock_n_entame_pas_le_cumul(tmp_path: Path) -> None:
     store = CounterStore(tmp_path)
     store.record_prints(40)
 
-    counters = store.reset_cartridge()
+    counters = store.set_paper_stock(120)
 
     assert counters.prints_total == 40
-    assert counters.prints_since_reset == 0
-    assert counters.reset_at is not None, "sans horodatage, on ne sait pas quand"
+    assert counters.prints_since_stock_set == 0
+    assert counters.stock_set_at is not None
+    assert counters.prints_since_reset == 36, "la cassette d'encre ne bouge pas"
 
 
-def test_les_tirages_reprennent_apres_la_remise_a_zero(tmp_path: Path) -> None:
+def test_les_tirages_reprennent_apres_definition_du_stock(tmp_path: Path) -> None:
     store = CounterStore(tmp_path)
     store.record_prints(40)
-    store.reset_cartridge()
+    store.set_paper_stock(120)
 
     counters = store.record_prints(3)
 
     assert counters.prints_total == 43
-    assert counters.prints_since_reset == 3
+    assert counters.prints_since_stock_set == 3
 
 
-def test_la_remise_a_zero_survit_a_un_redemarrage(tmp_path: Path) -> None:
+def test_la_definition_du_stock_survit_a_un_redemarrage(tmp_path: Path) -> None:
     CounterStore(tmp_path).record_prints(40)
-    CounterStore(tmp_path).reset_cartridge()
+    CounterStore(tmp_path).set_paper_stock(120)
 
-    assert CounterStore(tmp_path).read().prints_since_reset == 0
-
-
-def test_la_capacite_de_cartouche_survit_a_un_redemarrage(tmp_path: Path) -> None:
-    CounterStore(tmp_path).reset_cartridge(54)
-
-    assert CounterStore(tmp_path).read().cartridge_capacity == 54
+    assert CounterStore(tmp_path).read().prints_since_stock_set == 0
 
 
-def test_le_bac_cp1500_se_recharge_independamment_de_la_cartouche(tmp_path: Path) -> None:
+def test_le_stock_papier_survit_a_un_redemarrage(tmp_path: Path) -> None:
+    CounterStore(tmp_path).set_paper_stock(137)
+
+    assert CounterStore(tmp_path).read().paper_stock_capacity == 137
+
+
+def test_le_bac_cp1500_se_recharge_independamment_du_stock(tmp_path: Path) -> None:
     store = CounterStore(tmp_path)
     store.record_prints(18)
 
@@ -102,6 +101,40 @@ def test_le_bac_cp1500_se_recharge_independamment_de_la_cartouche(tmp_path: Path
 
     assert counters.prints_since_cassette_reload == 0
     assert counters.prints_since_reset == 18
+
+
+def test_definir_le_stock_ne_recharge_pas_le_bac(tmp_path: Path) -> None:
+    store = CounterStore(tmp_path)
+    store.record_prints(7)
+
+    counters = store.set_paper_stock(137)
+
+    assert counters.paper_stock_capacity == 137
+    assert counters.prints_since_stock_set == 0
+    assert counters.prints_since_cassette_reload == 7
+
+
+def test_remplacer_l_encre_ne_modifie_ni_le_stock_ni_le_bac(tmp_path: Path) -> None:
+    store = CounterStore(tmp_path)
+    store.record_prints(7)
+
+    counters = store.replace_ink_cartridge(54)
+
+    assert counters.cartridge_capacity == 54
+    assert counters.prints_since_reset == 0
+    assert counters.prints_since_stock_set == 7
+    assert counters.prints_since_cassette_reload == 7
+
+
+def test_le_disponible_est_la_plus_petite_des_trois_limites(tmp_path: Path) -> None:
+    store = CounterStore(tmp_path)
+    store.set_paper_stock(100)
+    store.replace_ink_cartridge(36)
+    store.record_prints(10)
+    store.reload_cassette()
+    store.record_prints(12)
+
+    assert store.read().paper_remaining == 6, "le bac arrive avant le stock et l'encre"
 
 
 def test_un_fichier_de_l_ancien_format_se_relit(tmp_path: Path) -> None:
