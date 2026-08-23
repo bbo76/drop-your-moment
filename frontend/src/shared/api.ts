@@ -49,21 +49,39 @@ export interface PrintFormatPayload {
  */
 export interface EventConfigPayload {
   event_name: string;
+  launch_message: string;
+  launch_font: LaunchFont;
+  accent_color: string;
   overlay_file: string | null;
   available_filters: FilterName[];
   print_format: PrintFormatPayload;
   copies_per_print: number;
-  flash_duration_ms: number;
+  screen_flash_enabled: boolean;
 }
 
 /** Réglages de l'événement. Modifiables depuis le portail d'administration. */
 export interface EventInfo {
   event_name: string;
+  launch_message: string;
+  launch_font: LaunchFont;
+  accent_color: string;
   available_filters: FilterName[];
   print_format_name: string;
   print_aspect_ratio: number;
-  flash_duration_ms: number;
+  screen_flash_enabled: boolean;
 }
+
+export type LaunchFont =
+  | "modern"
+  | "geometric"
+  | "prestigious"
+  | "editorial"
+  | "couture"
+  | "handwritten"
+  | "elegant_script"
+  | "festive"
+  | "playful"
+  | "spooky";
 
 /** Les deux compteurs de tirages : le cumul de l'événement et celui de la cartouche. */
 export interface CounterReading {
@@ -71,6 +89,19 @@ export interface CounterReading {
   prints_since_reset: number;
   /** ISO 8601, ou null si la cartouche n'a jamais été réarmée. */
   reset_at: string | null;
+  cartridge_capacity: number;
+}
+
+export interface MaintenanceSettings {
+  copies_per_print: number;
+  screen_flash_enabled: boolean;
+  accent_color: string;
+  launch_font: LaunchFont;
+}
+
+export interface MaintenanceSnapshot {
+  health: AdminHealth;
+  settings: MaintenanceSettings;
 }
 
 /** Diagnostic servi par le portail d'administration, sur l'autre socket.
@@ -189,8 +220,45 @@ export const api = {
   retake: (sessionId: string) => post<SessionStatus>(`/api/session/${sessionId}/retake`),
   printPhoto: (sessionId: string) => post<SessionStatus>(`/api/session/${sessionId}/print`),
 
+  unlockMaintenance: async (pin: string) => {
+    const path = "/api/maintenance/unlock";
+    const response = await fetch(path, {
+      method: "POST",
+      cache: "no-store",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pin }),
+    });
+    if (!response.ok) throw new Error(await errorMessage(response, path));
+  },
+  lockMaintenance: async () => {
+    const response = await fetch("/api/maintenance/lock", { method: "POST", cache: "no-store" });
+    if (!response.ok) throw new Error(await errorMessage(response, "/api/maintenance/lock"));
+  },
+  maintenanceStatus: () => request<MaintenanceSnapshot>("/api/maintenance/status"),
+  maintenanceGallery: (offset = 0, limit = 8) =>
+    request<GalleryPage>(`/api/maintenance/gallery?offset=${offset}&limit=${limit}`),
+  saveMaintenanceSettings: (settings: MaintenanceSettings) =>
+    request<MaintenanceSettings>("/api/maintenance/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(settings),
+    }),
+  changeCartridge: (capacity: number) =>
+    post<CounterReading>("/api/maintenance/cartridge", { capacity }),
+  forceHome: () => post<SessionStatus>("/api/maintenance/home"),
+
   health: () => request<AdminHealth>("/admin/system/health"),
   resetCartridge: () => post<CounterReading>("/admin/counters/reset"),
+  replaceMaintenancePin: async (pin: string) => {
+    const path = "/admin/maintenance-pin";
+    const response = await fetch(path, {
+      method: "PUT",
+      cache: "no-store",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pin }),
+    });
+    if (!response.ok) throw new Error(await errorMessage(response, path));
+  },
   // POST : le sondage ouvre chaque périphérique tour à tour. Jamais déclenché
   // automatiquement — un GET finirait préchargé par le navigateur.
   scanCameras: () => post<CameraScan>("/admin/cameras/scan"),
@@ -252,4 +320,8 @@ export const overlayUrl = (revision: number) => `/admin/overlay?v=${revision}`;
 export const thumbnailUrl = (sessionId: string) => `/admin/gallery/${sessionId}/thumbnail`;
 export const photoDownloadUrl = (sessionId: string) => `/admin/gallery/${sessionId}/photo`;
 export const photoViewUrl = (sessionId: string) => `/admin/gallery/${sessionId}/view`;
+export const maintenanceThumbnailUrl = (sessionId: string) =>
+  `/api/maintenance/gallery/${sessionId}/thumbnail`;
+export const maintenancePhotoUrl = (sessionId: string) =>
+  `/api/maintenance/gallery/${sessionId}/view`;
 export const ARCHIVE_URL = "/admin/gallery/archive.zip";

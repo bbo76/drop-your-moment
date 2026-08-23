@@ -11,10 +11,11 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass
+from enum import StrEnum
 from pathlib import Path
 
 from PIL import Image, UnidentifiedImageError
-from pydantic import BaseModel, Field, ValidationError, field_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
 from dropyourmoment.core.print_format import POSTCARD_LANDSCAPE, PrintFormat
 from dropyourmoment.imaging.filters import FilterName
@@ -31,8 +32,24 @@ CONFIG_FILENAME = "event_config.json"
 OVERLAY_FILENAME = "overlay.png"
 
 
+class LaunchFont(StrEnum):
+    MODERN = "modern"
+    GEOMETRIC = "geometric"
+    PRESTIGIOUS = "prestigious"
+    EDITORIAL = "editorial"
+    COUTURE = "couture"
+    HANDWRITTEN = "handwritten"
+    ELEGANT_SCRIPT = "elegant_script"
+    FESTIVE = "festive"
+    PLAYFUL = "playful"
+    SPOOKY = "spooky"
+
+
 class EventConfig(BaseModel):
     event_name: str = "Événement"
+    launch_message: str = Field(default="Bienvenue", min_length=1, max_length=80)
+    launch_font: LaunchFont = LaunchFont.MODERN
+    accent_color: str = Field(default="#ffd400", pattern=r"^#[0-9a-fA-F]{6}$")
 
     # Nom de fichier relatif au dossier de l'événement, jamais un chemin absolu : la
     # configuration doit rester déplaçable avec son dossier.
@@ -43,9 +60,17 @@ class EventConfig(BaseModel):
     )
     print_format: PrintFormat = Field(default_factory=lambda: POSTCARD_LANDSCAPE.model_copy())
     copies_per_print: int = Field(default=1, ge=1, le=10)
-    # 0 désactive le flash. Deux secondes est déjà une transition très appuyée ; au-delà,
-    # l'écran semblerait bloqué plutôt que photographier.
-    flash_duration_ms: int = Field(default=180, ge=0, le=2000)
+    # Éclairage d'appoint produit par l'écran. À désactiver si la borne utilise un flash
+    # physique ou si la lumière blanche gêne la scénographie.
+    screen_flash_enabled: bool = True
+
+    @model_validator(mode="before")
+    @classmethod
+    def _reuse_event_name_for_legacy_launch_message(cls, value: object) -> object:
+        """Préserve le titre des événements créés avant la séparation des deux champs."""
+        if isinstance(value, dict) and "launch_message" not in value and "event_name" in value:
+            return {**value, "launch_message": value["event_name"]}
+        return value
 
     @field_validator("overlay_file")
     @classmethod

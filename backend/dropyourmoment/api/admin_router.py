@@ -21,7 +21,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse, Response, StreamingResponse
 from PIL import Image, UnidentifiedImageError
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from dropyourmoment.api.kiosk_router import get_runtime
 from dropyourmoment.core.event_config import OVERLAY_FILENAME, EventConfig
@@ -32,7 +32,7 @@ from dropyourmoment.hardware.camera.discovery import (
     system_camera_names,
 )
 from dropyourmoment.hardware.system_metrics import read_system_metrics
-from dropyourmoment.imaging.steps import overlay_matches_ratio
+from dropyourmoment.imaging.steps import crop_to_aspect
 from dropyourmoment.runtime import Runtime
 from dropyourmoment.storage.atomic import write_atomic
 from dropyourmoment.storage.counters import Counters
@@ -55,6 +55,7 @@ class CounterReading(BaseModel):
     prints_total: int
     prints_since_reset: int
     reset_at: str | None
+    cartridge_capacity: int
 
 
 class AdminHealth(BaseModel):
@@ -137,6 +138,18 @@ def reset_cartridge_counter(runtime: Runtime = Depends(get_runtime)) -> CounterR
     return _reading(runtime.counters.reset_cartridge())
 
 
+class MaintenancePinChange(BaseModel):
+    pin: str = Field(pattern=r"^\d{4}$")
+
+
+@router.put("/maintenance-pin", status_code=status.HTTP_204_NO_CONTENT)
+def replace_maintenance_pin(
+    change: MaintenancePinChange, runtime: Runtime = Depends(get_runtime)
+) -> None:
+    """Remplace le PIN local sans jamais exposer sa valeur actuelle au portail."""
+    runtime.replace_maintenance_pin(change.pin)
+
+
 def _reading(counters: Counters) -> CounterReading:
     # `vars()` plutôt qu'une recopie champ par champ : les deux structures sont un miroir
     # l'une de l'autre, et un champ ajouté d'un côté seulement lèvera au lieu de manquer
@@ -216,7 +229,8 @@ def upload_overlay(
 
     image = _decoded(data)
     _reject_if_opaque(image)
-    _reject_if_wrong_ratio(image, runtime)
+    image = _normalize_overlay_ratio(image, runtime)
+    image = _downscale_to_print_size(image, runtime)
 
     # Le fichier d'abord, la configuration ensuite : dans l'autre ordre, `reload_event()`
     # journaliserait un overlay déclaré mais introuvable.
@@ -230,6 +244,14 @@ def upload_overlay(
     runtime.reload_event()
     logger.info("overlay téléversé : %s, %s", file.filename, image.size)
     return runtime.event.config
+
+
+def _downscale_to_print_size(image: Image.Image, runtime: Runtime) -> Image.Image:
+    """Réduit vers la sortie recommandée, mais conserve une source plus petite telle quelle."""
+    target = runtime.event.config.print_format.pixel_size
+    if image.width <= target[0] or image.height <= target[1]:
+        return image
+    return image.resize(target, Image.Resampling.LANCZOS)
 
 
 @router.delete("/overlay", response_model=EventConfig)
@@ -298,19 +320,25 @@ def _reject_if_opaque(image: Image.Image) -> None:
     )
 
 
-def _reject_if_wrong_ratio(image: Image.Image, runtime: Runtime) -> None:
-    """Le format de sortie est l'autorité : c'est lui qui fixe le ratio attendu."""
-    target = runtime.event.aspect_ratio
-    if overlay_matches_ratio(image.size, target):
-        return
+MAX_OVERLAY_RATIO_DRIFT = 0.05
 
+
+def _normalize_overlay_ratio(image: Image.Image, runtime: Runtime) -> Image.Image:
+    """Accepte un petit écart de proportions et le corrige par un recadrage central."""
+    target = runtime.event.aspect_ratio
     width, height = image.size
+    current = width / height
+    same_orientation = (current > 1) == (target > 1)
+    relative_drift = abs(current - target) / target
+    if same_orientation and relative_drift <= MAX_OVERLAY_RATIO_DRIFT:
+        return crop_to_aspect(image, target)
+
     raise HTTPException(
         status.HTTP_422_UNPROCESSABLE_CONTENT,
         detail=(
-            f"overlay au ratio {width / height:.3f} ({width}×{height}), "
-            f"attendu {target:.3f} pour le format « {runtime.event.config.print_format.name} ». "
-            "Recadrer ou réexporter avant de téléverser."
+            f"format incompatible : overlay au ratio {current:.3f} ({width}×{height}), "
+            f"sortie au ratio {target:.3f} pour « {runtime.event.config.print_format.name} ». "
+            "Utiliser une image de même orientation et de proportions proches."
         ),
     )
 

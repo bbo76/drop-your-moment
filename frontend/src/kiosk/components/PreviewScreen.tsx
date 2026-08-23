@@ -12,6 +12,7 @@ interface Props {
   previewSize: [number, number];
   printAspectRatio: number;
   remainingSeconds: number | null;
+  screenFlashEnabled: boolean;
   onCapture: () => Promise<void>;
   onCancel: () => void;
 }
@@ -31,6 +32,7 @@ export function PreviewScreen({
   previewSize,
   printAspectRatio,
   remainingSeconds,
+  screenFlashEnabled,
   onCapture,
   onCancel,
 }: Props) {
@@ -80,7 +82,7 @@ export function PreviewScreen({
     remainingSeconds <= RETURN_HINT_THRESHOLD_S;
 
   return (
-    <div className="grid h-full grid-rows-[1fr_auto] gap-3 p-3">
+    <main className="grid h-full grid-rows-[1fr_auto] gap-3 bg-black p-3">
       <div
         className="relative m-auto max-h-full min-h-0 w-full max-w-full overflow-hidden rounded-panel bg-black"
         // La largeur est prise, le ratio en déduit la hauteur, et max-h la borne en
@@ -96,7 +98,7 @@ export function PreviewScreen({
             <span
               // `key` remonté à chaque chiffre pour rejouer l'animation d'apparition.
               key={phase.value}
-              className="animate-[ping_1s_ease-out_1] text-[22vmin] leading-none font-bold text-white drop-shadow-[0_0_2rem_rgba(0,0,0,0.9)]"
+              className="capture-countdown text-[30vmin] font-black"
             >
               {phase.value}
             </span>
@@ -105,13 +107,13 @@ export function PreviewScreen({
 
         {/* Flash logiciel : un éclairage d'appoint gratuit sur une borne, et le signal
             que la photo est prise. */}
-        {phase.kind === "capturing" && (
+        {phase.kind === "capturing" && screenFlashEnabled && (
           <div className="pointer-events-none absolute inset-0 bg-white" />
         )}
       </div>
 
-      <div className="flex items-center justify-between gap-4">
-        <span className="text-sm text-muted">
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 rounded-panel bg-ink p-3">
+        <span className="type-kiosk-label text-lg leading-tight text-muted">
           {framing.maskPercent > 0 && phase.kind === "waiting"
             ? "Cadrez-vous entre les pointillés"
             : ""}
@@ -122,16 +124,16 @@ export function PreviewScreen({
             Prendre la photo
           </PrimaryButton>
         ) : (
-          <span className="text-sm text-muted">Souriez…</span>
+          <span className="type-kiosk-screen-title text-3xl text-accent">Souriez…</span>
         )}
 
         <span className="flex items-center gap-4">
-          <span className="text-sm text-muted">
+          <span className="type-kiosk-meta text-base text-muted">
             {showReturnHint && `Retour à l'accueil dans ${Math.ceil(remainingSeconds)} s`}
           </span>
           {phase.kind === "waiting" && <GhostButton onClick={onCancel}>Annuler</GhostButton>}
         </span>
       </div>
-    </div>
+    </main>
   );
 }

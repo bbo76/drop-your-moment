@@ -18,6 +18,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
 from dropyourmoment.core.errors import CameraError, InvalidTransitionError, PrinterError
+from dropyourmoment.core.event_config import LaunchFont
 from dropyourmoment.core.session import Session, SessionState
 from dropyourmoment.imaging.filters import FilterName
 from dropyourmoment.imaging.pipeline import CompositionError, save_jpeg
@@ -66,10 +67,13 @@ class EventInfo(BaseModel):
     """
 
     event_name: str
+    launch_message: str
+    launch_font: LaunchFont
+    accent_color: str
     available_filters: list[FilterName]
     print_format_name: str
     print_aspect_ratio: float
-    flash_duration_ms: int
+    screen_flash_enabled: bool
 
 
 def _status(runtime: Runtime) -> SessionStatus:
@@ -135,10 +139,13 @@ def read_event(runtime: Runtime = Depends(get_runtime)) -> EventInfo:
     config = runtime.event.config
     return EventInfo(
         event_name=config.event_name,
+        launch_message=config.launch_message,
+        launch_font=config.launch_font,
+        accent_color=config.accent_color,
         available_filters=config.available_filters,
         print_format_name=config.print_format.name,
         print_aspect_ratio=config.print_format.aspect_ratio,
-        flash_duration_ms=config.flash_duration_ms,
+        screen_flash_enabled=config.screen_flash_enabled,
     )
 
 

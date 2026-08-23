@@ -10,8 +10,12 @@ import {
   Title,
 } from "./components/Screen";
 import { useKioskState } from "./useKioskState";
+import { MaintenanceAccess } from "./components/MaintenanceAccess";
+import { useEffect, useState } from "react";
+import { applyAccentTheme, LAUNCH_FONT_FAMILIES } from "../shared/theme";
 
 export function App() {
+  const [maintenanceOpen, setMaintenanceOpen] = useState(false);
   const {
     session,
     system,
@@ -25,9 +29,39 @@ export function App() {
     keepPhoto,
   } = useKioskState();
 
+  useEffect(() => {
+    if (!event) return;
+    const root = document.documentElement;
+    applyAccentTheme(event.accent_color);
+    root.style.setProperty("--font-launch", LAUNCH_FONT_FAMILIES[event.launch_font]);
+    return () => {
+      root.style.removeProperty("--color-accent");
+      root.style.removeProperty("--color-accent-ink");
+      root.style.removeProperty("--font-launch");
+    };
+  }, [event]);
+
+  if (maintenanceOpen) {
+    return <MaintenanceAccess onExit={() => setMaintenanceOpen(false)} />;
+  }
+
+  const maintenanceButton = (
+    <button
+      type="button"
+      onClick={() => setMaintenanceOpen(true)}
+      className="maintenance-entry fixed top-4 right-4 z-40 grid size-14 place-items-center rounded-panel"
+      aria-label="Ouvrir la maintenance"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true" className="size-7" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M14.7 6.3a4 4 0 0 0-5 5L3.5 17.5a2.1 2.1 0 0 0 3 3l6.2-6.2a4 4 0 0 0 5-5l-2.4 2.4-3-3 2.4-2.4Z" />
+      </svg>
+    </button>
+  );
+
   if (connection === "offline") {
     return (
       <CenteredScreen>
+        {maintenanceButton}
         <Title>Hors service</Title>
         <Lede>Le backend ne répond pas.</Lede>
         <Muted>Prévenez l'organisateur.</Muted>
@@ -38,6 +72,7 @@ export function App() {
   if (!session || !system || !event) {
     return (
       <CenteredScreen>
+        {maintenanceButton}
         <Muted>Démarrage…</Muted>
       </CenteredScreen>
     );
@@ -47,7 +82,8 @@ export function App() {
     case "idle":
       return (
         <CenteredScreen>
-          <Title>{event.event_name}</Title>
+          {maintenanceButton}
+          <Title>{event.launch_message}</Title>
           <Lede>Touchez l'écran pour prendre une photo</Lede>
           <PrimaryButton onClick={start} disabled={!system.camera_ok}>
             Commencer
@@ -62,30 +98,38 @@ export function App() {
 
     case "preview":
       return (
-        <PreviewScreen
-          previewSize={system.preview_size}
-          printAspectRatio={event.print_aspect_ratio}
-          remainingSeconds={session.remaining_seconds}
-          onCapture={capture}
-          onCancel={cancel}
-        />
+        <>
+          {maintenanceButton}
+          <PreviewScreen
+            previewSize={system.preview_size}
+            printAspectRatio={event.print_aspect_ratio}
+            remainingSeconds={session.remaining_seconds}
+            screenFlashEnabled={event.screen_flash_enabled}
+            onCapture={capture}
+            onCancel={cancel}
+          />
+        </>
       );
 
     case "review":
       // photo_url est renseigné dès la capture, mais la boucle de polling peut livrer un
       // état `review` une fraction de seconde avant la réponse de capture.
       return session.photo_url ? (
-        <ReviewScreen
-          photoUrl={session.photo_url}
-          availableFilters={event.available_filters}
-          selectedFilter={session.selected_filter}
-          remainingSeconds={session.remaining_seconds}
-          onChooseFilter={chooseFilter}
-          onRetake={retake}
-          onKeep={keepPhoto}
-        />
+        <>
+          {maintenanceButton}
+          <ReviewScreen
+            photoUrl={session.photo_url}
+            availableFilters={event.available_filters}
+            selectedFilter={session.selected_filter}
+            remainingSeconds={session.remaining_seconds}
+            onChooseFilter={chooseFilter}
+            onRetake={retake}
+            onKeep={keepPhoto}
+          />
+        </>
       ) : (
         <CenteredScreen>
+          {maintenanceButton}
           <Muted>Développement de votre photo…</Muted>
         </CenteredScreen>
       );
@@ -101,12 +145,6 @@ export function App() {
 
     case "printing":
     case "done":
-      return (
-        <ConfirmationScreen
-          printing={session.state === "printing"}
-          photoUrl={session.photo_url}
-          remainingSeconds={session.remaining_seconds}
-        />
-      );
+      return <><ConfirmationScreen printing={session.state === "printing"} photoUrl={session.photo_url} remainingSeconds={session.remaining_seconds} />{maintenanceButton}</>;
   }
 }

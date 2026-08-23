@@ -1,4 +1,4 @@
-import { Lede, Muted, Title } from "./Screen";
+import { Lede } from "./Screen";
 
 interface Props {
   /** `printing` tant que le tirage court, `done` une fois terminé. */
@@ -18,7 +18,7 @@ interface Props {
  * visiteur ne le voit pas. Il durera une quarantaine de secondes avec la CP1500. */
 export function ConfirmationScreen({ printing, photoUrl, remainingSeconds }: Props) {
   return (
-    <div className="grid h-full grid-rows-[1fr_auto] gap-4 p-5 text-center">
+    <main className="grid h-full grid-cols-[1.2fr_1fr] gap-5 p-5">
       <div className="grid min-h-0 place-content-center">
         {photoUrl && (
           <img
@@ -29,24 +29,24 @@ export function ConfirmationScreen({ printing, photoUrl, remainingSeconds }: Pro
         )}
       </div>
 
-      <div className="grid justify-items-center gap-2">
+      <div className="grid place-content-center justify-items-start gap-3 rounded-panel bg-accent p-8 text-accent-ink">
         {printing ? (
           <>
-            <Title>Un instant…</Title>
+            <h1 className="type-kiosk-display text-5xl">Un instant…</h1>
             <Lede>Votre photo est en cours d'enregistrement.</Lede>
           </>
         ) : (
           <>
-            <Title>C'est enregistré !</Title>
+            <h1 className="type-kiosk-display text-5xl">C'est enregistré !</h1>
             <Lede>Merci, et à bientôt devant l'objectif.</Lede>
-            <Muted>
+            <p className="type-kiosk-meta text-base text-accent-ink/70 sm:text-lg">
               {remainingSeconds !== null
                 ? `Retour à l'accueil dans ${Math.ceil(remainingSeconds)} s`
                 : "Retour à l'accueil…"}
-            </Muted>
+            </p>
           </>
         )}
       </div>
-    </div>
+    </main>
   );
 }

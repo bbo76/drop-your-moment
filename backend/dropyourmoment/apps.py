@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from dropyourmoment.api import admin_router, kiosk_router
+from dropyourmoment.api import admin_router, kiosk_router, maintenance_router
 from dropyourmoment.runtime import Runtime
 
 logger = logging.getLogger(__name__)
@@ -19,6 +19,7 @@ def build_kiosk_app(runtime: Runtime) -> FastAPI:
     app = FastAPI(title="Drop Your Moment — kiosque")
     app.state.runtime = runtime
     app.include_router(kiosk_router.router)
+    app.include_router(maintenance_router.router)
     _mount_frontend(app, runtime.settings.frontend_dist_dir, document="index.html")
     return app
 
