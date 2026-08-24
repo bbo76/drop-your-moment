@@ -130,6 +130,17 @@ export function HealthSection() {
   return (
     <Section title="État du système">
       {error && <p className="mb-4 text-warn">Backend injoignable : {error}</p>}
+      {health.maintenance_active && (
+        <div className="admin-maintenance-alert" role="status" aria-live="polite">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M14.7 6.3a4 4 0 0 0-5-5L12 3.6 9.6 6 7.3 3.7a4 4 0 0 0 5 5L5 16l3 3 7.3-7.3a4 4 0 0 0 5-5L18 9l-2.4-2.4 2.3-2.3a4 4 0 0 0-3.2 2Z" />
+          </svg>
+          <div>
+            <strong>Maintenance locale en cours</strong>
+            <span>Une personne a déverrouillé l’écran de la borne et intervient sur place.</span>
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-6 sm:grid-cols-2">
         <Group title="Caméra">
@@ -166,7 +177,7 @@ export function HealthSection() {
         </Group>
 
         <Group title="Parcours">
-          <Row label="Session" value={health.session_state} />
+          <Row label="Session" value={health.maintenance_active ? <strong className="text-warn">maintenance locale</strong> : health.session_state} />
           <Row label="Imprimante" value={health.printer_driver} />
           <Row label="Événement" value={health.event_name} />
           <Row

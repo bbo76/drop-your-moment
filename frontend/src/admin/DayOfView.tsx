@@ -184,7 +184,7 @@ export function DayOfView() {
             <h2 id="day-parcours-title">Parcours</h2>
             <p>Ce que voient les invités en ce moment.</p>
           </div>
-          <StateBadge state={health.session_state} />
+          <StateBadge state={health.session_state} maintenanceActive={health.maintenance_active} />
         </div>
         {health.session_state !== "idle" && (
           <Button
@@ -360,6 +360,13 @@ export function DayOfView() {
 
 function getReadiness(health: AdminHealth, error: string | null): Readiness {
   if (error) return { tone: "attention", title: "Connexion instable", detail: error };
+  if (health.maintenance_active) {
+    return {
+      tone: "attention",
+      title: "Maintenance en cours",
+      detail: "Une personne intervient directement sur la borne.",
+    };
+  }
   if (!health.camera_ok) {
     return { tone: "attention", title: "Intervention nécessaire", detail: "La caméra n’est pas disponible." };
   }
@@ -405,7 +412,8 @@ function Consumable({ label, remaining, capacity }: { label: string; remaining: 
   );
 }
 
-function StateBadge({ state }: { state: AdminHealth["session_state"] }) {
+function StateBadge({ state, maintenanceActive }: { state: AdminHealth["session_state"]; maintenanceActive: boolean }) {
+  if (maintenanceActive) return <span className="day-state day-state-maintenance">Maintenance locale</span>;
   const labels: Record<AdminHealth["session_state"], string> = {
     idle: "Accueil",
     preview: "Cadrage",

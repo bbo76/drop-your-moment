@@ -86,7 +86,9 @@ export type LaunchFont =
   | "elegant_script"
   | "festive"
   | "playful"
-  | "spooky";
+  | "spooky"
+  | "ceremonial"
+  | "cinematic";
 
 /** Les trois limites physiques de l'impression, plus le cumul de l'événement. */
 export interface CounterReading {
@@ -129,6 +131,7 @@ export interface AdminHealth {
   still_size: [number, number];
   printer_driver: string;
   session_state: SessionState;
+  maintenance_active: boolean;
   event_name: string;
   print_format_name: string;
   print_aspect_ratio: number;

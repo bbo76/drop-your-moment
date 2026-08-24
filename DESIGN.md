@@ -227,9 +227,10 @@ Les panneaux et contrôles utilisent des rectangles légèrement arrondis : 0.75
 Les quatre destinations locales utilisent toute la surface disponible en grille 2×2. Chaque tuile associe une icône jaune de 4.25rem, un titre très lourd, un résumé opérationnel et un chevron. Toute la tuile est tactile ; aucune petite action secondaire n'y concurrence la destination. Les écrans de détail réutilisent la même barre de titre, un grand bouton Retour et l'état global de la borne.
 
 La tuile Impression porte le résumé des copies et consommables. Réglages borne sépare
-**Apparence** de **Écran & session** : l'apparence propose dix teintes événementielles
-nommées et contrastées plutôt qu'un color picker impraticable au doigt, ainsi que les dix
-fontes du launch screen. Le portail PC reste la surface de réglage avancé pour une couleur
+**Apparence** de **Écran & session** : l'apparence propose seize teintes événementielles
+ordonnées par proximité colorimétrique sous forme de grands carrés tactiles, ainsi que douze
+fontes du launch screen illustrées par un mot complet. Les noms de couleur restent dans les
+libellés accessibles sans encombrer la grille. Le portail PC reste la surface de réglage avancé pour une couleur
 hexadécimale libre. **Écran & session** regroupe uniquement le flash d’appoint et la durée
 présélectionnée du minuteur. L’interruption forcée d’une session appartient au portail
 distant : une commande locale pour « libérer » l’écran sur lequel elle s’affiche serait
@@ -271,7 +272,16 @@ Le PIN ne présente pas de champ texte. Quatre points affichent la progression s
 
 ### Status and Choices
 
-Les bannières associent remplissage, point et libellé en graisse noire. Les choix tactiles passent d'un contour acier transparent à un remplissage jaune avec texte nocturne et conservent `aria-pressed`. La bascule combine un libellé explicite, une piste colorée et le déplacement physique de sa poignée.
+Les états associent un glyphe explicite et un libellé ; l'état prêt local reste léger, sans
+fond de bouton. Les choix tactiles conservent `aria-pressed` et combinent remplissage, coche
+ou changement de position. Une aide affichée doit tenir intégralement : elle passe sous son
+titre plutôt que d'être tronquée.
+
+La bascule de réglage n'est jamais enfermée dans une seconde bordure. Lorsque le titre de
+la rangée nomme déjà sans ambiguïté le réglage, la piste et le déplacement physique de la
+poignée suffisent et aucun texte « Activé » ou « Désactivé » n'est répété à l'écran ; un
+libellé dynamique reste exposé aux technologies d'assistance. Sur la maintenance locale,
+la piste active utilise le gris clair opérationnel et jamais la couleur de l'événement.
 
 ### Capture Countdown
 

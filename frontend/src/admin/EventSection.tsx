@@ -35,6 +35,8 @@ const LAUNCH_FONTS: Array<{ value: LaunchFont; label: string; sample: string }> 
   { value: "festive", label: "Festive", sample: "Que la fête commence" },
   { value: "playful", label: "Ludique", sample: "Cheese !" },
   { value: "spooky", label: "Halloween", sample: "Entrez si vous osez" },
+  { value: "ceremonial", label: "Cérémonie", sample: "Un jour mémorable" },
+  { value: "cinematic", label: "Cinéma", sample: "À vous la lumière" },
 ];
 
 export function EventSection() {
