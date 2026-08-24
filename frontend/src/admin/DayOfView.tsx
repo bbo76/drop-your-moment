@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
 import {
   api,
@@ -10,11 +10,9 @@ import {
   type ShotTimerSeconds,
 } from "../shared/api";
 import { Button, Feedback } from "./ui";
-import { InkCartridgeDialog } from "../shared/InkCartridgeDialog";
-import { PaperStockDialog } from "../shared/PaperStockDialog";
 
 const POLL_INTERVAL_MS = 2_000;
-const RECENT_PHOTO_COUNT = 6;
+const RECENT_PHOTO_COUNT = 3;
 const TIMER_OPTIONS: ShotTimerSeconds[] = [3, 5, 10];
 
 type Readiness = {
@@ -30,8 +28,8 @@ export function DayOfView() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [working, setWorking] = useState<string | null>(null);
-  const [stockDialogOpen, setStockDialogOpen] = useState(false);
-  const [inkDialogOpen, setInkDialogOpen] = useState(false);
+  const [printDetailsOpen, setPrintDetailsOpen] = useState(false);
+  const releaseDialogRef = useRef<HTMLDialogElement>(null);
 
   const loadPhotos = useCallback(async () => {
     const page = await api.gallery(0, RECENT_PHOTO_COUNT);
@@ -79,42 +77,8 @@ export function DayOfView() {
     }
   };
 
-  const reloadCassette = () =>
-    run(
-      "cassette",
-      async () => {
-        const counters = await api.reloadAdminCassette();
-        setHealth((current) => (current ? { ...current, counters } : current));
-      },
-      "Bac rechargé : 18 feuilles disponibles.",
-    );
-
-  const setPaperStock = (total: number) => {
-    void run(
-      "paper-stock",
-      async () => {
-        const counters = await api.setPaperStock(total);
-        setHealth((current) => (current ? { ...current, counters } : current));
-        setStockDialogOpen(false);
-      },
-      "Stock papier enregistré.",
-    );
-  };
-
-  const replaceInk = (capacity: 36 | 54) => {
-    void run(
-      "ink",
-      async () => {
-        const counters = await api.replaceInk(capacity);
-        setHealth((current) => (current ? { ...current, counters } : current));
-        setInkDialogOpen(false);
-      },
-      "Cassette d’encre enregistrée.",
-    );
-  };
-
   const releaseKiosk = () => {
-    if (!window.confirm("Interrompre la session en cours et ramener la borne à l’accueil ?")) return;
+    releaseDialogRef.current?.close();
     void run(
       "release",
       async () => {
@@ -178,18 +142,29 @@ export function DayOfView() {
 
       {(error || notice) && <Feedback error={error} notice={notice} />}
 
-      <section className="day-section" aria-labelledby="day-parcours-title">
-        <div className="day-section-heading">
-          <div>
-            <h2 id="day-parcours-title">Parcours</h2>
-            <p>Ce que voient les invités en ce moment.</p>
-          </div>
-          <StateBadge state={health.session_state} maintenanceActive={health.maintenance_active} />
-        </div>
+      <section className="day-glance" aria-label="État essentiel de la borne">
+        <Fact
+          icon="pulse"
+          label="Écran"
+          value={health.maintenance_active ? "Maintenance" : stateLabel(health.session_state)}
+          attention={health.maintenance_active || health.session_state === "error"}
+        />
+        <Fact
+          icon="camera"
+          label="Caméra"
+          value={health.camera_ok ? "Prête" : "Absente"}
+          attention={!health.camera_ok}
+        />
+        <Fact
+          icon="printer"
+          label="Tirages"
+          value={`${printableNow} possibles`}
+          attention={printableNow <= 5}
+        />
         {health.session_state !== "idle" && (
           <Button
             tone="warning"
-            onClick={releaseKiosk}
+            onClick={() => releaseDialogRef.current?.showModal()}
             disabled={working === "release"}
           >
             {working === "release" ? "Retour en cours…" : "Ramener la borne à l’accueil"}
@@ -197,42 +172,16 @@ export function DayOfView() {
         )}
       </section>
 
-      <section className="day-section" aria-labelledby="day-material-title">
-        <div className="day-section-heading">
-          <div>
-            <h2 id="day-material-title">Borne</h2>
-            <p>Les signaux utiles, sans le détail technique.</p>
-          </div>
-        </div>
-        <div className="day-facts">
-          <Fact
-            icon="camera"
-            label="Caméra"
-            value={health.camera_ok ? "Prête" : "Absente"}
-            attention={!health.camera_ok}
-          />
-          <Fact
-            icon="storage"
-            label="Stockage libre"
-            value={gigabytes(health.disk_free_bytes)}
-            attention={health.disk_free_bytes < 2 * 1024 ** 3}
-          />
-          <Fact
-            icon="temperature"
-            label="Température"
-            value={health.temperature_c === null ? "Non mesurée" : `${health.temperature_c.toFixed(0)} °C`}
-            attention={health.temperature_c !== null && health.temperature_c >= 80}
-          />
-        </div>
-      </section>
-
-      <section className="day-section" aria-labelledby="day-print-title">
-        <div className="day-section-heading">
-          <div>
-            <h2 id="day-print-title">Impression</h2>
-            <p>{health.counters.prints_total} tirage{health.counters.prints_total > 1 ? "s" : ""} pendant l’événement.</p>
-          </div>
-        </div>
+      <details
+        className="day-disclosure"
+        open={printDetailsOpen}
+        onToggle={(event) => setPrintDetailsOpen(event.currentTarget.open)}
+      >
+        <summary>
+          <span><strong>Impression</strong><small>{nextAction}</small></span>
+          <b>{printableNow}</b>
+        </summary>
+        <div className="day-disclosure-body">
         <div className="day-print-summary">
           <strong>{printableNow}</strong>
           <span>impression{printableNow > 1 ? "s" : ""} avant intervention</span>
@@ -243,40 +192,14 @@ export function DayOfView() {
           <Consumable label="Encre" remaining={inkRemaining} capacity={health.counters.cartridge_capacity} />
           <Consumable label="Stock total" remaining={stockRemaining} capacity={health.counters.paper_stock_capacity} />
         </div>
-        <div className="day-actions">
-          <Button onClick={() => void reloadCassette()} disabled={working === "cassette"}>
-            {working === "cassette" ? "Mise à jour…" : "Bac rechargé"}
-          </Button>
-          <Button onClick={() => setInkDialogOpen(true)} disabled={working === "ink"} tone="secondary">
-            Cassette d’encre remplacée
-          </Button>
-          <Button onClick={() => setStockDialogOpen(true)} disabled={working === "paper-stock"} tone="secondary">
-            Définir le stock papier
-          </Button>
         </div>
-      </section>
+      </details>
 
-      <PaperStockDialog
-        open={stockDialogOpen}
-        initialValue={Math.max(1, stockRemaining)}
-        saving={working === "paper-stock"}
-        onClose={() => setStockDialogOpen(false)}
-        onConfirm={setPaperStock}
-      />
-      <InkCartridgeDialog
-        open={inkDialogOpen}
-        saving={working === "ink"}
-        onClose={() => setInkDialogOpen(false)}
-        onConfirm={replaceInk}
-      />
-
-      <section className="day-section" aria-labelledby="day-settings-title">
-        <div className="day-section-heading">
-          <div>
-            <h2 id="day-settings-title">Réglages rapides</h2>
-            <p>Modifiables sans toucher à l’identité du mariage.</p>
-          </div>
-        </div>
+      <details className="day-disclosure">
+        <summary>
+          <span><strong>Réglages rapides</strong><small>Minuteur, flash et copies</small></span>
+        </summary>
+        <div className="day-disclosure-body">
         {config ? (
           <div className="day-quick-settings" aria-busy={working === "settings"}>
             <fieldset>
@@ -295,18 +218,21 @@ export function DayOfView() {
                 ))}
               </div>
             </fieldset>
-            <label className="day-toggle">
+            <div className="day-toggle">
               <span>
                 <strong>Flash écran</strong>
                 <small>{config.screen_flash_enabled ? "Activé" : "Désactivé"}</small>
               </span>
-              <input
-                type="checkbox"
-                checked={config.screen_flash_enabled}
+              <button
+                type="button"
+                className="day-switch"
+                role="switch"
+                aria-label="Flash écran"
+                aria-checked={config.screen_flash_enabled}
                 disabled={working === "settings"}
-                onChange={(event) => saveQuickSetting({ screen_flash_enabled: event.target.checked })}
-              />
-            </label>
+                onClick={() => saveQuickSetting({ screen_flash_enabled: !config.screen_flash_enabled })}
+              ><span /></button>
+            </div>
             <label className="day-copy-setting">
               <span>Copies par tirage</span>
               <select
@@ -323,7 +249,8 @@ export function DayOfView() {
         ) : (
           <p className="text-muted">Chargement des réglages…</p>
         )}
-      </section>
+        </div>
+      </details>
 
       <section className="day-section" aria-labelledby="day-photos-title">
         <div className="day-section-heading">
@@ -354,6 +281,24 @@ export function DayOfView() {
           <p className="day-empty">Les premières photos apparaîtront ici.</p>
         )}
       </section>
+
+      <dialog
+        ref={releaseDialogRef}
+        className="day-confirm-dialog"
+        aria-labelledby="release-kiosk-title"
+        onClick={(event) => {
+          if (event.target === event.currentTarget) event.currentTarget.close();
+        }}
+      >
+        <div>
+          <h2 id="release-kiosk-title">Ramener la borne à l’accueil ?</h2>
+          <p>La session en cours sera interrompue. Les invités devront recommencer leur parcours.</p>
+          <footer>
+            <Button tone="secondary" onClick={() => releaseDialogRef.current?.close()}>Annuler</Button>
+            <Button tone="warning" onClick={releaseKiosk}>Ramener à l’accueil</Button>
+          </footer>
+        </div>
+      </dialog>
     </div>
   );
 }
@@ -412,20 +357,18 @@ function Consumable({ label, remaining, capacity }: { label: string; remaining: 
   );
 }
 
-function StateBadge({ state, maintenanceActive }: { state: AdminHealth["session_state"]; maintenanceActive: boolean }) {
-  if (maintenanceActive) return <span className="day-state day-state-maintenance">Maintenance locale</span>;
-  const labels: Record<AdminHealth["session_state"], string> = {
-    idle: "Accueil",
-    preview: "Cadrage",
-    review: "Choix de la photo",
-    printing: "Impression",
-    done: "Terminée",
-    error: "Erreur",
-  };
-  return <span className={`day-state day-state-${state}`}>{labels[state]}</span>;
-}
+const STATE_LABELS: Record<AdminHealth["session_state"], string> = {
+  idle: "Accueil",
+  preview: "Cadrage",
+  review: "Choix photo",
+  printing: "Impression",
+  done: "Fin de session",
+  error: "Erreur",
+};
 
-type IconName = "check" | "attention" | "camera" | "storage" | "temperature" | "wifi" | "pulse";
+const stateLabel = (state: AdminHealth["session_state"]) => STATE_LABELS[state];
+
+type IconName = "check" | "attention" | "camera" | "storage" | "temperature" | "printer" | "wifi" | "pulse";
 
 function StatusIcon({ name }: { name: IconName }) {
   const paths: Record<IconName, ReactNode> = {
@@ -434,11 +377,11 @@ function StatusIcon({ name }: { name: IconName }) {
     camera: <><path d="M4 7h3l1.5-2h7L17 7h3v11H4V7Z" /><circle cx="12" cy="12.5" r="3.5" /></>,
     storage: <><ellipse cx="12" cy="6" rx="8" ry="3" /><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6" /><path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" /></>,
     temperature: <><path d="M10 14.8V5a2 2 0 1 1 4 0v9.8a4 4 0 1 1-4 0Z" /><path d="M12 8v9" /></>,
+    printer: <><path d="M7 9V4h10v5M7 18H5a2 2 0 0 1-2-2v-5h18v5a2 2 0 0 1-2 2h-2" /><path d="M7 15h10v6H7z" /></>,
     wifi: <><path d="M3 9a14 14 0 0 1 18 0" /><path d="M6.5 12.5a9 9 0 0 1 11 0" /><path d="M10 16a4 4 0 0 1 4 0" /><path d="M12 20h.01" /></>,
     pulse: <><path d="M3 12h4l2-5 4 10 2-5h6" /></>,
   };
   return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</svg>;
 }
 
-const gigabytes = (bytes: number) => `${(bytes / 1024 ** 3).toFixed(1)} Go`;
 const photoTime = (seconds: number) => new Date(seconds * 1000).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });

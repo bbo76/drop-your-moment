@@ -1,8 +1,6 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { api, type AdminHealth, type CameraScan } from "../shared/api";
-import { InkCartridgeDialog } from "../shared/InkCartridgeDialog";
-import { PaperStockDialog } from "../shared/PaperStockDialog";
 import { Button, Row, Section } from "./ui";
 
 /* Tableau de bord : « est-ce que la borne va tenir la soirée ? »
@@ -17,10 +15,7 @@ export function HealthSection() {
   const [scan, setScan] = useState<CameraScan | null>(null);
   const [scanning, setScanning] = useState(false);
   const [releasing, setReleasing] = useState(false);
-  const [stockDialogOpen, setStockDialogOpen] = useState(false);
-  const [inkDialogOpen, setInkDialogOpen] = useState(false);
-  const [savingStock, setSavingStock] = useState(false);
-  const [savingInk, setSavingInk] = useState(false);
+  const scanDialogRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -46,40 +41,9 @@ export function HealthSection() {
     };
   }, []);
 
-  const setPaperStock = async (total: number) => {
-    setSavingStock(true);
-    try {
-      const counters = await api.setPaperStock(total);
-      setHealth((current) => (current ? { ...current, counters } : current));
-      setStockDialogOpen(false);
-    } catch (cause) {
-      setError(String(cause));
-    } finally {
-      setSavingStock(false);
-    }
-  };
-
-  const reloadCassette = async () => {
-    try {
-      const counters = await api.reloadAdminCassette();
-      setHealth((current) => (current ? { ...current, counters } : current));
-    } catch (cause) {
-      setError(String(cause));
-    }
-  };
-
-  const replaceInk = async (capacity: 36 | 54) => {
-    setSavingInk(true);
-    try {
-      const counters = await api.replaceInk(capacity);
-      setHealth((current) => (current ? { ...current, counters } : current));
-      setInkDialogOpen(false);
-    } catch (cause) {
-      setError(String(cause));
-    } finally {
-      setSavingInk(false);
-    }
-  };
+  useEffect(() => {
+    if (scan && !scanDialogRef.current?.open) scanDialogRef.current?.showModal();
+  }, [scan]);
 
   /* Jamais au chargement, jamais en boucle : le sondage ouvre chaque périphérique tour à
      tour, et le capteur n'accepte qu'un propriétaire. Uniquement sur ce clic. */
@@ -126,6 +90,10 @@ export function HealthSection() {
   }
 
   const { counters } = health;
+  const paperRemaining = Math.max(0, counters.paper_stock_capacity - counters.prints_since_stock_set);
+  const trayRemaining = Math.max(0, counters.cassette_capacity - counters.prints_since_cassette_reload);
+  const inkRemaining = Math.max(0, counters.cartridge_capacity - counters.prints_since_reset);
+  const printableNow = Math.min(paperRemaining, trayRemaining, inkRemaining);
 
   return (
     <Section title="État du système">
@@ -142,13 +110,14 @@ export function HealthSection() {
         </div>
       )}
 
-      <div className="grid gap-6 sm:grid-cols-2">
-        <Group title="Caméra">
+      <div className="diagnostic-grid">
+        <Group
+          title="Caméra"
+          icon="camera"
+          value={health.camera_ok ? "Prête" : "Absente"}
+          tone={health.camera_ok ? "ready" : "attention"}
+        >
           <Row label="Pilote" value={health.camera_driver} />
-          <Row
-            label="État"
-            value={health.camera_ok ? "détectée" : <span className="text-warn">absente</span>}
-          />
           <Row
             label="Aperçu"
             value={
@@ -159,86 +128,100 @@ export function HealthSection() {
           />
           <Row label="Résolution aperçu" value={size(health.preview_size)} />
           <Row label="Résolution capture" value={size(health.still_size)} />
+          <CardAction onClick={() => void scanCameras()} disabled={scanning}>
+            {scanning ? "Détection…" : "Détecter les caméras"}
+          </CardAction>
         </Group>
 
-        <Group title="Tirages">
+        <Group
+          title="Impression"
+          icon="printer"
+          value={`${printableNow} possibles`}
+          tone={printableNow <= 5 ? "warning" : "neutral"}
+        >
           <Row label="Cumul de l'événement" value={`${counters.prints_total}`} />
-          <Row label="Stock papier" value={`${Math.max(0, counters.paper_stock_capacity - counters.prints_since_stock_set)} sur ${counters.paper_stock_capacity}`} />
-          <Row label="Bac CP1500" value={`${Math.max(0, counters.cassette_capacity - counters.prints_since_cassette_reload)} sur ${counters.cassette_capacity}`} />
-          <Row label="Cassette d’encre" value={`${Math.max(0, counters.cartridge_capacity - counters.prints_since_reset)} sur ${counters.cartridge_capacity}`} />
-          <Row
-            label="Stock défini"
-            value={
-              counters.stock_set_at
-                ? new Date(counters.stock_set_at).toLocaleString("fr-FR")
-                : "jamais — le compteur porte tous les tirages"
-            }
-          />
+          <Meter label="Papier" value={paperRemaining} capacity={counters.paper_stock_capacity} />
+          <Meter label="Bac CP1500" value={trayRemaining} capacity={counters.cassette_capacity} />
+          <Meter label="Encre" value={inkRemaining} capacity={counters.cartridge_capacity} />
         </Group>
 
-        <Group title="Parcours">
-          <Row label="Session" value={health.maintenance_active ? <strong className="text-warn">maintenance locale</strong> : health.session_state} />
+        <Group
+          title="Parcours"
+          icon="session"
+          value={health.maintenance_active ? "Maintenance" : sessionLabel(health.session_state)}
+          tone={health.maintenance_active || health.session_state === "error" ? "attention" : "neutral"}
+        >
           <Row label="Imprimante" value={health.printer_driver} />
           <Row label="Événement" value={health.event_name} />
           <Row
             label="Format"
             value={`${health.print_format_name} — ratio ${health.print_aspect_ratio.toFixed(3)}`}
           />
+          {health.session_state !== "idle" && (
+            <CardAction onClick={() => void releaseKiosk()} disabled={releasing} warning>
+              {releasing ? "Retour en cours…" : "Libérer la borne"}
+            </CardAction>
+          )}
         </Group>
 
-        <Group title="Stockage">
-          <Row
-            label="Espace libre"
-            value={`${gigabytes(health.disk_free_bytes)} sur ${gigabytes(health.disk_total_bytes)}`}
-          />
-          <Row label="Un événement pèse" value="environ 2 Go" />
+        <Group
+          title="Stockage"
+          icon="storage"
+          value={gigabytes(health.disk_free_bytes)}
+          tone={health.disk_free_bytes < 2 * 1024 ** 3 ? "warning" : "neutral"}
+        >
+          <Meter label="Espace libre" value={health.disk_free_bytes} capacity={health.disk_total_bytes} format={gigabytes} />
         </Group>
 
-        <Group title="Ressources">
-          <Row label="CPU" value={`${health.cpu_percent.toFixed(1)} %`} />
-          <Row
-            label="Mémoire"
-            value={`${gigabytes(health.memory_used_bytes)} sur ${gigabytes(health.memory_total_bytes)} · ${health.memory_percent.toFixed(1)} %`}
+        <Group
+          title="Ressources"
+          icon="resources"
+          value={health.temperature_c === null ? "Temp. —" : `${health.temperature_c.toFixed(1)} °C`}
+          tone={health.temperature_c !== null && health.temperature_c >= 80 ? "attention" : "neutral"}
+        >
+          <Meter
+            label="CPU"
+            value={health.cpu_percent}
+            capacity={100}
+            summary={`${health.cpu_percent.toFixed(1)} %`}
           />
-          <Row
-            label="Température"
-            value={
-              health.temperature_c === null
-                ? "indisponible"
-                : `${health.temperature_c.toFixed(1)} °C`
-            }
-          />
+          <Meter label="Mémoire" value={health.memory_used_bytes} capacity={health.memory_total_bytes} format={gigabytes} />
         </Group>
+
       </div>
 
-      <div className="mt-6 flex flex-wrap items-center gap-3">
-        <Button onClick={() => void reloadCassette()}>Bac rechargé (18 feuilles)</Button>
-        <Button onClick={() => setInkDialogOpen(true)}>Cassette d’encre remplacée</Button>
-        <Button onClick={() => setStockDialogOpen(true)}>Définir le stock papier</Button>
-        <Button onClick={() => void scanCameras()} disabled={scanning} tone="secondary">
-          {scanning ? "Sondage…" : "Détecter les caméras"}
-        </Button>
-        {health.session_state !== "idle" && (
-          <Button onClick={() => void releaseKiosk()} disabled={releasing} tone="warning">
-            {releasing ? "Libération…" : "Libérer la borne"}
-          </Button>
+      <dialog
+        ref={scanDialogRef}
+        className="camera-scan-dialog"
+        aria-labelledby="camera-scan-title"
+        onClose={() => setScan(null)}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) event.currentTarget.close();
+        }}
+      >
+        {scan && (
+          <div>
+            <header>
+              <div>
+                <span>Diagnostic caméra</span>
+                <h2 id="camera-scan-title">Caméras détectées</h2>
+              </div>
+              <button
+                type="button"
+                className="camera-scan-close"
+                aria-label="Fermer"
+                onClick={() => scanDialogRef.current?.close()}
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
+              </button>
+            </header>
+            <ScanResult scan={scan} />
+            <footer>
+              <Button onClick={() => scanDialogRef.current?.close()} tone="secondary">Fermer</Button>
+            </footer>
+          </div>
         )}
-      </div>
-
-      {scan && <ScanResult scan={scan} />}
-      <PaperStockDialog
-        open={stockDialogOpen}
-        initialValue={Math.max(1, counters.paper_stock_capacity - counters.prints_since_stock_set)}
-        saving={savingStock}
-        onClose={() => setStockDialogOpen(false)}
-        onConfirm={(total) => void setPaperStock(total)}
-      />
-      <InkCartridgeDialog
-        open={inkDialogOpen}
-        saving={savingInk}
-        onClose={() => setInkDialogOpen(false)}
-        onConfirm={(capacity) => void replaceInk(capacity)}
-      />
+      </dialog>
     </Section>
   );
 }
@@ -247,7 +230,7 @@ export function HealthSection() {
 function ScanResult({ scan }: { scan: CameraScan }) {
   const nothingProbed = scan.probed.length === 0;
   return (
-    <dl className="mt-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 border-t border-edge pt-4 text-sm">
+    <dl className="camera-scan-result">
       <Row
         label="Index utilisables"
         value={
@@ -289,14 +272,61 @@ function ScanResult({ scan }: { scan: CameraScan }) {
   );
 }
 
-function Group({ title, children }: { title: string; children: ReactNode }) {
+type DiagnosticTone = "neutral" | "ready" | "warning" | "attention";
+type DiagnosticIcon = "camera" | "printer" | "session" | "storage" | "resources";
+
+function Group({ title, icon, value, tone, children }: { title: string; icon: DiagnosticIcon; value: string; tone: DiagnosticTone; children: ReactNode }) {
   return (
-    <div>
-      <h3 className="mb-2 text-sm font-medium text-muted uppercase">{title}</h3>
-      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">{children}</dl>
+    <section className={`diagnostic-card diagnostic-${tone}`}>
+      <header>
+        <DiagnosticGlyph name={icon} />
+        <span>{title}</span>
+        <strong>{value}</strong>
+      </header>
+      <dl>{children}</dl>
+    </section>
+  );
+}
+
+function Meter({ label, value, capacity, format = String, summary }: { label: string; value: number; capacity: number; format?: (value: number) => string; summary?: string }) {
+  const percentage = capacity > 0 ? Math.min(100, Math.max(0, (value / capacity) * 100)) : 0;
+  return (
+    <div className="diagnostic-meter">
+      <div><dt>{label}</dt><dd>{summary ?? `${format(value)} sur ${format(capacity)}`}</dd></div>
+      <span aria-hidden="true"><i style={{ width: `${percentage}%` }} /></span>
     </div>
   );
 }
+
+function DiagnosticGlyph({ name }: { name: DiagnosticIcon }) {
+  const paths: Record<DiagnosticIcon, ReactNode> = {
+    camera: <><path d="M4 7h3l1.5-2h7L17 7h3v11H4V7Z" /><circle cx="12" cy="12.5" r="3.5" /></>,
+    printer: <><path d="M7 9V4h10v5M7 18H5a2 2 0 0 1-2-2v-5h18v5a2 2 0 0 1-2 2h-2" /><path d="M7 15h10v6H7z" /></>,
+    session: <><circle cx="12" cy="12" r="8" /><path d="M12 8v4l3 2" /></>,
+    storage: <><ellipse cx="12" cy="6" rx="8" ry="3" /><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" /></>,
+    resources: <path d="M4 14h3l2-7 4 11 2-6h5" />,
+  };
+  return <svg viewBox="0 0 24 24" aria-hidden="true">{paths[name]}</svg>;
+}
+
+function CardAction({ children, onClick, disabled, warning = false }: { children: ReactNode; onClick: () => void; disabled?: boolean; warning?: boolean }) {
+  return (
+    <div className="diagnostic-card-action">
+      <Button onClick={onClick} disabled={disabled} tone={warning ? "warning" : "secondary"}>{children}</Button>
+    </div>
+  );
+}
+
+const SESSION_LABELS: Record<AdminHealth["session_state"], string> = {
+  idle: "Accueil",
+  preview: "Cadrage",
+  review: "Choix photo",
+  printing: "Impression",
+  done: "Fin de session",
+  error: "Erreur",
+};
+
+const sessionLabel = (state: AdminHealth["session_state"]) => SESSION_LABELS[state];
 
 const size = ([width, height]: [number, number]) => `${width}×${height}`;
 

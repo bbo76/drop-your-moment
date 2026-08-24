@@ -24,7 +24,8 @@ export default defineConfig({
     // Python, qui écoute sur ses deux ports habituels.
     proxy: {
       "/api": "http://127.0.0.1:8000",
-      "/admin": "http://127.0.0.1:8001",
+      // Le slash final évite d'intercepter l'entrée Vite `/admin.html`.
+      "/admin/": "http://127.0.0.1:8001",
     },
   },
 });
