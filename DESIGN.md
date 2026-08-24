@@ -15,6 +15,12 @@ colors:
   muted-steel: "#aab2b9"
   warning-coral: "#ff8a65"
   warning-depth: "#3b211c"
+  admin-mist: "#f7f7f6"
+  admin-paper: "#ffffff"
+  admin-ink: "#121212"
+  admin-positive: "#198754"
+  admin-negative: "#ba3028"
+  admin-warning: "#b56313"
 typography:
   display:
     fontFamily: "Barlow Semi Condensed, sans-serif"
@@ -252,19 +258,31 @@ matériel, un libellé explicite et une couleur d’état ; le picto ne remplace
 
 ### Portail complet
 
-L'administration est un outil neutre, distinct de la scénographie du kiosque. Elle utilise
-un fond gris froid, des surfaces blanches, une encre sombre, un bleu fonctionnel et un rouge
-d'incident fixes ; la couleur choisie pour le mariage n'y est jamais appliquée. La
-typographie reste Barlow Semi Condensed pour conserver une parenté discrète sans reprendre
-le branding événementiel.
+**Creative North Star: « La Console essentielle »**
 
-Deux points d'accès servent deux usages sans navigation entre eux. Le backoffice complet
-sur `admin.html` est destiné au laptop : identité, overlay, format, sécurité, diagnostic et
-galerie. La console `mobile.html` est strictement opérationnelle : un grand signal annonce
-si la borne est prête, occupée ou demande une intervention, puis parcours, matériel,
-impression, réglages rapides et photos récentes suivent l'ordre d'urgence. Les deux entrées
-partagent les API et les composants ; la maintenance tactile locale du kiosque conserve son
-interface et son thème propres.
+L'administration est un outil chaleureux mais opérationnel, distinct de la scénographie
+du kiosque. Son fond blanc cassé, ses surfaces blanches et son encre noire restent fixes ;
+la couleur choisie pour l'événement ne s'y applique jamais. Le vert, le rouge et l'ambre
+sont exclusivement sémantiques : succès, incident et vigilance. La vue d'ensemble reste
+plate, calme et sans ombre décorative.
+
+Le portail pilote **une seule borne**. Il ne présente ni flotte, ni client, ni planning,
+ni données commerciales. Sur laptop, une navigation latérale conduit à Vue d'ensemble,
+Événement, Galerie, Diagnostic et Sécurité. La vue d'ensemble répond immédiatement à trois
+questions : la borne est-elle prête, quelle configuration est active, et quelles sont les
+dernières photos ? Elle se met à jour automatiquement sans toucher aux formulaires ouverts.
+
+La configuration desktop conserve l'identité, le message, l'overlay, les filtres, le
+format, les copies et le minuteur. Couleur et typographie appartiennent à la maintenance de
+la borne ; le flash appartient à la borne et à la Console Jour J, où son effet peut être
+constaté dans la lumière réelle. `mobile.html` reste strictement opérationnel : état global,
+session, matériel, impression, réglages rapides sûrs et photos récentes suivent l'ordre
+d'urgence. Les deux points d’entrée restent indépendants : aucun lien ne simule un passage
+desktop/mobile qui n’existe pas dans l’usage réel.
+
+**The Single Booth Rule.** Toute information doit décrire la borne actuelle, son événement
+actuel ou ses photos. Une donnée de parc, de location, de CRM ou de planification est hors
+périmètre, même si elle est courante dans les dashboards SaaS.
 
 ### Inputs / Fields
 

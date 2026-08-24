@@ -6,7 +6,6 @@ import {
   overlayUrl,
   type EventConfigPayload,
   type FilterName,
-  type LaunchFont,
   type PrintFormatPayload,
   type ShotTimerSeconds,
 } from "../shared/api";
@@ -24,21 +23,6 @@ import { Button, Feedback, Field, inputClass, Section } from "./ui";
 
 const ALL_FILTERS = Object.keys(FILTER_LABELS) as FilterName[];
 const SHOT_TIMER_OPTIONS: ShotTimerSeconds[] = [3, 5, 10];
-const LAUNCH_FONTS: Array<{ value: LaunchFont; label: string; sample: string }> = [
-  { value: "modern", label: "Moderne", sample: "Un moment à vous" },
-  { value: "geometric", label: "Graphique", sample: "Place à la fête" },
-  { value: "prestigious", label: "Prestigieuse", sample: "Célébrons ensemble" },
-  { value: "editorial", label: "Romantique", sample: "Notre belle histoire" },
-  { value: "couture", label: "Couture", sample: "Une soirée d’exception" },
-  { value: "handwritten", label: "Manuscrite", sample: "Souriez !" },
-  { value: "elegant_script", label: "Calligraphique", sample: "Pour toujours" },
-  { value: "festive", label: "Festive", sample: "Que la fête commence" },
-  { value: "playful", label: "Ludique", sample: "Cheese !" },
-  { value: "spooky", label: "Halloween", sample: "Entrez si vous osez" },
-  { value: "ceremonial", label: "Cérémonie", sample: "Un jour mémorable" },
-  { value: "cinematic", label: "Cinéma", sample: "À vous la lumière" },
-];
-
 export function EventSection() {
   const [draft, setDraft] = useState<EventConfigPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -132,52 +116,10 @@ export function EventSection() {
           </span>
         </Field>
 
-        <fieldset>
-          <legend className="mb-2 text-sm text-muted">Style du message d’accueil</legend>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            {LAUNCH_FONTS.map((font) => (
-              <button
-                key={font.value}
-                type="button"
-                aria-pressed={draft.launch_font === font.value}
-                onClick={() => patch({ launch_font: font.value })}
-                className={`rounded-panel border-2 p-4 text-left transition-colors ${
-                  draft.launch_font === font.value
-                    ? "border-accent bg-accent text-accent-ink"
-                    : "border-edge bg-surface text-body"
-                }`}
-              >
-                <span className="block text-sm font-bold">{font.label}</span>
-                <span
-                  className={`launch-font-${font.value} mt-3 block text-2xl leading-tight`}
-                >
-                  {font.sample}
-                </span>
-              </button>
-            ))}
-          </div>
-        </fieldset>
-
-        <Field label="Couleur dominante de la borne">
-          <div className="flex items-center gap-3">
-            <input
-              type="color"
-              value={draft.accent_color}
-              onChange={(e) => patch({ accent_color: e.target.value })}
-              className="h-12 w-16 cursor-pointer rounded border-2 border-edge bg-surface p-1"
-              aria-label="Choisir la couleur dominante"
-            />
-            <input
-              className={`${inputClass} max-w-36 font-mono uppercase`}
-              value={draft.accent_color}
-              pattern="#[0-9a-fA-F]{6}"
-              maxLength={7}
-              onChange={(e) => patch({ accent_color: e.target.value })}
-              aria-label="Couleur dominante en hexadécimal"
-            />
-            <span className="text-sm text-muted">Boutons, sélections et décompte</span>
-          </div>
-        </Field>
+        <p className="admin-context-note">
+          La couleur, la typographie et le flash écran se règlent sur la borne. Le flash
+          reste aussi disponible dans la Console Jour J pour être testé dans la lumière réelle.
+        </p>
 
         <fieldset>
           <legend className="mb-1 text-sm text-muted">Filtres proposés</legend>
@@ -323,23 +265,6 @@ export function EventSection() {
             Présélectionné sur la borne ; chaque visiteur peut encore choisir 3, 5 ou 10 secondes.
           </span>
         </fieldset>
-
-        <Field label="Flash écran">
-          <label className="flex items-start gap-3 text-sm">
-            <input
-              type="checkbox"
-              className="mt-1 accent-[var(--color-accent)]"
-              checked={draft.screen_flash_enabled}
-              onChange={(e) => patch({ screen_flash_enabled: e.target.checked })}
-            />
-            <span>
-              <span className="block">Éclairer avec l'écran pendant la capture</span>
-              <span className="block text-xs text-muted">
-                Désactivez cette option si la borne utilise un flash physique.
-              </span>
-            </span>
-          </label>
-        </Field>
 
         <div className="flex items-center gap-4">
           <Button onClick={save} disabled={saving}>
