@@ -135,8 +135,7 @@ class Runtime:
     @property
     def maintenance_active(self) -> bool:
         return (
-            self._maintenance_token is not None
-            and time.monotonic() < self._maintenance_expires_at
+            self._maintenance_token is not None and time.monotonic() < self._maintenance_expires_at
         )
 
     def lock_maintenance(self) -> None:
