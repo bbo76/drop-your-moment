@@ -90,6 +90,7 @@ class AdminHealth(BaseModel):
     printer_driver: str
 
     session_state: SessionState
+    maintenance_active: bool
     event_name: str
     print_format_name: str
     print_aspect_ratio: float
@@ -128,6 +129,7 @@ def read_health(runtime: Runtime = Depends(get_runtime)) -> AdminHealth:
         still_size=caps.still_size,
         printer_driver=runtime.printer.name,
         session_state=runtime.machine.state,
+        maintenance_active=runtime.maintenance_active,
         event_name=config.event_name,
         print_format_name=config.print_format.name,
         print_aspect_ratio=config.print_format.aspect_ratio,

@@ -22,14 +22,20 @@ const SHOT_TIMER_OPTIONS: ShotTimerSeconds[] = [3, 5, 10];
 const EVENT_PALETTE = [
   { name: "Or", value: "#ffd400" },
   { name: "Champagne", value: "#d9b66f" },
+  { name: "Abricot", value: "#f09a62" },
   { name: "Terracotta", value: "#d97757" },
+  { name: "Corail", value: "#ef6f6c" },
+  { name: "Rose", value: "#e56b8a" },
   { name: "Bordeaux", value: "#a43d5b" },
+  { name: "Prune", value: "#704264" },
   { name: "Violet", value: "#8b5cf6" },
   { name: "Bleu royal", value: "#3b82f6" },
   { name: "Bleu nuit", value: "#496a9b" },
+  { name: "Glacier", value: "#73a9c2" },
+  { name: "Lagune", value: "#2798a8" },
   { name: "Émeraude", value: "#2a9d8f" },
+  { name: "Menthe", value: "#58b89d" },
   { name: "Sauge", value: "#84a98c" },
-  { name: "Rose", value: "#e56b8a" },
 ] as const;
 const KIOSK_FONTS: Array<{ value: LaunchFont; label: string }> = [
   { value: "modern", label: "Moderne" },
@@ -42,6 +48,8 @@ const KIOSK_FONTS: Array<{ value: LaunchFont; label: string }> = [
   { value: "festive", label: "Festive" },
   { value: "playful", label: "Ludique" },
   { value: "spooky", label: "Halloween" },
+  { value: "ceremonial", label: "Cérémonie" },
+  { value: "cinematic", label: "Cinéma" },
 ];
 
 export function MaintenanceAccess({ onExit, debugFailure = "none" }: { onExit: () => void; debugFailure?: DebugFailure }) {
@@ -177,6 +185,12 @@ function MaintenancePanel({ onExpired, onExit, debugFailure }: { onExpired: () =
   const { health, settings } = snapshot;
   const freeRatio = health.disk_free_bytes / health.disk_total_bytes;
   const paperReady = paperRemaining(health.counters) >= settings.copies_per_print;
+  const healthNeedsAttention = !health.camera_ok
+    || freeRatio <= 0.1
+    || (health.temperature_c !== null && health.temperature_c >= 80)
+    || health.cpu_percent >= 85
+    || health.memory_percent >= 85;
+  const printingNeedsAttention = !paperReady || health.printer_driver === "offline";
   const status: MaintenanceStatus = !paperReady
     ? "paper"
     : !health.camera_ok
@@ -238,7 +252,6 @@ function MaintenancePanel({ onExpired, onExit, debugFailure }: { onExpired: () =
       <header className="flex items-center justify-between">
         <div>
           <h1 className="type-kiosk-screen-title text-3xl">Maintenance</h1>
-          <p className="text-base text-muted">Que voulez-vous vérifier ?</p>
         </div>
         <div className="flex items-center gap-3">
           <MaintenanceStatusBanner status={status} />
@@ -250,12 +263,14 @@ function MaintenancePanel({ onExpired, onExit, debugFailure }: { onExpired: () =
           icon="health"
           title="Santé"
           detail={healthTileDetail(health)}
+          attention={healthNeedsAttention}
           onClick={() => setView("health")}
         />
         <MaintenanceTile
           icon="print"
           title="Impression"
           detail={health.printer_driver === "offline" ? "Imprimante hors ligne · vérifier la liaison" : printingTileDetail(health.counters, settings.copies_per_print)}
+          attention={printingNeedsAttention}
           onClick={() => setView("printing")}
         />
         <MaintenanceTile
@@ -319,7 +334,7 @@ function MaintenanceStatusBanner({ status }: { status: MaintenanceStatus }) {
   }
   return (
     <div className="status-banner status-ready">
-      <span className="status-dot" />
+      <StatusMark state="ready" />
       Borne prête
     </div>
   );
@@ -339,17 +354,24 @@ function MaintenanceTile({
   icon,
   title,
   detail,
+  attention = false,
   onClick,
 }: {
   icon: "health" | "print" | "gallery" | "settings";
   title: string;
   detail: string;
+  attention?: boolean;
   onClick: () => void;
 }) {
   return (
-    <button type="button" className="maintenance-tile" onClick={onClick}>
+    <button
+      type="button"
+      className={attention ? "maintenance-tile maintenance-tile-attention" : "maintenance-tile"}
+      onClick={onClick}
+    >
       <MaintenanceIcon name={icon} />
       <span>
+        {attention && <span className="maintenance-tile-alert">À vérifier</span>}
         <strong>{title}</strong>
         <small>{detail}</small>
       </span>
@@ -373,17 +395,72 @@ function MaintenanceIcon({ name, className = "tile-icon" }: { name: "health" | "
 function HealthView({ snapshot }: { snapshot: MaintenanceSnapshot }) {
   const { health } = snapshot;
   const freeRatio = health.disk_free_bytes / health.disk_total_bytes;
+  const freePercent = Math.round(freeRatio * 100);
+  const storageReady = freeRatio > 0.1;
   return (
-    <section className="maintenance-detail grid min-h-0 grid-cols-[1fr_1.2fr] gap-4">
-      <div className="maintenance-block grid grid-cols-2 gap-3">
-        <HealthSignal label="Caméra" value={health.camera_ok ? "Prête" : "Absente"} ok={health.camera_ok} />
-        <HealthSignal label="Stockage" value={`${Math.round(freeRatio * 100)} % libre`} ok={freeRatio > 0.1} />
-        <HealthSignal label="Température" value={health.temperature_c === null ? "Indisponible" : `${Math.round(health.temperature_c)} °C`} ok={health.temperature_c === null || health.temperature_c < 80} />
-        <HealthSignal label="Session" value={health.session_state} ok={health.session_state !== "error"} />
+    <section className="maintenance-detail health-layout grid min-h-0 grid-cols-[1.25fr_0.75fr] gap-4">
+      <div className="maintenance-block health-hardware">
+        <div className="health-hardware-row">
+          <HealthIcon name="camera" />
+          <div className="min-w-0">
+            <p className="type-kiosk-label text-lg text-muted">Caméra</p>
+            <p className={`type-kiosk-data text-3xl ${health.camera_ok ? "" : "text-warn"}`}>
+              {health.camera_ok ? "Prête à photographier" : "Non détectée"}
+            </p>
+            <p className="type-kiosk-meta mt-1 text-base text-muted">
+              {health.camera_ok ? "Connexion et capture opérationnelles" : "Vérifiez le câble et redémarrez la borne"}
+            </p>
+          </div>
+          <StatusMark state={health.camera_ok ? "ready" : "warning"} />
+        </div>
+
+        <div className="health-hardware-row health-storage-row">
+          <HealthIcon name="storage" />
+          <div className="min-w-0">
+            <div className="flex items-baseline justify-between gap-4">
+              <div>
+                <p className="type-kiosk-label text-lg text-muted">Stockage</p>
+                <p className={`type-kiosk-data text-3xl ${storageReady ? "" : "text-warn"}`}>
+                  {freePercent} % libre
+                </p>
+              </div>
+              <p className="type-kiosk-data health-storage-detail text-right text-lg">
+                {gigabytes(health.disk_free_bytes)} <span className="text-muted">sur {gigabytes(health.disk_total_bytes)}</span>
+              </p>
+            </div>
+            <div
+              className="health-storage-track"
+              role="meter"
+              aria-label="Espace de stockage libre"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={freePercent}
+            >
+              <span
+                className={storageReady ? "health-storage-fill" : "health-storage-fill health-storage-fill-warning"}
+                style={{ width: `${freePercent}%` }}
+              />
+            </div>
+            <p className="type-kiosk-meta mt-2 text-base text-muted">
+              {storageReady ? "Espace suffisant pour les prochaines photos" : "Libérez de l’espace avant de poursuivre"}
+            </p>
+          </div>
+        </div>
       </div>
-      <div className="maintenance-block flex flex-col justify-center gap-7">
-        <ResourceMeter label="Processeur" percent={health.cpu_percent} large />
-        <ResourceMeter label="Mémoire" percent={health.memory_percent} large />
+      <div className="maintenance-block health-resources flex flex-col">
+        <div className="health-temperature">
+          <HealthIcon name="temperature" />
+          <div>
+            <p className="type-kiosk-label text-base text-muted">Température</p>
+            <p className={`type-kiosk-data text-3xl ${health.temperature_c !== null && health.temperature_c >= 80 ? "text-warn" : ""}`}>
+              {health.temperature_c === null ? "Indisponible" : `${Math.round(health.temperature_c)} °C`}
+            </p>
+          </div>
+        </div>
+        <div className="health-resource-meters flex flex-1 flex-col justify-center gap-7">
+          <ResourceMeter label="Processeur" percent={health.cpu_percent} large />
+          <ResourceMeter label="Mémoire" percent={health.memory_percent} large />
+        </div>
       </div>
     </section>
   );
@@ -408,30 +485,69 @@ function PrintingView({
   const [inkDialogOpen, setInkDialogOpen] = useState(false);
   const { health, settings } = snapshot;
   const remaining = paperRemaining(health.counters);
+  const cassetteRemaining = Math.max(0, health.counters.cassette_capacity - health.counters.prints_since_cassette_reload);
+  const cartridgeRemaining = Math.max(0, health.counters.cartridge_capacity - health.counters.prints_since_reset);
+  const stockRemaining = Math.max(0, health.counters.paper_stock_capacity - health.counters.prints_since_stock_set);
+  const printerLabel = health.printer_driver === "null"
+    ? "Mode numérique"
+    : health.printer_driver === "offline"
+      ? "CP1500 déconnectée"
+      : "CP1500 connectée";
   return (
-    <section className="maintenance-detail grid min-h-0 grid-cols-[0.8fr_1.2fr] gap-4">
-      <div className="maintenance-block flex flex-col justify-between">
-        <div><p className="type-kiosk-label text-lg text-muted">Papier restant</p><p className="type-kiosk-data text-7xl">{remaining}</p></div>
-        <div className="type-kiosk-meta text-lg text-muted"><p>Bac : {Math.max(0, health.counters.cassette_capacity - health.counters.prints_since_cassette_reload)} / {health.counters.cassette_capacity}</p><p>Encre : {Math.max(0, health.counters.cartridge_capacity - health.counters.prints_since_reset)} / {health.counters.cartridge_capacity}</p><p>Stock total : {Math.max(0, health.counters.paper_stock_capacity - health.counters.prints_since_stock_set)} feuilles</p></div>
-        <p className="type-kiosk-section-title text-lg">{health.printer_driver === "null" ? "Mode numérique" : health.printer_driver === "offline" ? "CP1500 déconnectée" : "CP1500 connectée"}</p>
+    <section className="maintenance-detail printing-layout grid min-h-0 grid-cols-[0.9fr_1.1fr] gap-4">
+      <div className="maintenance-block printing-overview">
+        <div className="printing-total">
+          <MaintenanceIcon name="print" className="printing-icon" />
+          <div>
+            <p className="type-kiosk-label text-lg text-muted">Tirages disponibles</p>
+            <p className="type-kiosk-data printing-total-value">{remaining}</p>
+          </div>
+          <p className={`type-kiosk-section-title printing-driver ${health.printer_driver === "offline" ? "text-warn" : ""}`}>
+            <StatusMark state={health.printer_driver === "offline" ? "warning" : "ready"} />
+            {printerLabel}
+          </p>
+        </div>
+        <div className="printing-supplies">
+          <PrintSupply label="Bac" remaining={cassetteRemaining} capacity={health.counters.cassette_capacity} />
+          <PrintSupply label="Encre" remaining={cartridgeRemaining} capacity={health.counters.cartridge_capacity} />
+          <PrintSupply label="Réserve" remaining={stockRemaining} capacity={health.counters.paper_stock_capacity} unit=" feuilles" />
+        </div>
       </div>
-      <div className="maintenance-block flex flex-col justify-between">
-        <Setting title="Copies par photo" description="Appliqué dès la prochaine photo">
+      <div className="maintenance-block printing-actions">
+        <div className="printing-copies">
+          <div><h2 className="type-kiosk-section-title text-xl">Copies par photo</h2><p className="type-kiosk-meta text-base text-muted">Appliqué dès la prochaine photo</p></div>
           <div className="grid grid-cols-3 gap-2">
             {[1, 2, 3].map((copies) => <button key={copies} type="button" disabled={saving} aria-pressed={settings.copies_per_print === copies} className="maintenance-choice" onClick={() => void onSaveSettings({ copies_per_print: copies })}>{copies}</button>)}
           </div>
-        </Setting>
-        <div>
-          <button type="button" disabled={saving} className="maintenance-choice mb-3 w-full" onClick={async () => { setSaving(true); try { const counters = await api.reloadCassette(); onChange({ ...snapshot, health: { ...health, counters } }); setError(null); } catch { setError("Le rechargement du bac n’a pas été enregistré."); } finally { setSaving(false); } }}>Bac rechargé (18 feuilles)</button>
+        </div>
+        <div className="printing-interventions">
+          <h2 className="type-kiosk-section-title text-xl">Après une intervention</h2>
+          <button type="button" disabled={saving} className="maintenance-choice printing-action-primary" onClick={async () => { setSaving(true); try { const counters = await api.reloadCassette(); onChange({ ...snapshot, health: { ...health, counters } }); setError(null); } catch { setError("Le rechargement du bac n’a pas été enregistré."); } finally { setSaving(false); } }}>Bac rechargé · 18 feuilles</button>
           <div className="grid grid-cols-2 gap-3">
             <button type="button" disabled={saving} className="maintenance-choice" onClick={() => setInkDialogOpen(true)}>Cassette d’encre remplacée</button>
-            <button type="button" disabled={saving} className="maintenance-choice" onClick={() => setStockDialogOpen(true)}>Définir le stock papier</button>
+            <button type="button" disabled={saving} className="maintenance-choice" onClick={() => setStockDialogOpen(true)}>Mettre à jour la réserve</button>
           </div>
         </div>
         <PaperStockDialog open={stockDialogOpen} initialValue={Math.max(1, health.counters.paper_stock_capacity - health.counters.prints_since_stock_set)} saving={saving} onClose={() => setStockDialogOpen(false)} onConfirm={async (total) => { setSaving(true); try { const counters = await api.setMaintenancePaperStock(total); onChange({ ...snapshot, health: { ...health, counters } }); setStockDialogOpen(false); setError(null); } catch { setError("Le stock papier n’a pas été enregistré."); } finally { setSaving(false); } }} />
         <InkCartridgeDialog open={inkDialogOpen} saving={saving} onClose={() => setInkDialogOpen(false)} onConfirm={async (capacity) => { setSaving(true); try { const counters = await api.replaceMaintenanceInk(capacity); onChange({ ...snapshot, health: { ...health, counters } }); setInkDialogOpen(false); setError(null); } catch { setError("Le remplacement de la cassette d’encre n’a pas été enregistré."); } finally { setSaving(false); } }} />
       </div>
     </section>
+  );
+}
+
+function PrintSupply({ label, remaining, capacity, unit = "" }: { label: string; remaining: number; capacity: number; unit?: string }) {
+  const percent = capacity > 0 ? Math.min(100, Math.round((remaining / capacity) * 100)) : 0;
+  const warning = percent <= 10;
+  return (
+    <div className="print-supply">
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="type-kiosk-label text-lg">{label}</span>
+        <strong className={warning ? "type-kiosk-data text-warn" : "type-kiosk-data"}>{remaining}{unit} <span className="text-muted">/ {capacity}</span></strong>
+      </div>
+      <div className="resource-track" role="meter" aria-label={`${label} restant`} aria-valuemin={0} aria-valuemax={capacity} aria-valuenow={remaining}>
+        <span className={warning ? "resource-fill resource-fill-warning" : "resource-fill"} style={{ width: `${percent}%` }} />
+      </div>
+    </div>
   );
 }
 
@@ -473,6 +589,11 @@ function healthTileDetail(health: MaintenanceSnapshot["health"]) {
   if (health.disk_free_bytes / health.disk_total_bytes <= 0.1) {
     return "Stockage presque plein · libérer de l’espace";
   }
+  if (health.temperature_c !== null && health.temperature_c >= 80) {
+    return "Température élevée · vérifier les aérations";
+  }
+  if (health.cpu_percent >= 85) return "Processeur très sollicité · à surveiller";
+  if (health.memory_percent >= 85) return "Mémoire très sollicitée · à surveiller";
   return `${Math.round(health.cpu_percent)} % CPU · ${Math.round(health.memory_percent)} % RAM`;
 }
 
@@ -480,16 +601,16 @@ function SettingsView({ snapshot, saving, onSaveSettings }: { snapshot: Maintena
   const [section, setSection] = useState<"appearance" | "system">("appearance");
   const { settings } = snapshot;
   return (
-    <section className="maintenance-detail grid min-h-0 grid-rows-[3.5rem_1fr] gap-3">
-      <div className="grid grid-cols-2 gap-3">
-        <button type="button" className="maintenance-choice" aria-pressed={section === "appearance"} onClick={() => setSection("appearance")}>Apparence</button>
-        <button type="button" className="maintenance-choice" aria-pressed={section === "system"} onClick={() => setSection("system")}>Écran & session</button>
+    <section className="maintenance-detail settings-workspace">
+      <div className="settings-tabs" role="tablist" aria-label="Catégories de réglages">
+        <button type="button" role="tab" aria-selected={section === "appearance"} onClick={() => setSection("appearance")}>Apparence</button>
+        <button type="button" role="tab" aria-selected={section === "system"} onClick={() => setSection("system")}>Écran & session</button>
       </div>
       {section === "appearance" ? (
-        <div className="grid min-h-0 grid-cols-[0.9fr_1.1fr] gap-3">
-          <div className="maintenance-block grid min-h-0 grid-rows-[auto_1fr] gap-2">
-            <div><h2 className="type-kiosk-section-title text-xl">Couleur</h2><p className="type-kiosk-meta text-sm text-muted">Palette adaptée aux événements</p></div>
-            <div className="kiosk-palette-grid grid min-h-0 grid-cols-4 gap-2">
+        <div className="settings-appearance-layout">
+          <div className="settings-pane settings-color-pane">
+            <div className="settings-pane-heading"><h2 className="type-kiosk-section-title">Couleur de l’événement</h2><p className="type-kiosk-meta">Accent du parcours invité</p></div>
+            <div className="kiosk-palette-grid">
               {EVENT_PALETTE.map((color) => (
                 <button
                   key={color.value}
@@ -500,13 +621,13 @@ function SettingsView({ snapshot, saving, onSaveSettings }: { snapshot: Maintena
                   className="kiosk-palette-choice"
                   style={{ "--swatch": color.value } as CSSProperties}
                   onClick={() => void onSaveSettings({ accent_color: color.value })}
-                ><span /> <small>{color.name}</small></button>
+                ><span className="palette-swatch" /><span className="choice-check" aria-hidden="true">✓</span></button>
               ))}
             </div>
           </div>
-          <div className="maintenance-block grid min-h-0 grid-rows-[auto_1fr] gap-2">
-            <div><h2 className="type-kiosk-section-title text-xl">Typographie</h2><p className="type-kiosk-meta text-sm text-muted">Titre de l’écran d’accueil</p></div>
-            <div className="kiosk-font-grid grid min-h-0 grid-cols-5 gap-2">
+          <div className="settings-pane settings-font-pane">
+            <div className="settings-pane-heading"><h2 className="type-kiosk-section-title">Typographie d’accueil</h2><p className="type-kiosk-meta">Aperçu du titre affiché aux invités</p></div>
+            <div className="kiosk-font-grid">
               {KIOSK_FONTS.map((font) => (
                 <button
                   key={font.value}
@@ -516,39 +637,57 @@ function SettingsView({ snapshot, saving, onSaveSettings }: { snapshot: Maintena
                   className="kiosk-font-choice"
                   style={{ fontFamily: LAUNCH_FONT_FAMILIES[font.value] }}
                   onClick={() => void onSaveSettings({ launch_font: font.value })}
-                >{font.label}</button>
+                ><span className="font-sample">Bonjour</span><span className="font-label">{font.label}</span><span className="choice-check" aria-hidden="true">✓</span></button>
               ))}
             </div>
           </div>
         </div>
       ) : (
-        <div className="grid min-h-0 grid-cols-2 gap-4">
-          <div className="maintenance-block flex flex-col justify-center">
-            <Setting title="Flash de l’écran" description="Éclairage blanc au moment de la prise">
-              <button type="button" disabled={saving} aria-pressed={settings.screen_flash_enabled} className="maintenance-toggle" onClick={() => void onSaveSettings({ screen_flash_enabled: !settings.screen_flash_enabled })}><span>{settings.screen_flash_enabled ? "Activé" : "Désactivé"}</span><span className="toggle-track"><span className="toggle-thumb" /></span></button>
-            </Setting>
+        <div className="settings-system-grid">
+          <div className="system-setting-row">
+            <SystemSettingIcon name="flash" />
+            <div className="system-setting-copy"><h2 className="type-kiosk-section-title">Flash de l’écran</h2><p className="type-kiosk-meta">Éclairage blanc au déclenchement</p></div>
+            <button type="button" disabled={saving} aria-label={settings.screen_flash_enabled ? "Désactiver le flash de l’écran" : "Activer le flash de l’écran"} aria-pressed={settings.screen_flash_enabled} className="maintenance-toggle system-toggle" onClick={() => void onSaveSettings({ screen_flash_enabled: !settings.screen_flash_enabled })}><span className="toggle-track"><span className="toggle-thumb" /></span></button>
           </div>
-          <div className="maintenance-block flex flex-col justify-center">
-            <Setting title="Minuteur par défaut" description="Présélectionné pour chaque nouvelle photo">
-              <div className="grid grid-cols-3 gap-2">
-                {SHOT_TIMER_OPTIONS.map((seconds) => (
-                  <button
-                    key={seconds}
-                    type="button"
-                    disabled={saving}
-                    aria-pressed={settings.default_shot_timer_seconds === seconds}
-                    className="maintenance-choice"
-                    onClick={() => void onSaveSettings({ default_shot_timer_seconds: seconds })}
-                  >
-                    {seconds} s
-                  </button>
-                ))}
-              </div>
-            </Setting>
+          <div className="system-setting-row">
+            <SystemSettingIcon name="timer" />
+            <div className="system-setting-copy"><h2 className="type-kiosk-section-title">Minuteur par défaut</h2><p className="type-kiosk-meta">Présélectionné pour chaque nouvelle photo</p></div>
+            <div className="system-timer-grid">
+              {SHOT_TIMER_OPTIONS.map((seconds) => (
+                <button
+                  key={seconds}
+                  type="button"
+                  disabled={saving}
+                  aria-pressed={settings.default_shot_timer_seconds === seconds}
+                  className="maintenance-choice"
+                  onClick={() => void onSaveSettings({ default_shot_timer_seconds: seconds })}
+                >
+                  {seconds} s
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}
     </section>
+  );
+}
+
+function StatusMark({ state }: { state: "ready" | "warning" }) {
+  return (
+    <span className={`status-mark status-mark-${state}`} aria-hidden="true">
+      {state === "ready" ? "✓" : "!"}
+    </span>
+  );
+}
+
+function SystemSettingIcon({ name }: { name: "flash" | "timer" }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="system-setting-icon">
+      {name === "flash"
+        ? <path d="M13 2 5 14h6l-1 8 8-12h-6l1-8Z" />
+        : <><circle cx="12" cy="13" r="8" /><path d="M12 9v4l3 2M9 2h6" /></>}
+    </svg>
   );
 }
 
@@ -562,12 +701,17 @@ function KioskGallery({ onExpired }: { onExpired: () => void }) {
   }, [onExpired]);
   if (selected) return <div className="gallery-focus"><img src={maintenancePhotoUrl(selected.session_id)} alt="Photo sélectionnée" /><button type="button" onClick={() => setSelected(null)}>Retour à la galerie</button></div>;
   if (error) return <div className="maintenance-block grid place-content-center text-xl text-warn">{error}</div>;
-  if (entries.length === 0) return <div className="maintenance-block grid place-content-center text-center"><p className="type-kiosk-screen-title text-3xl">Aucune photo</p><p className="type-kiosk-meta text-lg text-muted">Les photos conservées apparaîtront ici.</p></div>;
+  if (entries.length === 0) return <div className="maintenance-block gallery-empty grid place-content-center text-center"><MaintenanceIcon name="gallery" className="gallery-empty-icon" /><p className="type-kiosk-screen-title text-3xl">Aucune photo</p><p className="type-kiosk-meta text-lg text-muted">Les photos conservées apparaîtront ici.</p></div>;
   return <section className="maintenance-block grid min-h-0 grid-rows-[auto_1fr] gap-3"><p className="type-kiosk-label text-lg text-muted">{total} photo{total > 1 ? "s" : ""} · les plus récentes</p><div className="kiosk-gallery-grid grid min-h-0 grid-cols-4 gap-3">{entries.map((entry) => <button type="button" key={entry.session_id} onClick={() => setSelected(entry)}><img src={maintenanceThumbnailUrl(entry.session_id)} alt="Ouvrir cette photo" /></button>)}</div></section>;
 }
 
-function HealthSignal({ label, value, ok }: { label: string; value: string; ok: boolean }) {
-  return <div className="health-signal"><span className={`status-dot ${ok ? "" : "status-dot-warn"}`} /><p className="type-kiosk-label mt-3 text-base text-muted">{label}</p><p className="type-kiosk-data text-xl">{value}</p></div>;
+function HealthIcon({ name }: { name: "camera" | "storage" | "temperature" }) {
+  const paths = {
+    camera: <><rect x="3" y="6" width="14" height="12" rx="2" /><path d="m17 10 4-2v8l-4-2M7 6l1.5-2h4L14 6" /></>,
+    storage: <><ellipse cx="12" cy="5" rx="8" ry="3" /><path d="M4 5v7c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12v7c0 1.7 3.6 3 8 3s8-1.3 8-3v-7" /></>,
+    temperature: <><path d="M14 14.8V5a2 2 0 0 0-4 0v9.8a4 4 0 1 0 4 0Z" /><path d="M12 9v7" /></>,
+  };
+  return <svg viewBox="0 0 24 24" aria-hidden="true" className="health-icon">{paths[name]}</svg>;
 }
 
 function ResourceMeter({ label, percent, large = false }: { label: string; percent: number; large?: boolean }) {
@@ -596,6 +740,4 @@ function ResourceMeter({ label, percent, large = false }: { label: string; perce
   );
 }
 
-function Setting({ title, description, children }: { title: string; description: string; children: ReactNode }) {
-  return <div><div className="mb-3"><h2 className="type-kiosk-section-title text-xl">{title}</h2><p className="type-kiosk-meta text-sm text-muted">{description}</p></div>{children}</div>;
-}
+const gigabytes = (bytes: number) => `${(bytes / 1024 ** 3).toFixed(1)} Go`;

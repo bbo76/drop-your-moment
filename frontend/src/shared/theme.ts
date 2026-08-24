@@ -11,6 +11,8 @@ export const LAUNCH_FONT_FAMILIES: Record<LaunchFont, string> = {
   festive: '"Lobster", cursive',
   playful: '"Fredoka", sans-serif',
   spooky: '"Creepster", fantasy',
+  ceremonial: '"Cinzel", serif',
+  cinematic: '"Abril Fatface", serif',
 };
 
 export function readableInk(hex: string) {

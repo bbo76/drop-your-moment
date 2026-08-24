@@ -44,6 +44,8 @@ class LaunchFont(StrEnum):
     FESTIVE = "festive"
     PLAYFUL = "playful"
     SPOOKY = "spooky"
+    CEREMONIAL = "ceremonial"
+    CINEMATIC = "cinematic"
 
 
 class EventConfig(BaseModel):

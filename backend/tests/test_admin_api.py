@@ -434,6 +434,22 @@ def test_la_sante_repond_a_tenir_la_soiree(admin: TestClient) -> None:
     assert body["temperature_c"] is None or isinstance(body["temperature_c"], float)
 
 
+def test_la_sante_signale_la_maintenance_locale(
+    admin: TestClient, kiosk: TestClient, runtime: Runtime
+) -> None:
+    assert admin.get("/admin/system/health").json()["maintenance_active"] is False
+
+    assert kiosk.post("/api/maintenance/unlock", json={"pin": "2580"}).status_code == 204
+    assert admin.get("/admin/system/health").json()["maintenance_active"] is True
+
+    assert kiosk.post("/api/maintenance/lock").status_code == 204
+    assert admin.get("/admin/system/health").json()["maintenance_active"] is False
+
+    runtime.settings.maintenance_session_timeout_s = 0
+    assert kiosk.post("/api/maintenance/unlock", json={"pin": "2580"}).status_code == 204
+    assert admin.get("/admin/system/health").json()["maintenance_active"] is False
+
+
 def test_la_sante_distingue_un_apercu_vivant_d_un_apercu_gele(
     admin: TestClient, runtime: Runtime
 ) -> None:
