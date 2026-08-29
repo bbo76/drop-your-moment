@@ -737,6 +737,7 @@ body.admin select {
 .day-confirm-dialog::backdrop { background: rgb(18 18 18 / 42%); }
 .day-confirm-dialog > div { padding: 1.4rem; }
 .day-confirm-dialog h2 { font-size: 1.4rem; line-height: 1.15; letter-spacing: -0.02em; }
+.day-confirm-dialog h2:focus { outline: none; }
 .day-confirm-dialog p { margin-top: 0.65rem; color: var(--color-muted); line-height: 1.45; }
 .day-confirm-dialog footer { display: flex; justify-content: flex-end; gap: 0.65rem; margin-top: 1.4rem; }
 

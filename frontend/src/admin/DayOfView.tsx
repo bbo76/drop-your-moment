@@ -30,6 +30,7 @@ export function DayOfView() {
   const [working, setWorking] = useState<string | null>(null);
   const [printDetailsOpen, setPrintDetailsOpen] = useState(false);
   const releaseDialogRef = useRef<HTMLDialogElement>(null);
+  const releaseDialogTitleRef = useRef<HTMLHeadingElement>(null);
 
   const loadPhotos = useCallback(async () => {
     const page = await api.gallery(0, RECENT_PHOTO_COUNT);
@@ -164,7 +165,10 @@ export function DayOfView() {
         {health.session_state !== "idle" && (
           <Button
             tone="warning"
-            onClick={() => releaseDialogRef.current?.showModal()}
+            onClick={() => {
+              releaseDialogRef.current?.showModal();
+              releaseDialogTitleRef.current?.focus({ preventScroll: true });
+            }}
             disabled={working === "release"}
           >
             {working === "release" ? "Retour en cours…" : "Ramener la borne à l’accueil"}
@@ -291,7 +295,7 @@ export function DayOfView() {
         }}
       >
         <div>
-          <h2 id="release-kiosk-title">Ramener la borne à l’accueil ?</h2>
+          <h2 ref={releaseDialogTitleRef} id="release-kiosk-title" tabIndex={-1}>Ramener la borne à l’accueil ?</h2>
           <p>La session en cours sera interrompue. Les invités devront recommencer leur parcours.</p>
           <footer>
             <Button tone="secondary" onClick={() => releaseDialogRef.current?.close()}>Annuler</Button>

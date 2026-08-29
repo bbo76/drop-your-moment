@@ -609,7 +609,7 @@ function SettingsView({ snapshot, saving, onSaveSettings }: { snapshot: Maintena
       {section === "appearance" ? (
         <div className="settings-appearance-layout">
           <div className="settings-pane settings-color-pane">
-            <div className="settings-pane-heading"><h2 className="type-kiosk-section-title">Couleur de l’événement</h2><p className="type-kiosk-meta">Accent du parcours invité</p></div>
+            <div className="settings-pane-heading"><h2 className="type-kiosk-section-title">Couleur de l’événement</h2></div>
             <div className="kiosk-palette-grid">
               {EVENT_PALETTE.map((color) => (
                 <button
@@ -626,7 +626,7 @@ function SettingsView({ snapshot, saving, onSaveSettings }: { snapshot: Maintena
             </div>
           </div>
           <div className="settings-pane settings-font-pane">
-            <div className="settings-pane-heading"><h2 className="type-kiosk-section-title">Typographie d’accueil</h2><p className="type-kiosk-meta">Aperçu du titre affiché aux invités</p></div>
+            <div className="settings-pane-heading"><h2 className="type-kiosk-section-title">Typographie d’accueil</h2></div>
             <div className="kiosk-font-grid">
               {KIOSK_FONTS.map((font) => (
                 <button
