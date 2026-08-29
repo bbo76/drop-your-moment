@@ -12,6 +12,7 @@ import {
 import { useKioskState } from "./useKioskState";
 import { MaintenanceAccess } from "./components/MaintenanceAccess";
 import { useEffect, useState } from "react";
+import { Wrench } from "lucide-react";
 import { applyAccentTheme } from "../shared/theme";
 import {
   DEBUG_FAILURES,
@@ -67,9 +68,7 @@ export function App() {
       className="fixed top-4 right-4 z-40 grid size-14 place-items-center rounded-panel border-2 border-[color-mix(in_srgb,var(--color-body)_30%,transparent)] bg-[color-mix(in_srgb,var(--color-ink)_78%,transparent)] text-body"
       aria-label="Ouvrir la maintenance"
     >
-      <svg viewBox="0 0 24 24" aria-hidden="true" className="size-7" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M14.7 6.3a4 4 0 0 0-5 5L3.5 17.5a2.1 2.1 0 0 0 3 3l6.2-6.2a4 4 0 0 0 5-5l-2.4 2.4-3-3 2.4-2.4Z" />
-      </svg>
+      <Wrench className="size-7" strokeWidth={2} />
       {system?.operator_attention && <span className="absolute -top-[0.3rem] -right-[0.3rem] size-4 rounded-full border-[3px] border-ink bg-warn" aria-hidden="true" />}
       {system?.operator_attention && <span className="sr-only">Une intervention est à vérifier</span>}
     </button>

@@ -1,4 +1,19 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import {
+  Activity,
+  Camera,
+  Check,
+  ChevronRight,
+  CircleAlert,
+  HardDrive,
+  Images,
+  Printer,
+  SlidersHorizontal,
+  Thermometer,
+  Timer,
+  Zap,
+  type LucideIcon,
+} from "lucide-react";
 
 import {
   api,
@@ -341,13 +356,8 @@ function MaintenanceStatusBanner({ status }: { status: MaintenanceStatus }) {
 }
 
 function HardwareAlertIcon({ kind }: { kind: Exclude<MaintenanceStatus, "ready"> }) {
-  if (kind === "camera") {
-    return <svg viewBox="0 0 24 24" aria-hidden="true" className="size-[2.1rem] fill-none stroke-current stroke-[1.8] [stroke-linecap:round] [stroke-linejoin:round]"><rect x="3" y="6" width="14" height="12" rx="2" /><path d="m17 10 4-2v8l-4-2" /></svg>;
-  }
-  if (kind === "disk") {
-    return <svg viewBox="0 0 24 24" aria-hidden="true" className="size-[2.1rem] fill-none stroke-current stroke-[1.8] [stroke-linecap:round] [stroke-linejoin:round]"><ellipse cx="12" cy="5" rx="8" ry="3" /><path d="M4 5v7c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12v7c0 1.7 3.6 3 8 3s8-1.3 8-3v-7" /></svg>;
-  }
-  return <MaintenanceIcon name="print" className="size-[2.1rem] fill-none stroke-current stroke-[1.8] [stroke-linecap:round] [stroke-linejoin:round]" />;
+  const Icon = kind === "camera" ? Camera : kind === "disk" ? HardDrive : Printer;
+  return <Icon className="size-[2.1rem]" strokeWidth={1.8} />;
 }
 
 function MaintenanceTile({
@@ -375,21 +385,20 @@ function MaintenanceTile({
         <strong className="block text-[1.75rem] leading-none font-semibold">{title}</strong>
         <small className="mt-2 block text-base font-normal text-muted">{detail}</small>
       </span>
-      <svg viewBox="0 0 24 24" aria-hidden="true" className="w-8 fill-none stroke-muted stroke-[2.5] [stroke-linecap:round] [stroke-linejoin:round]">
-        <path d="m9 5 7 7-7 7" />
-      </svg>
+      <ChevronRight className="w-8 text-muted" strokeWidth={2.5} />
     </button>
   );
 }
 
 function MaintenanceIcon({ name, className = "size-[4.25rem] rounded-[0.55rem] bg-accent p-[0.9rem] fill-none stroke-current stroke-2 text-accent-ink [stroke-linecap:round] [stroke-linejoin:round]" }: { name: "health" | "print" | "gallery" | "settings"; className?: string }) {
-  const paths = {
-    health: <path d="M3 12h4l2-6 4 12 2-6h6" />,
-    print: <><path d="M7 9V3h10v6M7 18H5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><path d="M7 14h10v7H7z" /></>,
-    gallery: <><rect x="3" y="4" width="18" height="16" rx="2" /><path d="m3 16 5-5 4 4 2-2 7 7M16 8h.01" /></>,
-    settings: <><path d="M4 7h10M18 7h2M4 17h2M10 17h10" /><circle cx="16" cy="7" r="2" /><circle cx="8" cy="17" r="2" /></>,
+  const icons: Record<typeof name, LucideIcon> = {
+    health: Activity,
+    print: Printer,
+    gallery: Images,
+    settings: SlidersHorizontal,
   };
-  return <svg viewBox="0 0 24 24" aria-hidden="true" className={className}>{paths[name]}</svg>;
+  const Icon = icons[name];
+  return <Icon className={className} strokeWidth={2} />;
 }
 
 function HealthView({ snapshot }: { snapshot: MaintenanceSnapshot }) {
@@ -617,7 +626,7 @@ function SettingsView({ snapshot, saving, onSaveSettings }: { snapshot: Maintena
                   aria-pressed={settings.accent_color.toLowerCase() === color.value}
                   className={`group relative block aspect-square min-w-0 overflow-hidden rounded-lg active:scale-[0.97] aria-pressed:shadow-[0_0_0_3px_var(--color-ink),0_0_0_5px_#d8dee4] ${color.className}`}
                   onClick={() => void onSaveSettings({ accent_color: color.value })}
-                ><span className="invisible absolute right-1.5 bottom-1 z-1 grid size-6 place-items-center rounded-[0.3rem] bg-[#101418] font-sans text-base font-bold text-[#f6f4ed] group-aria-pressed:visible" aria-hidden="true">✓</span></button>
+                ><span className="invisible absolute right-1.5 bottom-1 z-1 grid size-6 place-items-center rounded-[0.3rem] bg-[#101418] text-[#f6f4ed] group-aria-pressed:visible" aria-hidden="true"><Check className="size-4" strokeWidth={3} /></span></button>
               ))}
             </div>
           </div>
@@ -632,7 +641,7 @@ function SettingsView({ snapshot, saving, onSaveSettings }: { snapshot: Maintena
                   aria-pressed={settings.launch_font === font.value}
                   className={`group relative grid min-h-16 min-w-0 grid-cols-[7.2rem_minmax(0,1fr)_1.2rem] items-center gap-2 overflow-hidden rounded-[0.45rem] bg-[#222930] px-2 py-2 text-left text-body active:scale-[0.97] aria-pressed:bg-[#303942] aria-pressed:shadow-[inset_0_0_0_2px_#d8dee4] ${LAUNCH_FONT_CLASSES[font.value]}`}
                   onClick={() => void onSaveSettings({ launch_font: font.value })}
-                ><span className="w-full overflow-hidden text-[1.35rem] leading-[1.6] whitespace-nowrap">Bonjour</span><span className="max-w-full overflow-hidden font-['Barlow_Semi_Condensed',sans-serif] text-sm font-medium text-ellipsis whitespace-nowrap text-muted">{font.label}</span><span className="invisible font-sans text-base font-bold text-body group-aria-pressed:visible" aria-hidden="true">✓</span></button>
+                ><span className="w-full overflow-hidden text-[1.35rem] leading-[1.6] whitespace-nowrap">Bonjour</span><span className="max-w-full overflow-hidden font-['Barlow_Semi_Condensed',sans-serif] text-sm font-medium text-ellipsis whitespace-nowrap text-muted">{font.label}</span><span className="invisible text-body group-aria-pressed:visible" aria-hidden="true"><Check className="size-4" strokeWidth={3} /></span></button>
               ))}
             </div>
           </div>
@@ -642,7 +651,7 @@ function SettingsView({ snapshot, saving, onSaveSettings }: { snapshot: Maintena
           <div className="grid min-h-0 grid-cols-[3.4rem_minmax(15rem,1fr)_auto] items-center gap-4 rounded-[0.65rem] bg-surface px-4 py-3.5">
             <SystemSettingIcon name="flash" />
             <div><h2 className="text-[1.45rem] font-semibold">Flash de l’écran</h2><p className="mt-0.5 text-[0.95rem] leading-[1.3] text-muted">Éclairage blanc au déclenchement</p></div>
-            <button type="button" disabled={saving} aria-label={settings.screen_flash_enabled ? "Désactiver le flash de l’écran" : "Activer le flash de l’écran"} aria-pressed={settings.screen_flash_enabled} className="group flex min-h-[3.6rem] w-[4.8rem] items-center justify-end p-1 text-body disabled:cursor-wait" onClick={() => void onSaveSettings({ screen_flash_enabled: !settings.screen_flash_enabled })}><span className="flex h-10 w-18 items-center rounded-full bg-edge p-1 transition-colors duration-300 ease-out group-aria-pressed:bg-[#d8dee4]"><span className="size-[2.1rem] transform-gpu rounded-full bg-body transition-[transform,background-color] duration-300 ease-out group-aria-pressed:translate-x-8 group-aria-pressed:bg-[#101418]" /></span></button>
+            <button type="button" disabled={saving} aria-label={settings.screen_flash_enabled ? "Désactiver le flash de l’écran" : "Activer le flash de l’écran"} aria-pressed={settings.screen_flash_enabled} className="flex min-h-[3.6rem] w-[4.8rem] items-center justify-end p-1 text-body disabled:cursor-wait" onClick={() => void onSaveSettings({ screen_flash_enabled: !settings.screen_flash_enabled })}><span className={`flex h-10 w-18 items-center rounded-full p-1 transition-colors duration-300 ease-out ${settings.screen_flash_enabled ? "bg-[#d8dee4]" : "bg-edge"}`}><span className={`size-[2.1rem] transform-gpu rounded-full transition-[translate,background-color] duration-300 ease-out ${settings.screen_flash_enabled ? "translate-x-8 bg-[#101418]" : "translate-x-0 bg-body"}`} /></span></button>
           </div>
           <div className="grid min-h-0 grid-cols-[3.4rem_minmax(15rem,1fr)_auto] items-center gap-4 rounded-[0.65rem] bg-surface px-4 py-3.5">
             <SystemSettingIcon name="timer" />
@@ -669,19 +678,14 @@ function SettingsView({ snapshot, saving, onSaveSettings }: { snapshot: Maintena
 function StatusMark({ state }: { state: "ready" | "warning" }) {
   return (
     <span className={`inline-grid size-[1.65rem] flex-none place-items-center rounded-[0.3rem] border-2 text-base leading-none font-bold ${state === "ready" ? "border-[#7fc6a4] bg-[#7fc6a4] text-[#101418]" : "border-current text-warn"}`} aria-hidden="true">
-      {state === "ready" ? "✓" : "!"}
+      {state === "ready" ? <Check className="size-4" strokeWidth={3} /> : <CircleAlert className="size-4" strokeWidth={2.5} />}
     </span>
   );
 }
 
 function SystemSettingIcon({ name }: { name: "flash" | "timer" }) {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="size-[3.4rem] rounded-[0.55rem] bg-[#262e36] p-3 text-accent fill-none stroke-current stroke-[1.8] [stroke-linecap:round] [stroke-linejoin:round]">
-      {name === "flash"
-        ? <path d="M13 2 5 14h6l-1 8 8-12h-6l1-8Z" />
-        : <><circle cx="12" cy="13" r="8" /><path d="M12 9v4l3 2M9 2h6" /></>}
-    </svg>
-  );
+  const Icon = name === "flash" ? Zap : Timer;
+  return <Icon className="size-[3.4rem] rounded-[0.55rem] bg-[#262e36] p-3 text-accent" strokeWidth={1.8} />;
 }
 
 function KioskGallery({ onExpired }: { onExpired: () => void }) {
@@ -699,12 +703,13 @@ function KioskGallery({ onExpired }: { onExpired: () => void }) {
 }
 
 function HealthIcon({ name }: { name: "camera" | "storage" | "temperature" }) {
-  const paths = {
-    camera: <><rect x="3" y="6" width="14" height="12" rx="2" /><path d="m17 10 4-2v8l-4-2M7 6l1.5-2h4L14 6" /></>,
-    storage: <><ellipse cx="12" cy="5" rx="8" ry="3" /><path d="M4 5v7c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12v7c0 1.7 3.6 3 8 3s8-1.3 8-3v-7" /></>,
-    temperature: <><path d="M14 14.8V5a2 2 0 0 0-4 0v9.8a4 4 0 1 0 4 0Z" /><path d="M12 9v7" /></>,
+  const icons: Record<typeof name, LucideIcon> = {
+    camera: Camera,
+    storage: HardDrive,
+    temperature: Thermometer,
   };
-  return <svg viewBox="0 0 24 24" aria-hidden="true" className="size-14 rounded-panel border-2 border-edge p-2.5 text-accent fill-none stroke-current stroke-[1.8] [stroke-linecap:round] [stroke-linejoin:round]">{paths[name]}</svg>;
+  const Icon = icons[name];
+  return <Icon className="size-14 rounded-panel border-2 border-edge p-2.5 text-accent" strokeWidth={1.8} />;
 }
 
 function ResourceMeter({ label, percent, large = false }: { label: string; percent: number; large?: boolean }) {
