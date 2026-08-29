@@ -1,18 +1,18 @@
 import type { LaunchFont } from "./api";
 
-export const LAUNCH_FONT_FAMILIES: Record<LaunchFont, string> = {
-  modern: '"Barlow Semi Condensed", sans-serif',
-  geometric: '"Montserrat", sans-serif',
-  prestigious: '"Playfair Display", serif',
-  editorial: '"Cormorant Garamond", serif',
-  couture: '"Bodoni Moda", serif',
-  handwritten: '"Caveat", cursive',
-  elegant_script: '"Dancing Script", cursive',
-  festive: '"Lobster", cursive',
-  playful: '"Fredoka", sans-serif',
-  spooky: '"Creepster", fantasy',
-  ceremonial: '"Cinzel", serif',
-  cinematic: '"Abril Fatface", serif',
+export const LAUNCH_FONT_CLASSES: Record<LaunchFont, string> = {
+  modern: "font-modern",
+  geometric: "font-geometric",
+  prestigious: "font-prestigious",
+  editorial: "font-editorial",
+  couture: "font-couture",
+  handwritten: "font-handwritten",
+  elegant_script: "font-elegant-script",
+  festive: "font-festive",
+  playful: "font-playful",
+  spooky: "font-spooky",
+  ceremonial: "font-ceremonial",
+  cinematic: "font-cinematic",
 };
 
 export function readableInk(hex: string) {

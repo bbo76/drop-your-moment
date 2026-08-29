@@ -39,7 +39,7 @@ export function ReviewScreen({
 
       <section className="flex min-h-0 flex-col justify-between rounded-panel bg-surface p-5">
         <div>
-          <h1 className="type-kiosk-screen-title text-3xl">Votre photo</h1>
+          <h1 className="text-3xl leading-[1.08] font-bold tracking-[-0.02em]">Votre photo</h1>
           <p className="mt-1 text-base text-muted">Choisissez un rendu, puis gardez-la.</p>
         </div>
         <div className="grid gap-2">
@@ -81,7 +81,7 @@ function FilterButton({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`type-kiosk-action min-h-14 cursor-pointer rounded-panel border-2 px-5 text-left text-lg ${
+      className={`min-h-14 cursor-pointer rounded-panel border-2 px-5 text-left text-lg font-medium ${
         active
           ? "border-accent bg-accent text-accent-ink"
           : "border-edge text-body"

@@ -1,17 +1,19 @@
 import type { ReactNode } from "react";
+import type { LaunchFont } from "../../shared/api";
+import { LAUNCH_FONT_CLASSES } from "../../shared/theme";
 
 /** Écran plein cadre, contenu centré. Sert l'accueil, l'erreur et la perte du backend. */
 export function CenteredScreen({ children }: { children: ReactNode }) {
   return (
-    <main className="kiosk-stage grid h-full place-content-center gap-5 p-8 text-center justify-items-center">
+    <main className="grid h-full place-content-center justify-items-center gap-5 bg-ink p-8 text-center">
       {children}
     </main>
   );
 }
 
-export function Title({ children }: { children: ReactNode }) {
+export function Title({ children, font = "modern" }: { children: ReactNode; font?: LaunchFont }) {
   return (
-    <h1 className="kiosk-title type-kiosk-display max-w-[14ch] text-5xl sm:text-6xl">{children}</h1>
+    <h1 className={`max-w-[14ch] text-balance text-5xl leading-none font-bold tracking-[-0.02em] sm:text-6xl ${LAUNCH_FONT_CLASSES[font]}`}>{children}</h1>
   );
 }
 
@@ -39,7 +41,7 @@ export function PrimaryButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="kiosk-button kiosk-button-primary type-kiosk-action min-h-16 cursor-pointer rounded-panel px-8 text-xl disabled:cursor-not-allowed disabled:opacity-40"
+      className="min-h-16 cursor-pointer rounded-panel bg-accent px-8 text-xl font-medium text-accent-ink transition-[background-color,color,transform] duration-150 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40"
     >
       {children}
     </button>
@@ -57,7 +59,7 @@ export function GhostButton({
     <button
       type="button"
       onClick={onClick}
-      className="kiosk-button type-kiosk-action min-h-14 cursor-pointer rounded-panel border-2 border-edge bg-transparent px-6 text-lg text-body"
+      className="min-h-14 cursor-pointer rounded-panel border-2 border-edge bg-transparent px-6 text-lg font-medium text-body transition-[background-color,color,transform] duration-150 active:scale-[0.97]"
     >
       {children}
     </button>

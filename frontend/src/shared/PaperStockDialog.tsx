@@ -42,7 +42,7 @@ export function PaperStockDialog({
   return (
     <dialog
       ref={dialogRef}
-      className="paper-stock-dialog"
+      className="fixed inset-0 m-auto max-h-[calc(100dvh-2rem)] w-[min(30rem,calc(100vw-2rem))] max-w-none rounded-2xl border border-edge bg-ink p-0 text-body shadow-[0_1.5rem_4rem_rgb(0_0_0/28%)] backdrop:bg-[rgb(9_15_23/62%)] backdrop:backdrop-blur-[3px]"
       aria-labelledby="paper-stock-title"
       onCancel={(event) => {
         if (saving) event.preventDefault();
@@ -50,18 +50,18 @@ export function PaperStockDialog({
       }}
       onClose={onClose}
     >
-      <form onSubmit={submit}>
-        <div className="paper-stock-dialog-heading">
-          <p className="paper-stock-eyebrow">Impression</p>
-          <h2 id="paper-stock-title">Définir le stock papier</h2>
-          <p>
+      <form onSubmit={submit} className="grid gap-5 p-6 max-[480px]:p-5">
+        <div>
+          <p className="text-[0.78rem] font-bold tracking-[0.08em] text-muted uppercase">Impression</p>
+          <h2 id="paper-stock-title" className="mt-1 text-2xl leading-[1.15] font-bold">Définir le stock papier</h2>
+          <p className="mt-2 leading-[1.45] text-muted">
             Indiquez toutes les feuilles disponibles pour la suite de l’évènement,
             y compris celles déjà chargées dans le bac.
           </p>
         </div>
 
-        <label className="paper-stock-field">
-          <span>Feuilles disponibles</span>
+        <label className="grid gap-2">
+          <span className="text-[0.78rem] font-bold tracking-[0.08em] text-muted uppercase">Feuilles disponibles</span>
           <input
             autoFocus
             type="number"
@@ -72,16 +72,17 @@ export function PaperStockDialog({
             value={value}
             disabled={saving}
             onChange={(event) => setValue(event.target.value)}
+            className="min-h-14 w-full rounded-panel border-2 border-edge bg-transparent px-3.5 text-2xl font-bold text-body tabular-nums focus-visible:border-accent focus-visible:outline-[3px] focus-visible:outline-[color-mix(in_srgb,var(--color-accent)_25%,transparent)] disabled:opacity-50"
           />
         </label>
 
-        <p className="paper-stock-note">
+        <p className="leading-[1.45] text-muted">
           Le bac de la CP1500 reste géré séparément et contient 18 feuilles maximum.
         </p>
 
-        <div className="paper-stock-dialog-actions">
-          <button type="button" disabled={saving} onClick={onClose}>Annuler</button>
-          <button type="submit" disabled={saving || !valid}>
+        <div className="flex justify-end gap-2.5 max-[480px]:grid">
+          <button type="button" disabled={saving} onClick={onClose} className="min-h-[2.85rem] rounded-[0.7rem] border border-edge px-4 font-bold disabled:cursor-not-allowed disabled:opacity-50">Annuler</button>
+          <button type="submit" disabled={saving || !valid} className="min-h-[2.85rem] rounded-[0.7rem] border border-accent bg-accent px-4 font-bold text-accent-ink disabled:cursor-not-allowed disabled:opacity-50 max-[480px]:row-start-1">
             {saving ? "Enregistrement…" : "Enregistrer le stock"}
           </button>
         </div>

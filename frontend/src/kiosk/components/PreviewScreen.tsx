@@ -101,7 +101,7 @@ export function PreviewScreen({
             <span
               // `key` remonté à chaque chiffre pour rejouer l'animation d'apparition.
               key={phase.value}
-              className="capture-countdown text-[30vmin] font-black"
+              className="grid size-[1.08em] place-items-center rounded-[0.12em] bg-accent text-[30vmin] leading-none font-black text-accent-ink shadow-[0_0.12em_0.28em_rgb(0_0_0/35%)] motion-safe:animate-pulse"
             >
               {phase.value}
             </span>
@@ -115,8 +115,8 @@ export function PreviewScreen({
         )}
       </div>
 
-      <div className="preview-action-bar relative grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-3 rounded-panel bg-ink p-3">
-        <span className="preview-framing-hint type-kiosk-label text-lg leading-tight text-muted">
+      <div className="relative grid min-h-22 grid-cols-[minmax(0,1fr)_auto_14rem_8rem] items-center gap-3 rounded-panel bg-ink p-3 max-[900px]:gap-2 max-[900px]:p-2 [&>button]:w-full">
+        <span className="text-lg leading-tight font-medium tracking-[0.01em] text-muted max-[900px]:max-w-36 max-[900px]:text-base">
           {framing.maskPercent > 0 && phase.kind === "waiting"
             ? "Cadrez-vous entre les pointillés"
             : ""}
@@ -125,14 +125,14 @@ export function PreviewScreen({
         {phase.kind === "waiting" ? (
           <fieldset>
             <legend className="sr-only">Durée du minuteur</legend>
-            <div className="shot-timer-control flex rounded-panel border-2 border-edge bg-surface p-1">
+            <div className="flex h-16 items-stretch rounded-panel border-2 border-edge bg-surface p-1">
               {SHOT_TIMER_OPTIONS.map((seconds) => (
                 <button
                   key={seconds}
                   type="button"
                   aria-pressed={shotTimerSeconds === seconds}
                   onClick={() => setShotTimerSeconds(seconds)}
-                  className={`timer-choice type-kiosk-data min-w-14 rounded-lg px-3 text-lg ${
+                  className={`min-h-13 min-w-14 cursor-pointer rounded-lg px-3 text-lg font-bold tabular-nums transition-[background-color,color,transform] duration-150 active:scale-[0.97] max-[900px]:min-w-12 max-[900px]:px-2 ${
                     shotTimerSeconds === seconds
                       ? "bg-accent text-accent-ink"
                       : "text-body"
@@ -144,7 +144,7 @@ export function PreviewScreen({
             </div>
           </fieldset>
         ) : (
-          <span className="pointer-events-none absolute inset-0 grid place-items-center type-kiosk-screen-title text-3xl text-accent">
+          <span className="pointer-events-none absolute inset-0 grid place-items-center text-3xl leading-[1.08] font-bold tracking-[-0.02em] text-accent">
             Souriez…
           </span>
         )}
@@ -158,7 +158,7 @@ export function PreviewScreen({
         )}
 
         <span className="flex items-center justify-end gap-3">
-          <span className="preview-return-hint type-kiosk-meta text-base text-muted">
+          <span className="text-base leading-[1.3] font-normal text-muted max-[900px]:hidden">
             {showReturnHint && `Retour à l'accueil dans ${Math.ceil(remainingSeconds)} s`}
           </span>
           {phase.kind === "waiting" && <GhostButton onClick={onCancel}>Annuler</GhostButton>}

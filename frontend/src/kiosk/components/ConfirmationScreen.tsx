@@ -32,14 +32,14 @@ export function ConfirmationScreen({ printing, photoUrl, remainingSeconds }: Pro
       <div className="grid place-content-center justify-items-start gap-3 rounded-panel bg-accent p-8 text-accent-ink">
         {printing ? (
           <>
-            <h1 className="type-kiosk-display text-5xl">Un instant…</h1>
+            <h1 className="text-5xl leading-none font-bold tracking-[-0.02em]">Un instant…</h1>
             <Lede>Votre photo est en cours d'enregistrement.</Lede>
           </>
         ) : (
           <>
-            <h1 className="type-kiosk-display text-5xl">C'est enregistré !</h1>
+            <h1 className="text-5xl leading-none font-bold tracking-[-0.02em]">C'est enregistré !</h1>
             <Lede>Merci, et à bientôt devant l'objectif.</Lede>
-            <p className="type-kiosk-meta text-base text-accent-ink/70 sm:text-lg">
+            <p className="text-base leading-[1.3] font-normal text-accent-ink/70 sm:text-lg">
               {remainingSeconds !== null
                 ? `Retour à l'accueil dans ${Math.ceil(remainingSeconds)} s`
                 : "Retour à l'accueil…"}

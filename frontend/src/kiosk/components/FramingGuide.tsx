@@ -48,18 +48,28 @@ export function FramingGuide({
 }) {
   if (maskPercent <= 0) return null;
 
-  const mask = <div className="bg-black/55" style={{ flex: `0 0 ${maskPercent}%` }} />;
-  const border = cropsWidth
-    ? "border-x-2 border-dashed border-white/65"
-    : "border-y-2 border-dashed border-white/65";
-
   return (
-    <div
-      className={`pointer-events-none absolute inset-0 flex ${cropsWidth ? "flex-row" : "flex-col"}`}
+    <svg
+      viewBox="0 0 100 100"
+      preserveAspectRatio="none"
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 size-full fill-black/55 stroke-white/65"
     >
-      {mask}
-      <div className={`flex-auto ${border}`} />
-      {mask}
-    </div>
+      {cropsWidth ? (
+        <>
+          <rect width={maskPercent} height="100" stroke="none" />
+          <rect x={100 - maskPercent} width={maskPercent} height="100" stroke="none" />
+          <line x1={maskPercent} x2={maskPercent} y2="100" strokeWidth="2" strokeDasharray="8 8" vectorEffect="non-scaling-stroke" />
+          <line x1={100 - maskPercent} x2={100 - maskPercent} y2="100" strokeWidth="2" strokeDasharray="8 8" vectorEffect="non-scaling-stroke" />
+        </>
+      ) : (
+        <>
+          <rect width="100" height={maskPercent} stroke="none" />
+          <rect y={100 - maskPercent} width="100" height={maskPercent} stroke="none" />
+          <line y1={maskPercent} y2={maskPercent} x2="100" strokeWidth="2" strokeDasharray="8 8" vectorEffect="non-scaling-stroke" />
+          <line y1={100 - maskPercent} y2={100 - maskPercent} x2="100" strokeWidth="2" strokeDasharray="8 8" vectorEffect="non-scaling-stroke" />
+        </>
+      )}
+    </svg>
   );
 }
