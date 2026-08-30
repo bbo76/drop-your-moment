@@ -13,6 +13,7 @@ from __future__ import annotations
 import logging
 import shutil
 from collections.abc import Iterator
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import FileResponse, StreamingResponse
@@ -75,6 +76,7 @@ class EventInfo(BaseModel):
     available_filters: list[FilterName]
     print_format_name: str
     print_aspect_ratio: float
+    overlay_url: str | None
     default_shot_timer_seconds: int
     screen_flash_enabled: bool
 
@@ -154,8 +156,36 @@ def read_event(runtime: Runtime = Depends(get_runtime)) -> EventInfo:
         available_filters=config.available_filters,
         print_format_name=config.print_format.name,
         print_aspect_ratio=config.print_format.aspect_ratio,
+        overlay_url=_overlay_url(runtime),
         default_shot_timer_seconds=config.default_shot_timer_seconds,
         screen_flash_enabled=config.screen_flash_enabled,
+    )
+
+
+def _overlay_url(runtime: Runtime) -> str | None:
+    path = _overlay_path(runtime)
+    if path is None:
+        return None
+    return f"/api/event/overlay?v={path.stat().st_mtime_ns}"
+
+
+def _overlay_path(runtime: Runtime) -> Path | None:
+    filename = runtime.event.config.overlay_file
+    if runtime.event.overlay is None or filename is None:
+        return None
+    path = runtime.event_store.config_path.parent / filename
+    return path if path.is_file() else None
+
+
+@router.get("/event/overlay")
+def read_event_overlay(runtime: Runtime = Depends(get_runtime)) -> FileResponse:
+    path = _overlay_path(runtime)
+    if path is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="aucun overlay configuré")
+    return FileResponse(
+        path,
+        media_type="image/png",
+        headers={"Cache-Control": "no-store"},
     )
 
 
