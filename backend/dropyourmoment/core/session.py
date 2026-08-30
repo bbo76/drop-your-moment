@@ -39,6 +39,7 @@ class SessionEvent(StrEnum):
     CHOOSE_FILTER = "choose_filter"
     RETAKE = "retake"
     PRINT = "print"
+    SAVE = "save"
     COMPLETE = "complete"
     FAIL = "fail"
     RESET = "reset"
@@ -56,6 +57,7 @@ _TRANSITIONS: dict[tuple[SessionState, SessionEvent], SessionState] = {
     (SessionState.REVIEW, SessionEvent.CHOOSE_FILTER): SessionState.REVIEW,
     (SessionState.REVIEW, SessionEvent.RETAKE): SessionState.PREVIEW,
     (SessionState.REVIEW, SessionEvent.PRINT): SessionState.PRINTING,
+    (SessionState.REVIEW, SessionEvent.SAVE): SessionState.DONE,
     (SessionState.REVIEW, SessionEvent.TIMEOUT): SessionState.IDLE,
     (SessionState.REVIEW, SessionEvent.START): SessionState.PREVIEW,
     (SessionState.PRINTING, SessionEvent.COMPLETE): SessionState.DONE,
@@ -106,6 +108,7 @@ class Session:
     raw_path: Path | None = None
     final_path: Path | None = None
     selected_filter: str | None = None
+    output_mode: str | None = None
 
     # Incrémenté à chaque recomposition. Le frontend s'en sert comme paramètre
     # anti-cache : sans lui, changer de filtre laisserait le navigateur réafficher
@@ -166,6 +169,7 @@ class SessionMachine:
         self._session.raw_path = None
         self._session.final_path = None
         self._session.selected_filter = None
+        self._session.output_mode = None
         # La révision continue de croître au lieu de repartir de zéro : le navigateur ne
         # doit pas pouvoir retomber sur une URL qu'il a déjà en cache.
         self._session.photo_revision += 1
@@ -174,6 +178,13 @@ class SessionMachine:
     def print(self) -> Session:
         self._dispatch(SessionEvent.PRINT)
         assert self._session is not None
+        self._session.output_mode = "print"
+        return self._session
+
+    def save(self) -> Session:
+        self._dispatch(SessionEvent.SAVE)
+        assert self._session is not None
+        self._session.output_mode = "save"
         return self._session
 
     def complete(self) -> None:

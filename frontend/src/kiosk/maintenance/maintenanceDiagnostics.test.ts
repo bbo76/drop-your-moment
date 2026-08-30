@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 
-import type { MaintenanceSnapshot } from "../../shared/api";
+import type { MaintenanceSnapshot, SystemStatus } from "../../shared/api";
+import { mockMaintenanceSnapshot, mockSystemStatus } from "../debugFailures.ts";
 import { maintenanceDiagnostics } from "./maintenanceDiagnostics.ts";
 
 const snapshot = {
@@ -55,4 +56,43 @@ assert.equal(
 assert.equal(
   maintenanceDiagnostics({ ...snapshot, health: { ...snapshot.health, camera_ok: false } }).healthDetail,
   "Caméra absente · vérifier la connexion",
+);
+const lowPaper = {
+  ...snapshot,
+  health: {
+    ...snapshot.health,
+    counters: { ...snapshot.health.counters, paper_stock_capacity: 5 },
+  },
+} satisfies MaintenanceSnapshot;
+assert.equal(maintenanceDiagnostics(lowPaper).status, "paper");
+assert.equal(
+  maintenanceDiagnostics(lowPaper).printingDetail,
+  "Stock papier bientôt faible · 5 tirages restants",
+);
+const criticalPaper = {
+  ...snapshot,
+  health: {
+    ...snapshot.health,
+    counters: { ...snapshot.health.counters, paper_stock_capacity: 2 },
+  },
+} satisfies MaintenanceSnapshot;
+assert.equal(
+  maintenanceDiagnostics(criticalPaper).printingDetail,
+  "Stock papier critique · 2 tirages restants",
+);
+
+const system = {
+  camera_ok: true,
+  printer_ok: true,
+  operator_attention: false,
+  prints_remaining: 18,
+  preview_size: [640, 360],
+} satisfies SystemStatus;
+assert.equal(mockSystemStatus(system, "paper-low")?.prints_remaining, 5);
+assert.equal(mockSystemStatus(system, "paper-critical")?.prints_remaining, 2);
+assert.equal(mockSystemStatus(system, "paper-empty")?.prints_remaining, 0);
+assert.equal(mockSystemStatus(system, "printer")?.printer_ok, false);
+assert.equal(
+  maintenanceDiagnostics(mockMaintenanceSnapshot(snapshot, "paper-empty")).printingDetail,
+  "Stock papier insuffisant · à mettre à jour",
 );

@@ -67,7 +67,7 @@ class Runtime:
             camera=build_camera_driver(settings.camera_driver, settings.camera_device),
             # Pilote neutre pendant toute la phase numérique : le parcours va jusqu'au
             # bout sans imprimante branchée. Le jalon 7 branche ici le pilote CUPS.
-            printer=NullPrinterDriver(),
+            printer=NullPrinterDriver(completion_delay_s=settings.simulated_print_duration_s),
             machine=SessionMachine(timeouts=settings.state_timeouts()),
             event_store=store,
             event=store.load(),

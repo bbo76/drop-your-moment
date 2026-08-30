@@ -18,9 +18,9 @@ export function maintenanceDiagnostics(snapshot: MaintenanceSnapshot) {
     || (health.temperature_c !== null && health.temperature_c >= 80)
     || health.cpu_percent >= 85
     || health.memory_percent >= 85;
-  const paperReady = supplies.printable >= settings.copies_per_print;
+  const paperLow = supplies.printable <= 5;
 
-  const status: MaintenanceStatus = !paperReady
+  const status: MaintenanceStatus = paperLow
     ? "paper"
     : !health.camera_ok
       ? "camera"
@@ -34,7 +34,7 @@ export function maintenanceDiagnostics(snapshot: MaintenanceSnapshot) {
     status,
     supplies,
     healthNeedsAttention,
-    printingNeedsAttention: !paperReady || health.printer_driver === "offline",
+    printingNeedsAttention: paperLow || health.printer_driver === "offline",
     healthDetail: healthDetail(health),
     printingDetail: health.printer_driver === "offline"
       ? "Imprimante hors ligne · vérifier la liaison"
@@ -46,6 +46,8 @@ function printingDetail(supplies: ReturnType<typeof supplyLevels>, copies: numbe
   if (supplies.stock < copies) return "Stock papier insuffisant · à mettre à jour";
   if (supplies.ink < copies) return "Cassette d’encre épuisée · à remplacer";
   if (supplies.cassette < copies) return "Bac vide · rechargez 18 feuilles";
+  if (supplies.printable <= 2) return `Stock papier critique · ${supplies.printable} tirages restants`;
+  if (supplies.printable <= 5) return `Stock papier bientôt faible · ${supplies.printable} tirages restants`;
   return `${copies} copie${copies > 1 ? "s" : ""} · ${supplies.printable} tirages avant intervention`;
 }
 

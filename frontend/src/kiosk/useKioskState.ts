@@ -26,6 +26,7 @@ export interface KioskState {
   chooseFilter: (name: FilterName) => Promise<void>;
   retake: () => Promise<void>;
   keepPhoto: () => Promise<void>;
+  savePhoto: () => Promise<void>;
 }
 
 /* Le frontend n'est qu'un afficheur : il lit l'état de la machine à états du serveur et
@@ -154,6 +155,7 @@ export function useKioskState(): KioskState {
   }, []);
   const retake = useCallback(() => withSession(api.retake), [withSession]);
   const keepPhoto = useCallback(() => withSession(api.printPhoto), [withSession]);
+  const savePhoto = useCallback(() => withSession(api.savePhoto), [withSession]);
   const chooseFilter = useCallback(
     (name: FilterName) => withSession((id) => api.chooseFilter(id, name)),
     [withSession],
@@ -170,5 +172,6 @@ export function useKioskState(): KioskState {
     chooseFilter,
     retake,
     keepPhoto,
+    savePhoto,
   };
 }

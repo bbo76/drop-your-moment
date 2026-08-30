@@ -42,6 +42,10 @@ class Settings(BaseSettings):
     done_timeout_s: float = 8.0
     error_timeout_s: float = 15.0
 
+    # Donne à l'interface d'attente un vrai état PRINTING pendant le développement.
+    # Le pilote CUPS remplacera entièrement ce délai simulé.
+    simulated_print_duration_s: float = 8.0
+
     data_dir: Path = REPO_ROOT / "data"
 
     # Rétention : deux garde-fous distincts, l'âge pour ce que l'opérateur règle, le

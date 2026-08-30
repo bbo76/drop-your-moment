@@ -44,7 +44,9 @@ def test_statut_systeme_decrit_le_materiel(kiosk: TestClient) -> None:
     body = kiosk.get("/api/system/status").json()
 
     assert body["camera_ok"] is True
+    assert body["printer_ok"] is True
     assert body["operator_attention"] is False
+    assert body["prints_remaining"] == 18
     assert body["camera_driver"] == "mock"
     assert body["preview_size"] == [640, 360]
 
@@ -55,6 +57,7 @@ def test_statut_systeme_signale_un_bac_papier_vide(kiosk: TestClient, runtime: R
     body = kiosk.get("/api/system/status").json()
 
     assert body["operator_attention"] is True
+    assert body["prints_remaining"] == 0
 
 
 def test_info_evenement_separee_du_materiel(kiosk: TestClient) -> None:

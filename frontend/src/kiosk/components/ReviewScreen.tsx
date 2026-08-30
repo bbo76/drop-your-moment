@@ -1,5 +1,8 @@
+import { Printer, RotateCcw, Save } from "lucide-react";
+import type { ReactNode } from "react";
+
 import { FILTER_LABELS, type FilterName } from "../../shared/api";
-import { GhostButton, PrimaryButton } from "./Screen";
+import { PrimaryButton } from "./Screen";
 
 const RETURN_HINT_THRESHOLD_S = 30;
 
@@ -11,6 +14,8 @@ interface Props {
   onChooseFilter: (name: FilterName) => void;
   onRetake: () => void;
   onKeep: () => void;
+  onSave: () => void;
+  printingAvailable: boolean;
 }
 
 export function ReviewScreen({
@@ -21,6 +26,8 @@ export function ReviewScreen({
   onChooseFilter,
   onRetake,
   onKeep,
+  onSave,
+  printingAvailable,
 }: Props) {
   const showReturnHint =
     remainingSeconds !== null && remainingSeconds <= RETURN_HINT_THRESHOLD_S;
@@ -40,7 +47,7 @@ export function ReviewScreen({
       <section className="flex min-h-0 flex-col justify-between rounded-panel bg-surface p-5">
         <div>
           <h1 className="text-3xl leading-[1.08] font-bold tracking-[-0.02em]">Votre photo</h1>
-          <p className="mt-1 text-base text-muted">Choisissez un rendu, puis gardez-la.</p>
+          <p className="mt-1 text-base text-muted">Choisissez un rendu, puis ce que vous voulez en faire.</p>
         </div>
         <div className="grid gap-2">
           {availableFilters.map((name) => (
@@ -56,14 +63,39 @@ export function ReviewScreen({
           <span className="text-sm text-muted">
             {showReturnHint && `Retour à l'accueil dans ${Math.ceil(remainingSeconds)} s`}
           </span>
-          <GhostButton onClick={onRetake}>Refaire la photo</GhostButton>
-          {/* « Je garde » plutôt que « Imprimer » : pendant la phase numérique rien ne
-              sort physiquement, et promettre un tirage serait mensonger. Le libellé
-              deviendra « Imprimer » quand une imprimante sera branchée. */}
-          <PrimaryButton onClick={onKeep}>Je garde cette photo</PrimaryButton>
+          <PrimaryButton onClick={onKeep} disabled={!printingAvailable}>
+            <Printer className="size-6" aria-hidden="true" />
+            {printingAvailable ? "Imprimer" : "Impression indisponible"}
+          </PrimaryButton>
+          {!printingAvailable && <p className="text-center text-sm text-warn">Vous pouvez toujours enregistrer la photo.</p>}
+          <div className="grid grid-cols-2 gap-2">
+            <ReviewAction icon={<Save />} onClick={onSave}>Enregistrer seulement</ReviewAction>
+            <ReviewAction icon={<RotateCcw />} onClick={onRetake}>Refaire la photo</ReviewAction>
+          </div>
         </div>
       </section>
     </main>
+  );
+}
+
+function ReviewAction({
+  children,
+  icon,
+  onClick,
+}: {
+  children: string;
+  icon: ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex min-h-14 items-center justify-center gap-2 rounded-panel border-2 border-edge px-3 text-base leading-tight font-medium text-body transition-[background-color,transform] duration-150 active:scale-[0.97]"
+    >
+      <span className="[&>svg]:size-5" aria-hidden="true">{icon}</span>
+      {children}
+    </button>
   );
 }
 

@@ -26,13 +26,18 @@ export interface SessionStatus {
   error: string | null;
   /** Porte déjà une révision anti-cache : à utiliser tel quel, sans y ajouter de suffixe. */
   photo_url: string | null;
+  /** Sortie choisie à la revue, conservée pour adapter la confirmation. */
+  output_mode: "print" | "save" | null;
 }
 
 /** Capacités du matériel. Ne changent qu'au rebranchement d'un périphérique. */
 export interface SystemStatus {
   camera_ok: boolean;
+  printer_ok: boolean;
   /** Signal opérateur discret ; le diagnostic détaillé reste en maintenance. */
   operator_attention: boolean;
+  /** Nombre de photos encore imprimables avec la configuration actuelle. */
+  prints_remaining: number;
   preview_size: [number, number];
 }
 
@@ -235,6 +240,7 @@ export const api = {
     post<SessionStatus>(`/api/session/${sessionId}/filter`, { name }),
   retake: (sessionId: string) => post<SessionStatus>(`/api/session/${sessionId}/retake`),
   printPhoto: (sessionId: string) => post<SessionStatus>(`/api/session/${sessionId}/print`),
+  savePhoto: (sessionId: string) => post<SessionStatus>(`/api/session/${sessionId}/save`),
 
   unlockMaintenance: async (pin: string) => {
     const path = "/api/maintenance/unlock";

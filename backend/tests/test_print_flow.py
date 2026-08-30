@@ -148,6 +148,19 @@ def test_le_tirage_conserve_les_fichiers(kiosk: TestClient, runtime: Runtime) ->
     assert final_path(root, session_id).is_file()
 
 
+def test_enregistrer_conserve_la_photo_sans_imprimer(
+    kiosk: TestClient, runtime: Runtime, printer: FakePrinterDriver
+) -> None:
+    session_id = capture(kiosk)
+
+    body = kiosk.post(f"/api/session/{session_id}/save").json()
+
+    assert body["state"] == SessionState.DONE
+    assert body["output_mode"] == "save"
+    assert printer.printed == []
+    assert final_path(runtime.settings.sessions_dir, session_id).is_file()
+
+
 def test_le_retour_a_l_accueil_est_automatique(kiosk: TestClient, runtime: Runtime) -> None:
     """Aucune action du visiteur : le timeout de DONE ramène la borne au repos."""
     session_id = capture(kiosk)
