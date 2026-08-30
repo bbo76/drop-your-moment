@@ -45,5 +45,5 @@ export function MaintenanceSettingsView({ snapshot, saving, onSaveSettings }: { 
 
 function SystemSettingIcon({ name }: { name: "flash" | "timer" }) {
   const Icon = name === "flash" ? Zap : Timer;
-  return <Icon className="size-[3.4rem] rounded-[0.55rem] bg-[#262e36] p-3 text-accent" strokeWidth={1.8} />;
+  return <Icon className="size-[3.4rem] rounded-[0.55rem] bg-[#262e36] p-3 text-signal" strokeWidth={1.8} />;
 }

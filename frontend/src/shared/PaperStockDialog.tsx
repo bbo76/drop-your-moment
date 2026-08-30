@@ -72,7 +72,7 @@ export function PaperStockDialog({
             value={value}
             disabled={saving}
             onChange={(event) => setValue(event.target.value)}
-            className="min-h-14 w-full rounded-panel border-2 border-edge bg-transparent px-3.5 text-2xl font-bold text-body tabular-nums focus-visible:border-accent focus-visible:outline-[3px] focus-visible:outline-[color-mix(in_srgb,var(--color-accent)_25%,transparent)] disabled:opacity-50"
+            className="min-h-14 w-full rounded-panel border-2 border-edge bg-transparent px-3.5 text-2xl font-bold text-body tabular-nums focus-visible:border-signal focus-visible:outline-[3px] focus-visible:outline-[color-mix(in_srgb,var(--color-signal)_25%,transparent)] disabled:opacity-50"
           />
         </label>
 
@@ -82,7 +82,7 @@ export function PaperStockDialog({
 
         <div className="flex justify-end gap-2.5 max-[480px]:grid">
           <button type="button" disabled={saving} onClick={onClose} className="min-h-[2.85rem] rounded-[0.7rem] border border-edge px-4 font-bold disabled:cursor-not-allowed disabled:opacity-50">Annuler</button>
-          <button type="submit" disabled={saving || !valid} className="min-h-[2.85rem] rounded-[0.7rem] border border-accent bg-accent px-4 font-bold text-accent-ink disabled:cursor-not-allowed disabled:opacity-50 max-[480px]:row-start-1">
+          <button type="submit" disabled={saving || !valid} className="min-h-[2.85rem] rounded-[0.7rem] border border-signal bg-signal px-4 font-bold text-signal-ink disabled:cursor-not-allowed disabled:opacity-50 max-[480px]:row-start-1">
             {saving ? "Enregistrement…" : "Enregistrer le stock"}
           </button>
         </div>

@@ -34,17 +34,17 @@ function PinScreen({ onUnlocked, onCancel }: { onUnlocked: () => void; onCancel:
   const submit = useCallback(async (candidate: string) => { setBusy(true); try { await api.unlockMaintenance(candidate); onUnlocked(); } catch { setError("Code incorrect. Réessayez."); setPin(""); } finally { setBusy(false); } }, [onUnlocked]);
   const press = (digit: string) => { if (busy || pin.length >= PIN_LENGTH) return; const next = pin + digit; setPin(next); setError(null); if (next.length === PIN_LENGTH) void submit(next); };
   return (
-    <main className="grid h-full grid-cols-[1fr_22rem] bg-ink text-body [--color-accent:#d8dee4] [--color-accent-ink:#101418]">
+    <main className="grid h-full grid-cols-[1fr_22rem] bg-ink text-body [--color-signal:#d8dee4] [--color-signal-ink:#101418]">
       <section className="flex flex-col justify-between p-10">
         <div><h1 className="max-w-[9ch] text-6xl leading-none font-bold">Maintenance</h1><p className="mt-3 text-lg font-medium text-muted">Accès réservé à l’organisateur</p></div>
-        <div><p className="text-xl font-semibold">Saisissez le code de la borne</p><div className="mt-5 flex gap-3" aria-label={`${pin.length} chiffres saisis`}>{Array.from({ length: PIN_LENGTH }, (_, index) => <span key={index} className={`block size-[1.4rem] rounded-full border-[3px] ${index < pin.length ? "border-accent bg-accent" : "border-muted"}`} />)}</div><p className={`mt-4 min-h-7 text-lg font-medium text-warn ${error ? "" : "invisible"}`} role="alert">{error ?? "Aucune erreur"}</p></div>
+        <div><p className="text-xl font-semibold">Saisissez le code de la borne</p><div className="mt-5 flex gap-3" aria-label={`${pin.length} chiffres saisis`}>{Array.from({ length: PIN_LENGTH }, (_, index) => <span key={index} className={`block size-[1.4rem] rounded-full border-[3px] ${index < pin.length ? "border-signal bg-signal" : "border-muted"}`} />)}</div><p className={`mt-4 min-h-7 text-lg font-medium text-warn ${error ? "" : "invisible"}`} role="alert">{error ?? "Aucune erreur"}</p></div>
         <GhostButton onClick={onCancel}>Retour aux photos</GhostButton>
       </section>
-      <section className="grid grid-cols-3 gap-2 bg-accent p-4" aria-label="Clavier numérique">
-        {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((digit) => <button key={digit} type="button" onClick={() => press(digit)} disabled={busy} className="min-h-18 rounded-panel border-2 border-accent-ink bg-accent-ink text-[2rem] font-semibold text-accent active:scale-[0.97] disabled:opacity-45">{digit}</button>)}
-        <button type="button" onClick={() => setPin("")} disabled={busy || pin.length === 0} aria-label="Effacer le code" className="min-h-18 rounded-panel border-2 border-accent-ink bg-transparent text-sm font-semibold text-accent-ink disabled:opacity-45">Effacer</button>
-        <button type="button" onClick={() => press("0")} disabled={busy} className="min-h-18 rounded-panel border-2 border-accent-ink bg-accent-ink text-[2rem] font-semibold text-accent disabled:opacity-45">0</button>
-        <button type="button" onClick={() => setPin((value) => value.slice(0, -1))} disabled={busy || pin.length === 0} aria-label="Effacer le dernier chiffre" className="min-h-18 rounded-panel border-2 border-accent-ink bg-transparent text-sm font-semibold text-accent-ink disabled:opacity-45">Retour</button>
+      <section className="grid grid-cols-3 gap-2 bg-signal p-4" aria-label="Clavier numérique">
+        {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((digit) => <button key={digit} type="button" onClick={() => press(digit)} disabled={busy} className="min-h-18 rounded-panel border-2 border-signal-ink bg-signal-ink text-[2rem] font-semibold text-signal active:scale-[0.97] disabled:opacity-45">{digit}</button>)}
+        <button type="button" onClick={() => setPin("")} disabled={busy || pin.length === 0} aria-label="Effacer le code" className="min-h-18 rounded-panel border-2 border-signal-ink bg-transparent text-sm font-semibold text-signal-ink disabled:opacity-45">Effacer</button>
+        <button type="button" onClick={() => press("0")} disabled={busy} className="min-h-18 rounded-panel border-2 border-signal-ink bg-signal-ink text-[2rem] font-semibold text-signal disabled:opacity-45">0</button>
+        <button type="button" onClick={() => setPin((value) => value.slice(0, -1))} disabled={busy || pin.length === 0} aria-label="Effacer le dernier chiffre" className="min-h-18 rounded-panel border-2 border-signal-ink bg-transparent text-sm font-semibold text-signal-ink disabled:opacity-45">Retour</button>
       </section>
     </main>
   );
@@ -65,7 +65,7 @@ function MaintenancePanel({ onExpired, onExit, debugFailure }: { onExpired: () =
   if (view === "settings") return <MaintenanceFrame title="Réglages borne" status={diagnostics.status} onBack={back}><MaintenanceSettingsView snapshot={snapshot} saving={saving} onSaveSettings={saveSettings} /></MaintenanceFrame>;
   const { settings } = snapshot;
   return (
-    <main className="grid h-full grid-rows-[auto_1fr] gap-4 bg-ink p-4 text-body [--color-accent:#d8dee4] [--color-accent-ink:#101418] max-h-[600px]:gap-3 max-h-[600px]:p-3">
+    <main className="grid h-full grid-rows-[auto_1fr] gap-4 bg-ink p-4 text-body [--color-signal:#d8dee4] [--color-signal-ink:#101418] max-h-[600px]:gap-3 max-h-[600px]:p-3">
       <header className="flex items-center justify-between"><h1 className="text-3xl font-bold">Maintenance</h1><div className="flex items-center gap-3"><MaintenanceStatusBanner status={diagnostics.status} /><GhostButton onClick={onExit}>Fermer</GhostButton></div></header>
       <div className="grid min-h-0 auto-rows-fr grid-cols-2 gap-3">
         <MaintenanceTile icon="health" title="Santé" detail={diagnostics.healthDetail} attention={diagnostics.healthNeedsAttention} onClick={() => setView("health")} />

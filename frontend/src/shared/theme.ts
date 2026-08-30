@@ -29,6 +29,6 @@ export function readableInk(hex: string) {
 
 export function applyAccentTheme(accent: string) {
   const root = document.documentElement;
-  root.style.setProperty("--color-accent", accent);
-  root.style.setProperty("--color-accent-ink", readableInk(accent));
+  root.style.setProperty("--color-signal", accent);
+  root.style.setProperty("--color-signal-ink", readableInk(accent));
 }

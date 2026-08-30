@@ -1,4 +1,8 @@
 import type { ReactNode } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button as ShadButton } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 
 /* Habillage partagé par les sections du portail.
  *
@@ -9,12 +13,12 @@ import type { ReactNode } from "react";
 
 export function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="admin-section">
-      <header className="admin-section-heading">
-        <h1>{title}</h1>
-      </header>
-      <div className="admin-section-body">{children}</div>
-    </section>
+    <Card className="mx-auto max-w-7xl gap-0 py-0">
+      <CardHeader className="border-b px-6 py-5">
+        <CardTitle className="text-2xl font-semibold tracking-tight md:text-3xl">{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="p-6 [&_input:not([type=checkbox]):not([type=radio]):not([type=file])]:min-h-10 [&_select]:min-h-10">{children}</CardContent>
+    </Card>
   );
 }
 
@@ -22,7 +26,7 @@ export function Section({ title, children }: { title: string; children: ReactNod
 export function Row({ label, value }: { label: string; value: ReactNode }) {
   return (
     <>
-      <dt className="text-muted">{label}</dt>
+      <dt className="text-muted-foreground">{label}</dt>
       <dd className="min-w-0 break-words">{value}</dd>
     </>
   );
@@ -38,16 +42,12 @@ export function Field({
   className?: string;
 }) {
   return (
-    <label className={`block ${className ?? ""}`}>
-      <span className="mb-1 block text-sm text-muted">{label}</span>
+    <Label className={`block ${className ?? ""}`}>
+      <span className="mb-1 block text-sm text-muted-foreground">{label}</span>
       {children}
-    </label>
+    </Label>
   );
 }
-
-export const inputClass =
-  "w-full rounded border border-edge bg-ink px-3 py-2 text-body " +
-  "focus:border-accent focus:outline-none";
 
 export function Button({
   children,
@@ -62,28 +62,30 @@ export function Button({
   type?: "button" | "submit";
   tone?: "primary" | "secondary" | "warning";
 }) {
-  const toneClass = {
-    primary: "border-accent bg-accent text-accent-ink",
-    secondary: "border-edge bg-transparent text-body",
-    warning: "border-warn bg-transparent text-warn",
-  }[tone];
+  const variant = {
+    primary: "default",
+    secondary: "outline",
+    warning: "destructive",
+  }[tone] as "default" | "outline" | "destructive";
   return (
-    <button
+    <ShadButton
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className={`min-h-11 rounded border px-4 py-2 font-medium transition-colors disabled:opacity-40 ${toneClass}`}
+      variant={variant}
+      size="lg"
+      className="min-h-11 px-4"
     >
       {children}
-    </button>
+    </ShadButton>
   );
 }
 
 /** Retour d'une action : le message d'erreur du backend, ou une confirmation. */
 export function Feedback({ error, notice }: { error?: string | null; notice?: string | null }) {
   if (error) {
-    return <p className="rounded-panel bg-warn-bg px-4 py-3 text-sm text-warn">{error}</p>;
+    return <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>;
   }
-  if (notice) return <p className="text-sm text-muted">{notice}</p>;
+  if (notice) return <Alert role="status"><AlertDescription>{notice}</AlertDescription></Alert>;
   return null;
 }

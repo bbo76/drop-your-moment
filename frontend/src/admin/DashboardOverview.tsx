@@ -9,6 +9,9 @@ import {
   type GalleryPage,
 } from "../shared/api";
 import { Feedback } from "./ui";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const POLL_INTERVAL_MS = 2_000;
 
@@ -60,39 +63,40 @@ export function DashboardOverview() {
   const printable = health ? printableCount(health) : null;
 
   return (
-    <div className="admin-overview">
-      <header className="admin-page-heading">
+    <div className="mx-auto max-w-7xl space-y-6">
+      <header className="flex items-start justify-between gap-8">
         <div>
-          <h1>Vue d’ensemble</h1>
-          <p>Une borne, son événement actuel et ce qui demande votre attention.</p>
+          <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">Vue d’ensemble</h1>
+          <p className="mt-1 text-sm text-muted-foreground md:text-base">Surveillez la borne, l’événement actif et les dernières prises.</p>
         </div>
+        <Badge variant="secondary" className="hidden tabular-nums sm:inline-flex">Mise à jour {updatedAt ? time(updatedAt) : "en cours"}</Badge>
       </header>
 
-      <section className={`admin-readiness admin-readiness-${status.tone}`} aria-live="polite">
-        <StatusGlyph tone={status.tone} />
-        <div className="admin-readiness-copy">
-          <h2>{status.title}</h2>
-          <p>{status.detail}</p>
-        </div>
-        <StatusFact label="Écran" value={sessionLabel(health)} />
-        <StatusFact label="Caméra" value={health?.camera_ok ? "Prête" : "À vérifier"} />
-        <StatusFact label="Impressions" value={printable === null ? "—" : `${printable} possibles`} />
-        <StatusFact label="Mise à jour" value={updatedAt ? time(updatedAt) : "Connexion…"} />
-      </section>
+      <Card className={`gap-0 overflow-hidden py-0 ring-1 ${toneRing[status.tone]}`} aria-live="polite">
+        <CardContent className="grid p-0 lg:grid-cols-[minmax(20rem,1.4fr)_repeat(3,minmax(8rem,.6fr))]">
+          <div className={`flex items-center gap-4 p-5 md:p-6 ${toneSurface[status.tone]}`}>
+            <span className={`grid size-11 shrink-0 place-items-center rounded-full bg-background ${toneText[status.tone]}`}><StatusGlyph tone={status.tone} /></span>
+            <div><h2 className="text-xl font-semibold tracking-tight md:text-2xl">{status.title}</h2><p className="mt-1 text-sm text-muted-foreground">{status.detail}</p></div>
+          </div>
+          <StatusFact label="Écran" value={sessionLabel(health)} />
+          <StatusFact label="Caméra" value={health?.camera_ok ? "Prête" : "À vérifier"} />
+          <StatusFact label="Tirages disponibles" value={printable === null ? "—" : `${printable}`} />
+        </CardContent>
+      </Card>
 
       {error && <Feedback error={error} />}
 
-      <div className="admin-overview-grid">
-        <OverviewPanel title="Événement">
+      <div className="grid gap-6 lg:grid-cols-12">
+        <OverviewPanel title="Événement actif" className="lg:col-span-5">
           {config ? (
-            <dl className="admin-summary-list">
+            <dl className="px-6">
               <SummaryRow label="Événement" value={config.event_name} strong />
               <SummaryRow label="Overlay" value={config.overlay_file ? "Présent" : "Aucun"} />
               <SummaryRow label="Filtres" value={config.available_filters.map((filter) => FILTER_LABELS[filter]).join(" · ")} />
               <SummaryRow
                 label="Format"
                 value={
-                  <span className="admin-stacked-value">
+                  <span className="grid gap-0.5">
                     <span>{config.print_format.name}</span>
                     <small>{config.copies_per_print} copie{config.copies_per_print > 1 ? "s" : ""}</small>
                   </span>
@@ -100,51 +104,55 @@ export function DashboardOverview() {
               />
               <SummaryRow label="Minuteur" value={`${config.default_shot_timer_seconds} secondes`} />
             </dl>
-          ) : <p className="admin-panel-empty">Chargement de la configuration…</p>}
+          ) : <div className="grid min-h-48 gap-3 p-6"><Skeleton className="h-8" /><Skeleton className="h-8" /><Skeleton className="h-8" /></div>}
         </OverviewPanel>
 
-        <OverviewPanel title="Galerie" meta={gallery ? `${gallery.total} photo${gallery.total > 1 ? "s" : ""}` : undefined}>
+        <OverviewPanel title="Dernières photos" className="lg:col-span-4" meta={gallery ? `${gallery.total} photo${gallery.total > 1 ? "s" : ""}` : undefined}>
           {gallery?.entries.length ? (
-            <ul className="admin-recent-photos">
+            <ul className="grid grid-cols-2 gap-3 p-6">
               {gallery.entries.map((entry) => (
                 <li key={entry.session_id}>
-                  <img src={thumbnailUrl(entry.session_id)} alt={`Photo prise à ${photoTime(entry.captured_at)}`} loading="lazy" />
-                  <span>{photoTime(entry.captured_at)}</span>
+                  <img className="aspect-[3/2] w-full rounded-lg bg-muted object-cover ring-1 ring-border" src={thumbnailUrl(entry.session_id)} alt={`Photo prise à ${photoTime(entry.captured_at)}`} loading="lazy" />
+                  <span className="mt-1.5 block text-xs tabular-nums text-muted-foreground">{photoTime(entry.captured_at)}</span>
                 </li>
               ))}
             </ul>
-          ) : <p className="admin-panel-empty">Les premières photos apparaîtront ici.</p>}
+          ) : <p className="grid min-h-48 place-items-center p-8 text-center text-muted-foreground">Les premières photos apparaîtront ici.</p>}
         </OverviewPanel>
 
-        <OverviewPanel title="Diagnostic">
+        <OverviewPanel title="Santé du système" className="lg:col-span-3">
           {health ? (
-            <dl className="admin-summary-list">
+            <dl className="px-6">
               <SummaryRow label="Caméra" value={health.camera_ok ? "Prête" : "Absente"} attention={!health.camera_ok} />
               <SummaryRow label="Stockage libre" value={gigabytes(health.disk_free_bytes)} attention={health.disk_free_bytes < 2 * 1024 ** 3} />
               <SummaryRow label="Température" value={health.temperature_c === null ? "Non mesurée" : `${health.temperature_c.toFixed(0)} °C`} attention={health.temperature_c !== null && health.temperature_c >= 80} />
             </dl>
-          ) : <p className="admin-panel-empty">Lecture de l’état de la borne…</p>}
+          ) : <p className="grid min-h-48 place-items-center p-8 text-center text-muted-foreground">Lecture de l’état de la borne…</p>}
         </OverviewPanel>
       </div>
     </div>
   );
 }
 
-function OverviewPanel({ title, meta, children }: { title: string; meta?: string; children: ReactNode }) {
-  return <section className="admin-overview-panel"><header><div><h2>{title}</h2>{meta && <span>{meta}</span>}</div></header>{children}</section>;
+function OverviewPanel({ title, meta, className, children }: { title: string; meta?: string; className?: string; children: ReactNode }) {
+  return <Card className={`min-w-0 gap-0 py-0 ${className ?? ""}`}><CardHeader className="min-h-16 border-b px-6 py-4"><div className="flex w-full items-baseline justify-between gap-4"><CardTitle className="text-base font-semibold">{title}</CardTitle>{meta && <span className="text-sm text-muted-foreground">{meta}</span>}</div></CardHeader><CardContent className="px-0">{children}</CardContent></Card>;
 }
 
 function StatusFact({ label, value }: { label: string; value: string }) {
-  return <div className="admin-status-fact"><span>{label}</span><strong>{value}</strong></div>;
+  return <div className="grid min-h-20 content-center border-t px-5 py-4 lg:min-h-24 lg:border-l lg:border-t-0"><span className="text-xs font-medium text-muted-foreground">{label}</span><strong className="mt-1 text-lg font-semibold tabular-nums">{value}</strong></div>;
 }
 
 function SummaryRow({ label, value, strong = false, attention = false }: { label: string; value: ReactNode; strong?: boolean; attention?: boolean }) {
-  return <div className={attention ? "admin-summary-row admin-summary-attention" : "admin-summary-row"}><dt>{label}</dt><dd className={strong ? "admin-summary-strong" : undefined}>{value}</dd></div>;
+  return <div className="grid grid-cols-[minmax(6.5rem,.8fr)_minmax(0,1.2fr)] gap-4 border-b py-4 last:border-0"><dt className="text-muted-foreground">{label}</dt><dd className={`min-w-0 text-right tabular-nums ${strong ? "font-semibold" : ""} ${attention ? "font-semibold text-destructive" : ""}`}>{value}</dd></div>;
 }
 
 function StatusGlyph({ tone }: { tone: "ready" | "busy" | "attention" }) {
-  return <svg className="admin-status-glyph" viewBox="0 0 48 48" aria-hidden="true">{tone === "ready" ? <path d="m14 24 7 7 14-16" /> : <><circle cx="24" cy="24" r="16" /><path d="M24 14v12m0 7h.01" /></>}</svg>;
+  return <svg className="size-6 fill-none stroke-current [stroke-linecap:round] [stroke-linejoin:round] [stroke-width:3]" viewBox="0 0 48 48" aria-hidden="true">{tone === "ready" ? <path d="m14 24 7 7 14-16" /> : <><circle cx="24" cy="24" r="16" /><path d="M24 14v12m0 7h.01" /></>}</svg>;
 }
+
+const toneText = { ready: "text-emerald-700", busy: "text-amber-700", attention: "text-destructive" } as const;
+const toneSurface = { ready: "bg-emerald-50", busy: "bg-amber-50", attention: "bg-destructive/5" } as const;
+const toneRing = { ready: "ring-emerald-600/20", busy: "ring-amber-600/20", attention: "ring-destructive/20" } as const;
 
 function readiness(health: AdminHealth | null, error: string | null) {
   if (error) return { tone: "attention" as const, title: "Borne injoignable", detail: "Vérifiez que cet ordinateur est toujours connecté au réseau de la borne." };

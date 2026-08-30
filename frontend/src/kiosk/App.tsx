@@ -44,8 +44,8 @@ export function App() {
     const root = document.documentElement;
     applyAccentTheme(event.accent_color);
     return () => {
-      root.style.removeProperty("--color-accent");
-      root.style.removeProperty("--color-accent-ink");
+      root.style.removeProperty("--color-signal");
+      root.style.removeProperty("--color-signal-ink");
     };
   }, [event]);
 

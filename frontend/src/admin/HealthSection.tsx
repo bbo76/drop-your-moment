@@ -1,4 +1,11 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Progress } from "@/components/ui/progress";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 import { api, type AdminHealth, type CameraScan } from "../shared/api";
 import { Button, Row, Section } from "./ui";
@@ -15,7 +22,7 @@ export function HealthSection() {
   const [scan, setScan] = useState<CameraScan | null>(null);
   const [scanning, setScanning] = useState(false);
   const [releasing, setReleasing] = useState(false);
-  const scanDialogRef = useRef<HTMLDialogElement>(null);
+  const [releaseDialogOpen, setReleaseDialogOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -41,10 +48,6 @@ export function HealthSection() {
     };
   }, []);
 
-  useEffect(() => {
-    if (scan && !scanDialogRef.current?.open) scanDialogRef.current?.showModal();
-  }, [scan]);
-
   /* Jamais au chargement, jamais en boucle : le sondage ouvre chaque périphérique tour à
      tour, et le capteur n'accepte qu'un propriétaire. Uniquement sur ce clic. */
   const scanCameras = async () => {
@@ -59,9 +62,7 @@ export function HealthSection() {
   };
 
   const releaseKiosk = async () => {
-    if (!window.confirm("Interrompre la session en cours et ramener la borne à l’accueil ?")) {
-      return;
-    }
+    setReleaseDialogOpen(false);
     setReleasing(true);
     try {
       const session = await api.releaseKiosk();
@@ -77,14 +78,14 @@ export function HealthSection() {
   if (error && !health) {
     return (
       <Section title="État du système">
-        <p className="text-warn">Backend injoignable : {error}</p>
+        <p className="text-destructive">Backend injoignable : {error}</p>
       </Section>
     );
   }
   if (!health) {
     return (
       <Section title="État du système">
-        <p className="text-muted">Chargement…</p>
+        <div className="grid gap-4 md:grid-cols-2"><Skeleton className="h-48" /><Skeleton className="h-48" /></div>
       </Section>
     );
   }
@@ -97,20 +98,18 @@ export function HealthSection() {
 
   return (
     <Section title="État du système">
-      {error && <p className="mb-4 text-warn">Backend injoignable : {error}</p>}
+      {error && <p className="mb-4 text-destructive">Backend injoignable : {error}</p>}
       {health.maintenance_active && (
-        <div className="admin-maintenance-alert" role="status" aria-live="polite">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
+        <Alert variant="destructive" className="mb-6 p-4" role="status" aria-live="polite">
+          <svg className="h-12 w-12 fill-none stroke-current [stroke-linecap:round] [stroke-linejoin:round] [stroke-width:1.8]" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M14.7 6.3a4 4 0 0 0-5-5L12 3.6 9.6 6 7.3 3.7a4 4 0 0 0 5 5L5 16l3 3 7.3-7.3a4 4 0 0 0 5-5L18 9l-2.4-2.4 2.3-2.3a4 4 0 0 0-3.2 2Z" />
           </svg>
-          <div>
-            <strong>Maintenance locale en cours</strong>
-            <span>Une personne a déverrouillé l’écran de la borne et intervient sur place.</span>
-          </div>
-        </div>
+          <AlertTitle className="text-xl leading-tight">Maintenance locale en cours</AlertTitle>
+          <AlertDescription>Une personne a déverrouillé l’écran de la borne et intervient sur place.</AlertDescription>
+        </Alert>
       )}
 
-      <div className="diagnostic-grid">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
         <Group
           title="Caméra"
           icon="camera"
@@ -158,7 +157,7 @@ export function HealthSection() {
             value={`${health.print_format_name} — ratio ${health.print_aspect_ratio.toFixed(3)}`}
           />
           {health.session_state !== "idle" && (
-            <CardAction onClick={() => void releaseKiosk()} disabled={releasing} warning>
+            <CardAction onClick={() => setReleaseDialogOpen(true)} disabled={releasing} warning>
               {releasing ? "Retour en cours…" : "Libérer la borne"}
             </CardAction>
           )}
@@ -190,38 +189,33 @@ export function HealthSection() {
 
       </div>
 
-      <dialog
-        ref={scanDialogRef}
-        className="camera-scan-dialog"
-        aria-labelledby="camera-scan-title"
-        onClose={() => setScan(null)}
-        onClick={(event) => {
-          if (event.target === event.currentTarget) event.currentTarget.close();
-        }}
-      >
+      <Dialog open={scan !== null} onOpenChange={(open) => { if (!open) setScan(null); }}>
         {scan && (
-          <div>
-            <header>
-              <div>
-                <span>Diagnostic caméra</span>
-                <h2 id="camera-scan-title">Caméras détectées</h2>
-              </div>
-              <button
-                type="button"
-                className="camera-scan-close"
-                aria-label="Fermer"
-                onClick={() => scanDialogRef.current?.close()}
-              >
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
-              </button>
-            </header>
+          <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-hidden sm:max-w-2xl">
+            <DialogHeader>
+              <DialogDescription>Diagnostic caméra</DialogDescription>
+              <DialogTitle>Caméras détectées</DialogTitle>
+            </DialogHeader>
             <ScanResult scan={scan} />
-            <footer>
-              <Button onClick={() => scanDialogRef.current?.close()} tone="secondary">Fermer</Button>
-            </footer>
-          </div>
+            <DialogFooter>
+              <Button onClick={() => setScan(null)} tone="secondary">Fermer</Button>
+            </DialogFooter>
+          </DialogContent>
         )}
-      </dialog>
+      </Dialog>
+
+      <AlertDialog open={releaseDialogOpen} onOpenChange={setReleaseDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Libérer la borne ?</AlertDialogTitle>
+            <AlertDialogDescription>La session en cours sera interrompue et la borne reviendra à l’accueil.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={() => void releaseKiosk()}>Libérer la borne</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Section>
   );
 }
@@ -230,7 +224,7 @@ export function HealthSection() {
 function ScanResult({ scan }: { scan: CameraScan }) {
   const nothingProbed = scan.probed.length === 0;
   return (
-    <dl className="camera-scan-result">
+    <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-5 gap-y-2 overflow-auto p-6 text-sm max-sm:grid-cols-1">
       <Row
         label="Index utilisables"
         value={
@@ -247,8 +241,8 @@ function ScanResult({ scan }: { scan: CameraScan }) {
         <Row label="Non sondé" value={`index ${scan.skipped_index} — utilisé par le kiosque`} />
       )}
 
-      <dt className="text-muted">À savoir</dt>
-      <dd className="text-muted">
+      <dt className="text-muted-foreground">À savoir</dt>
+      <dd className="text-muted-foreground">
         {nothingProbed ? (
           /* Sur macOS, l'autorisation caméra s'attache à l'application qui a lancé le
              backend : accordée au terminal, elle ne l'est pas pour autant à un service
@@ -277,23 +271,23 @@ type DiagnosticIcon = "camera" | "printer" | "session" | "storage" | "resources"
 
 function Group({ title, icon, value, tone, children }: { title: string; icon: DiagnosticIcon; value: string; tone: DiagnosticTone; children: ReactNode }) {
   return (
-    <section className={`diagnostic-card diagnostic-${tone}`}>
-      <header>
+    <Card className="col-span-1 min-w-0 gap-0 overflow-hidden py-0 xl:col-span-2 xl:nth-[n+4]:col-span-3">
+      <CardHeader className={`grid min-h-24 grid-cols-[2rem_minmax(0,1fr)] items-center gap-x-3 border-b p-4 ${toneSurface[tone]}`}>
         <DiagnosticGlyph name={icon} />
-        <span>{title}</span>
-        <strong>{value}</strong>
-      </header>
-      <dl>{children}</dl>
-    </section>
+        <span className="text-xs opacity-75">{title}</span>
+        <strong className="truncate text-xl tabular-nums">{value}</strong>
+      </CardHeader>
+      <CardContent className="px-4 py-3"><dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 text-sm [&>dd]:min-w-0 [&>dd]:py-1.5 [&>dd]:text-right [&>dt]:py-1.5 [&>dt]:text-muted-foreground">{children}</dl></CardContent>
+    </Card>
   );
 }
 
 function Meter({ label, value, capacity, format = String, summary }: { label: string; value: number; capacity: number; format?: (value: number) => string; summary?: string }) {
   const percentage = capacity > 0 ? Math.min(100, Math.max(0, (value / capacity) * 100)) : 0;
   return (
-    <div className="diagnostic-meter">
-      <div><dt>{label}</dt><dd>{summary ?? `${format(value)} sur ${format(capacity)}`}</dd></div>
-      <span aria-hidden="true"><i style={{ width: `${percentage}%` }} /></span>
+    <div className="col-span-full py-2">
+      <div className="flex justify-between gap-4"><dt>{label}</dt><dd className="tabular-nums">{summary ?? `${format(value)} sur ${format(capacity)}`}</dd></div>
+      <Progress value={percentage} aria-label={`${label} : ${Math.round(percentage)} %`} className="mt-2" />
     </div>
   );
 }
@@ -306,16 +300,23 @@ function DiagnosticGlyph({ name }: { name: DiagnosticIcon }) {
     storage: <><ellipse cx="12" cy="6" rx="8" ry="3" /><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" /></>,
     resources: <path d="M4 14h3l2-7 4 11 2-6h5" />,
   };
-  return <svg viewBox="0 0 24 24" aria-hidden="true">{paths[name]}</svg>;
+  return <svg className="row-span-2 w-7 fill-none stroke-current [stroke-linecap:round] [stroke-linejoin:round] [stroke-width:1.7]" viewBox="0 0 24 24" aria-hidden="true">{paths[name]}</svg>;
 }
 
 function CardAction({ children, onClick, disabled, warning = false }: { children: ReactNode; onClick: () => void; disabled?: boolean; warning?: boolean }) {
   return (
-    <div className="diagnostic-card-action">
+    <div className="col-span-full pt-2">
       <Button onClick={onClick} disabled={disabled} tone={warning ? "warning" : "secondary"}>{children}</Button>
     </div>
   );
 }
+
+const toneSurface: Record<DiagnosticTone, string> = {
+  neutral: "bg-muted text-foreground",
+  ready: "bg-emerald-50 text-emerald-800",
+  warning: "bg-amber-50 text-amber-800",
+  attention: "bg-red-50 text-red-800",
+};
 
 const SESSION_LABELS: Record<AdminHealth["session_state"], string> = {
   idle: "Accueil",
