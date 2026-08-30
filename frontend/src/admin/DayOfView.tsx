@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { Activity, Camera, Check, Database, Printer, Thermometer, TriangleAlert, Wifi } from "lucide-react";
 
 import { Button as ShadButton } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -384,17 +385,8 @@ const stateLabel = (state: AdminHealth["session_state"]) => STATE_LABELS[state];
 type IconName = "check" | "attention" | "camera" | "storage" | "temperature" | "printer" | "wifi" | "pulse";
 
 function StatusIcon({ name }: { name: IconName }) {
-  const paths: Record<IconName, ReactNode> = {
-    check: <path d="m5 12 4 4L19 6" />,
-    attention: <><path d="M12 3 2.8 20h18.4L12 3Z" /><path d="M12 9v4" /><path d="M12 17h.01" /></>,
-    camera: <><path d="M4 7h3l1.5-2h7L17 7h3v11H4V7Z" /><circle cx="12" cy="12.5" r="3.5" /></>,
-    storage: <><ellipse cx="12" cy="6" rx="8" ry="3" /><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6" /><path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" /></>,
-    temperature: <><path d="M10 14.8V5a2 2 0 1 1 4 0v9.8a4 4 0 1 1-4 0Z" /><path d="M12 8v9" /></>,
-    printer: <><path d="M7 9V4h10v5M7 18H5a2 2 0 0 1-2-2v-5h18v5a2 2 0 0 1-2 2h-2" /><path d="M7 15h10v6H7z" /></>,
-    wifi: <><path d="M3 9a14 14 0 0 1 18 0" /><path d="M6.5 12.5a9 9 0 0 1 11 0" /><path d="M10 16a4 4 0 0 1 4 0" /><path d="M12 20h.01" /></>,
-    pulse: <><path d="M3 12h4l2-5 4 10 2-5h6" /></>,
-  };
-  return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</svg>;
+  const Icon = { check: Check, attention: TriangleAlert, camera: Camera, storage: Database, temperature: Thermometer, printer: Printer, wifi: Wifi, pulse: Activity }[name];
+  return <Icon aria-hidden="true" strokeWidth={1.8} />;
 }
 
 const photoTime = (seconds: number) => new Date(seconds * 1000).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });

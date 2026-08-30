@@ -6,6 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Activity, Camera, Clock3, Database, Printer, Wrench } from "lucide-react";
 
 import { api, type AdminHealth, type CameraScan } from "../shared/api";
 import { Button, Row, Section } from "./ui";
@@ -101,9 +102,7 @@ export function HealthSection() {
       {error && <p className="mb-4 text-destructive">Backend injoignable : {error}</p>}
       {health.maintenance_active && (
         <Alert variant="destructive" className="mb-6 p-4" role="status" aria-live="polite">
-          <svg className="h-12 w-12 fill-none stroke-current [stroke-linecap:round] [stroke-linejoin:round] [stroke-width:1.8]" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M14.7 6.3a4 4 0 0 0-5-5L12 3.6 9.6 6 7.3 3.7a4 4 0 0 0 5 5L5 16l3 3 7.3-7.3a4 4 0 0 0 5-5L18 9l-2.4-2.4 2.3-2.3a4 4 0 0 0-3.2 2Z" />
-          </svg>
+          <Wrench className="size-12" aria-hidden="true" strokeWidth={1.8} />
           <AlertTitle className="text-xl leading-tight">Maintenance locale en cours</AlertTitle>
           <AlertDescription>Une personne a déverrouillé l’écran de la borne et intervient sur place.</AlertDescription>
         </Alert>
@@ -293,14 +292,8 @@ function Meter({ label, value, capacity, format = String, summary }: { label: st
 }
 
 function DiagnosticGlyph({ name }: { name: DiagnosticIcon }) {
-  const paths: Record<DiagnosticIcon, ReactNode> = {
-    camera: <><path d="M4 7h3l1.5-2h7L17 7h3v11H4V7Z" /><circle cx="12" cy="12.5" r="3.5" /></>,
-    printer: <><path d="M7 9V4h10v5M7 18H5a2 2 0 0 1-2-2v-5h18v5a2 2 0 0 1-2 2h-2" /><path d="M7 15h10v6H7z" /></>,
-    session: <><circle cx="12" cy="12" r="8" /><path d="M12 8v4l3 2" /></>,
-    storage: <><ellipse cx="12" cy="6" rx="8" ry="3" /><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" /></>,
-    resources: <path d="M4 14h3l2-7 4 11 2-6h5" />,
-  };
-  return <svg className="row-span-2 w-7 fill-none stroke-current [stroke-linecap:round] [stroke-linejoin:round] [stroke-width:1.7]" viewBox="0 0 24 24" aria-hidden="true">{paths[name]}</svg>;
+  const Icon = { camera: Camera, printer: Printer, session: Clock3, storage: Database, resources: Activity }[name];
+  return <Icon className="row-span-2 w-7" aria-hidden="true" strokeWidth={1.7} />;
 }
 
 function CardAction({ children, onClick, disabled, warning = false }: { children: ReactNode; onClick: () => void; disabled?: boolean; warning?: boolean }) {

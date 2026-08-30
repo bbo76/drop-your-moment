@@ -12,6 +12,7 @@ import { Feedback } from "./ui";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Check, CircleAlert } from "lucide-react";
 
 const POLL_INTERVAL_MS = 2_000;
 
@@ -147,7 +148,8 @@ function SummaryRow({ label, value, strong = false, attention = false }: { label
 }
 
 function StatusGlyph({ tone }: { tone: "ready" | "busy" | "attention" }) {
-  return <svg className="size-6 fill-none stroke-current [stroke-linecap:round] [stroke-linejoin:round] [stroke-width:3]" viewBox="0 0 48 48" aria-hidden="true">{tone === "ready" ? <path d="m14 24 7 7 14-16" /> : <><circle cx="24" cy="24" r="16" /><path d="M24 14v12m0 7h.01" /></>}</svg>;
+  const Icon = tone === "ready" ? Check : CircleAlert;
+  return <Icon className="size-6" aria-hidden="true" strokeWidth={3} />;
 }
 
 const toneText = { ready: "text-emerald-700", busy: "text-amber-700", attention: "text-destructive" } as const;
