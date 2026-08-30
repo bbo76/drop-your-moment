@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Button as ShadButton } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { ChevronLeft, ChevronRight, Download } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, Eye, Trash2 } from "lucide-react";
 import { Pagination, PaginationContent, PaginationItem } from "@/components/ui/pagination";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -35,6 +35,7 @@ export function GallerySection() {
   const [page, setPage] = useState<GalleryPage | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<GalleryEntry | null>(null);
+  const [pendingDeletion, setPendingDeletion] = useState<GalleryEntry | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(async () => {
@@ -77,6 +78,7 @@ export function GallerySection() {
     try {
       await api.deleteGalleryEntry(entry.session_id);
       setSelected(null);
+      setPendingDeletion(null);
       setError(null);
       if (page.entries.length === 1 && offset > 0) {
         setOffset(Math.max(0, offset - PAGE_SIZE));
@@ -115,9 +117,33 @@ export function GallerySection() {
 
           <ul className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-6">
             {page.entries.map((entry) => (
-              <Thumbnail key={entry.session_id} entry={entry} onOpen={() => setSelected(entry)} />
+              <Thumbnail
+                key={entry.session_id}
+                entry={entry}
+                onOpen={() => setSelected(entry)}
+                onDelete={() => setPendingDeletion(entry)}
+              />
             ))}
           </ul>
+
+          <AlertDialog open={pendingDeletion !== null} onOpenChange={(open) => { if (!open) setPendingDeletion(null); }}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Supprimer définitivement cette photo ?</AlertDialogTitle>
+                <AlertDialogDescription>La session complète sera effacée. Cette action est irréversible.</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={deleting}>Annuler</AlertDialogCancel>
+                <AlertDialogAction
+                  variant="destructive"
+                  onClick={() => { if (pendingDeletion) void deleteEntry(pendingDeletion); }}
+                  disabled={deleting}
+                >
+                  {deleting ? "Suppression…" : "Confirmer la suppression"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
           <Pagination className="mt-4 justify-start">
             <PaginationContent>
@@ -148,25 +174,43 @@ export function GallerySection() {
   );
 }
 
-function Thumbnail({ entry, onOpen }: { entry: GalleryEntry; onOpen: () => void }) {
+function Thumbnail({ entry, onOpen, onDelete }: { entry: GalleryEntry; onOpen: () => void; onDelete: () => void }) {
   return (
     <li>
-      <ShadButton
-        type="button"
-        variant="ghost"
-        onClick={onOpen}
-        title="Afficher cette photo en grand"
-        className="h-auto w-full cursor-zoom-in p-0"
-      >
+      <div className="group relative">
         <img
           src={thumbnailUrl(entry.session_id)}
           alt={`Photo du ${moment(entry.captured_at)}`}
           /* Chargement paresseux natif : une grille de 24 vignettes ne décode que ce qui
              est à l'écran, sans bibliothèque ni observateur d'intersection. */
           loading="lazy"
-          className="aspect-[3/2] w-full rounded border border-border object-cover"
+          className="aspect-[3/2] w-full rounded border border-border object-cover transition-[filter] [@media(hover:hover)_and_(pointer:fine)]:group-hover:brightness-50 [@media(hover:hover)_and_(pointer:fine)]:group-focus-within:brightness-50"
         />
-      </ShadButton>
+        <div className="pointer-events-none absolute inset-0 hidden items-center justify-center gap-2 opacity-0 transition-opacity [@media(hover:hover)_and_(pointer:fine)]:flex [@media(hover:hover)_and_(pointer:fine)]:group-hover:opacity-100 [@media(hover:hover)_and_(pointer:fine)]:group-focus-within:opacity-100">
+          <ShadButton
+            type="button"
+            variant="secondary"
+            size="icon-lg"
+            onClick={onOpen}
+            aria-label={`Afficher en grand la photo du ${moment(entry.captured_at)}`}
+            title="Afficher cette photo en grand"
+            className="pointer-events-auto cursor-pointer bg-white text-zinc-950 shadow-md hover:bg-white/90 [&_*]:cursor-pointer"
+          >
+            <Eye />
+          </ShadButton>
+          <ShadButton
+            type="button"
+            variant="secondary"
+            size="icon-lg"
+            onClick={onDelete}
+            aria-label={`Supprimer la photo du ${moment(entry.captured_at)}`}
+            title="Supprimer cette photo"
+            className="pointer-events-auto cursor-pointer bg-white text-zinc-950 shadow-md hover:bg-white/90 [&_*]:cursor-pointer"
+          >
+            <Trash2 />
+          </ShadButton>
+        </div>
+      </div>
       <p className="mt-1 text-xs text-muted-foreground">
         {moment(entry.captured_at)} · {kilobytes(entry.size_bytes)}
       </p>
