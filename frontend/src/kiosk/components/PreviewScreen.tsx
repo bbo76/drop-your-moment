@@ -101,7 +101,7 @@ export function PreviewScreen({
             <span
               // `key` remonté à chaque chiffre pour rejouer l'animation d'apparition.
               key={phase.value}
-              className="grid size-[1.08em] place-items-center rounded-[0.12em] bg-accent text-[30vmin] leading-none font-black text-accent-ink shadow-[0_0.12em_0.28em_rgb(0_0_0/35%)] motion-safe:animate-pulse"
+              className="grid size-[1.08em] place-items-center rounded-[0.12em] bg-signal text-[30vmin] leading-none font-black text-signal-ink shadow-[0_0.12em_0.28em_rgb(0_0_0/35%)] motion-safe:animate-pulse"
             >
               {phase.value}
             </span>
@@ -134,7 +134,7 @@ export function PreviewScreen({
                   onClick={() => setShotTimerSeconds(seconds)}
                   className={`min-h-13 min-w-14 cursor-pointer rounded-lg px-3 text-lg font-bold tabular-nums transition-[background-color,color,transform] duration-150 active:scale-[0.97] max-[900px]:min-w-12 max-[900px]:px-2 ${
                     shotTimerSeconds === seconds
-                      ? "bg-accent text-accent-ink"
+                      ? "bg-signal text-signal-ink"
                       : "text-body"
                   }`}
                 >
@@ -144,7 +144,7 @@ export function PreviewScreen({
             </div>
           </fieldset>
         ) : (
-          <span className="pointer-events-none absolute inset-0 grid place-items-center text-3xl leading-[1.08] font-bold tracking-[-0.02em] text-accent">
+          <span className="pointer-events-none absolute inset-0 grid place-items-center text-3xl leading-[1.08] font-bold tracking-[-0.02em] text-signal">
             Souriez…
           </span>
         )}

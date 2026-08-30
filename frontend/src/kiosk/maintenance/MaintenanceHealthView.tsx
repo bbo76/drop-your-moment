@@ -32,7 +32,7 @@ export function MaintenanceHealthView({ snapshot }: { snapshot: MaintenanceSnaps
 function HealthIcon({ name }: { name: "camera" | "storage" | "temperature" }) {
   const icons: Record<typeof name, LucideIcon> = { camera: Camera, storage: HardDrive, temperature: Thermometer };
   const Icon = icons[name];
-  return <Icon className="size-14 rounded-panel border-2 border-edge p-2.5 text-accent" strokeWidth={1.8} />;
+  return <Icon className="size-14 rounded-panel border-2 border-edge p-2.5 text-signal" strokeWidth={1.8} />;
 }
 
 function ResourceMeter({ label, percent }: { label: string; percent: number }) {

@@ -260,29 +260,88 @@ matériel, un libellé explicite et une couleur d’état ; le picto ne remplace
 
 **Creative North Star: « La Console essentielle »**
 
-L'administration est un outil chaleureux mais opérationnel, distinct de la scénographie
-du kiosque. Son fond blanc cassé, ses surfaces blanches et son encre noire restent fixes ;
-la couleur choisie pour l'événement ne s'y applique jamais. Le vert, le rouge et l'ambre
-sont exclusivement sémantiques : succès, incident et vigilance. La vue d'ensemble reste
-plate, calme et sans ombre décorative.
+L'administration est un dashboard d'exploitation shadcn moderne, calme et compact, distinct
+de la scénographie du kiosque. Barlow Semi Condensed reste la seule famille. Le fond utilise
+un zinc très clair, les cartes et barres utilisent le blanc, et les rôles shadcn
+`foreground` / `muted-foreground` portent respectivement l'information principale et la
+métadonnée avec un contraste fort vérifié. La couleur événementielle ne traverse jamais
+dans l'administration. Émeraude, ambre et rouge sont réservés aux états prêt, occupé ou à
+surveiller, et incident.
 
 Le portail pilote **une seule borne**. Il ne présente ni flotte, ni client, ni planning,
-ni données commerciales. Sur laptop, une navigation latérale conduit à Vue d'ensemble,
-Événement, Galerie, Diagnostic et Sécurité. La vue d'ensemble répond immédiatement à trois
-questions : la borne est-elle prête, quelle configuration est active, et quelles sont les
-dernières photos ? Elle se met à jour automatiquement sans toucher aux formulaires ouverts.
+ni données commerciales. Le shell desktop utilise un `Sidebar` shadcn repliable en variante
+`inset`. Son en-tête de marque associe le monogramme DY, Drop Your Moment et Administration ;
+son contenu groupe Vue d'ensemble, Événement, Galerie, Diagnostic et Sécurité sous « Gestion
+de la borne » ; son pied confirme la borne connectée et le réseau local. En mode icône, les
+libellés deviennent des infobulles et le pied conserve son point de connexion.
 
-La configuration desktop conserve l'identité, le message, l'overlay, les filtres, le
-format, les copies et le minuteur. Couleur et typographie appartiennent à la maintenance de
-la borne ; le flash appartient à la borne et à la Console Jour J, où son effet peut être
-constaté dans la lumière réelle. `mobile.html` reste strictement opérationnel : état global,
-session, matériel, impression, réglages rapides sûrs et photos récentes suivent l'ordre
-d'urgence. Les deux points d’entrée restent indépendants : aucun lien ne simule un passage
-desktop/mobile qui n’existe pas dans l’usage réel.
+Le `SidebarInset` porte une barre supérieure collante de **64 px**. Elle réunit le
+déclencheur de navigation, le fil Administration / section courante et, quand la largeur le
+permet, un badge « Actualisation en direct ». Son blanc légèrement translucide et son flou
+servent uniquement à maintenir la lecture pendant le défilement. Le canevas zinc clair est
+rembourré de 16 à 32 px selon la largeur ; le contenu reste centré dans une largeur maximale
+de 80rem. Les titres d'application restent compacts : 24 px sur petit écran, 30 px sur
+desktop, graisse 600 et approche serrée. Il n'y a plus de titre monumental de dashboard.
+
+La vue d'ensemble commence toujours par la **bande de disponibilité pleine largeur**,
+signature visuelle du portail. Une première cellule teintée associe un glyphe circulaire,
+un verdict verbal et une explication ; trois cellules blanches donnent Écran, Caméra et
+Tirages disponibles. La bande passe de l'émeraude à l'ambre ou au rouge selon l'état, avec
+un anneau ton sur ton discret, mais chaque couleur reste doublée par le texte et l'icône.
+Sur les largeurs étroites, les cellules se placent naturellement les unes sous les autres ;
+sur desktop elles forment une seule ligne immédiatement balayable.
+
+Sous cette bande, une grille desktop de **12 colonnes** répartit Événement actif sur cinq
+colonnes, Dernières photos sur quatre et Santé du système sur trois. Les cartes blanches ont
+une bordure zinc, des coins modérément arrondis, aucun effet décoratif et un en-tête compact
+de 64 px. Les faits utilisent des chiffres tabulaires, des libellés en `muted-foreground`
+et une valeur alignée en regard. Les quatre vignettes sont des photos API réelles avec heure ;
+les chargements et états vides restent textuels. Le sondage de santé et de galerie s'effectue
+toutes les deux secondes uniquement lorsque la page est visible, sans réinitialiser un
+formulaire ouvert.
+
+La configuration desktop conserve le nom et le message de l'événement, l'overlay, les
+filtres, le format, les copies et le minuteur. Couleur et typographie appartiennent à la
+maintenance de la borne ; le flash appartient à la borne et à la Console Jour J. La galerie
+privilégie les vignettes API, la pagination et une lightbox. Le diagnostic regroupe caméra,
+impression, parcours, stockage et ressources dans des cartes de lecture rapide. Sécurité
+reste un formulaire court et étroit, centré sur le remplacement du PIN. Les surfaces,
+champs, boutons, badges, séparateurs et alertes reprennent directement les composants et
+rôles sémantiques shadcn plutôt que des couleurs administratives isolées.
+
+La Console Jour J mobile est une vue dédiée, pas une réduction du shell desktop. `DayOfView`
+est composé directement en Tailwind et réutilise les `Button` et `Feedback` partagés fondés
+sur shadcn/ui. Dans une colonne plafonnée à 42rem avec prise en compte des safe areas, elle
+ordonne : disponibilité, retours d'action, trois faits essentiels, geste d'urgence
+conditionnel, impression, réglages rapides, puis photos récentes. La rangée Écran / Caméra /
+Tirages conserve trois colonnes ; les valeurs autorisent le retour à la ligne afin que
+**« 15 possibles »** reste entier et lisible sur smartphone, sans ellipse ni troncature.
+
+Les panneaux Impression et Réglages rapides conservent les éléments natifs `<details>` /
+`<summary>` : grande cible tactile, signe plus ou moins, état ouvert natif et contenu révélé
+sous une séparation nette. Les réglages rapides restent limités au minuteur, au flash et aux
+copies. Le retour forcé à l'accueil n'apparaît que lorsqu'une session est active et exige une
+confirmation modale décrivant la conséquence. Les deux points d'entrée restent indépendants :
+aucun lien ne simule un passage entre desktop et mobile.
 
 **The Single Booth Rule.** Toute information doit décrire la borne actuelle, son événement
 actuel ou ses photos. Une donnée de parc, de location, de CRM ou de planification est hors
 périmètre, même si elle est courante dans les dashboards SaaS.
+
+**The Readiness First Rule.** La première surface visible donne un verdict exploitable sur
+la borne avant d'exposer configuration, métriques ou raccourcis.
+
+**The Semantic Token Rule.** Les neutres suivent les rôles shadcn plutôt que des hexadécimaux
+locaux ; émeraude, ambre et rouge ne qualifient qu'un état opérationnel et toujours avec un
+libellé et une icône.
+
+**The Two Consoles Rule.** Le desktop prépare et diagnostique ; le mobile surveille et
+intervient. Une fonctionnalité n'est partagée que si elle est sûre et utile dans les deux
+contextes.
+
+**The Compact App Type Rule.** Un titre d'administration reste entre 24 et 30 px ; la
+priorité vient de la grille, du poids et de l'ordre des informations, jamais d'une échelle
+de landing page.
 
 ### Inputs / Fields
 

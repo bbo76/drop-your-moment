@@ -83,7 +83,7 @@ function FilterButton({
       aria-pressed={active}
       className={`min-h-14 cursor-pointer rounded-panel border-2 px-5 text-left text-lg font-medium ${
         active
-          ? "border-accent bg-accent text-accent-ink"
+          ? "border-signal bg-signal text-signal-ink"
           : "border-edge text-body"
       }`}
     >

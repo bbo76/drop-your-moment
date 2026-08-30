@@ -1,7 +1,9 @@
 import { useState, type FormEvent } from "react";
 
+import { Input } from "@/components/ui/input";
+
 import { api } from "../shared/api";
-import { Button, Feedback, Field, inputClass, Section } from "./ui";
+import { Button, Feedback, Field, Section } from "./ui";
 
 export function SecuritySection() {
   const [pin, setPin] = useState("");
@@ -38,13 +40,12 @@ export function SecuritySection() {
   return (
     <Section title="Accès à la borne">
       <form onSubmit={(event) => void submit(event)} className="grid max-w-sm gap-4">
-        <p className="text-sm text-muted">
+        <p className="text-sm text-muted-foreground">
           Le PIN actuel n’est jamais affiché. Le nouveau code s’applique immédiatement au
           panneau de maintenance tactile.
         </p>
         <Field label="Nouveau PIN à 4 chiffres">
-          <input
-            className={inputClass}
+          <Input
             type="password"
             inputMode="numeric"
             autoComplete="new-password"
@@ -55,8 +56,7 @@ export function SecuritySection() {
           />
         </Field>
         <Field label="Confirmer le nouveau PIN">
-          <input
-            className={inputClass}
+          <Input
             type="password"
             inputMode="numeric"
             autoComplete="new-password"

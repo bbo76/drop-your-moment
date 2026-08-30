@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
+
+import { Button as ShadButton } from "@/components/ui/button";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Progress } from "@/components/ui/progress";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Skeleton } from "@/components/ui/skeleton";
 
 import {
   api,
@@ -28,9 +37,7 @@ export function DayOfView() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [working, setWorking] = useState<string | null>(null);
-  const [printDetailsOpen, setPrintDetailsOpen] = useState(false);
-  const releaseDialogRef = useRef<HTMLDialogElement>(null);
-  const releaseDialogTitleRef = useRef<HTMLHeadingElement>(null);
+  const [releaseDialogOpen, setReleaseDialogOpen] = useState(false);
 
   const loadPhotos = useCallback(async () => {
     const page = await api.gallery(0, RECENT_PHOTO_COUNT);
@@ -79,7 +86,7 @@ export function DayOfView() {
   };
 
   const releaseKiosk = () => {
-    releaseDialogRef.current?.close();
+    setReleaseDialogOpen(false);
     void run(
       "release",
       async () => {
@@ -104,7 +111,7 @@ export function DayOfView() {
 
   if (!health) {
     return (
-      <div className="day-status day-status-attention" role="status">
+      <div className="grid min-h-28 grid-cols-[3rem_minmax(0,1fr)] items-center gap-4 rounded-xl border border-destructive/40 bg-card p-5 text-destructive [&_svg]:size-12 [&_h2]:text-3xl [&_h2]:font-bold [&_h2]:leading-none [&_p]:mt-2" role="status">
         <StatusIcon name={error ? "wifi" : "pulse"} />
         <div>
           <h2>{error ? "Borne injoignable" : "Connexion à la borne…"}</h2>
@@ -131,19 +138,19 @@ export function DayOfView() {
   const nextAction = printingNextAction(cassetteRemaining, stockRemaining, inkRemaining);
 
   return (
-    <div className="day-view">
-      <section className={`day-status day-status-${readiness.tone}`} aria-live="polite">
+    <div className="grid gap-4">
+      <section className={`grid min-h-28 grid-cols-[3rem_minmax(0,1fr)] items-center gap-4 rounded-xl border bg-card p-5 [&_svg]:size-12 [&_h2]:text-[clamp(2rem,8vw,3rem)] [&_h2]:font-bold [&_h2]:leading-none [&_h2]:tracking-[-0.035em] [&_p]:mt-2 [&_p]:leading-tight ${statusTone[readiness.tone]}`} aria-live="polite">
         <StatusIcon name={readiness.tone === "ready" ? "check" : "attention"} />
         <div className="min-w-0">
           <h2>{readiness.title}</h2>
           <p>{readiness.detail}</p>
-          <p className="day-event-name">{health.event_name}</p>
+          <p className="mt-3 border-t pt-3 font-semibold text-foreground">{health.event_name}</p>
         </div>
       </section>
 
       {(error || notice) && <Feedback error={error} notice={notice} />}
 
-      <section className="day-glance" aria-label="État essentiel de la borne">
+      <section className="grid grid-cols-3 overflow-hidden rounded-xl border bg-card divide-x" aria-label="État essentiel de la borne">
         <Fact
           icon="pulse"
           label="Écran"
@@ -166,8 +173,7 @@ export function DayOfView() {
           <Button
             tone="warning"
             onClick={() => {
-              releaseDialogRef.current?.showModal();
-              releaseDialogTitleRef.current?.focus({ preventScroll: true });
+              setReleaseDialogOpen(true);
             }}
             disabled={working === "release"}
           >
@@ -176,98 +182,104 @@ export function DayOfView() {
         )}
       </section>
 
-      <details
-        className="day-disclosure"
-        open={printDetailsOpen}
-        onToggle={(event) => setPrintDetailsOpen(event.currentTarget.open)}
-      >
-        <summary>
-          <span><strong>Impression</strong><small>{nextAction}</small></span>
-          <b>{printableNow}</b>
-        </summary>
-        <div className="day-disclosure-body">
-        <div className="day-print-summary">
+      <Accordion type="single" collapsible defaultValue="printing" className="rounded-xl border bg-card">
+        <AccordionItem value="printing" className="border-0">
+          <AccordionTrigger className="min-h-18 px-4 py-3 hover:no-underline">
+            <span className="grid"><strong className="text-lg">Impression</strong><small className="text-muted-foreground">{nextAction}</small></span>
+            <b className="ml-auto mr-3 text-3xl tabular-nums">{printableNow}</b>
+          </AccordionTrigger>
+          <AccordionContent className="border-t p-4">
+        <div className="mb-3 grid grid-cols-[auto_1fr] items-baseline gap-x-3 [&_strong]:row-span-2 [&_strong]:text-5xl [&_strong]:leading-none [&_strong]:tabular-nums [&_span]:font-bold [&_small]:text-muted-foreground">
           <strong>{printableNow}</strong>
           <span>impression{printableNow > 1 ? "s" : ""} avant intervention</span>
           <small>{nextAction}</small>
         </div>
-        <div className="day-consumables">
+        <div className="grid gap-3 sm:grid-cols-3">
           <Consumable label="Bac" remaining={cassetteRemaining} capacity={health.counters.cassette_capacity} />
           <Consumable label="Encre" remaining={inkRemaining} capacity={health.counters.cartridge_capacity} />
           <Consumable label="Stock total" remaining={stockRemaining} capacity={health.counters.paper_stock_capacity} />
         </div>
-        </div>
-      </details>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
 
-      <details className="day-disclosure">
-        <summary>
-          <span><strong>Réglages rapides</strong><small>Minuteur, flash et copies</small></span>
-        </summary>
-        <div className="day-disclosure-body">
+      <Accordion type="single" collapsible className="rounded-xl border bg-card">
+        <AccordionItem value="settings" className="border-0">
+          <AccordionTrigger className="min-h-18 px-4 py-3 hover:no-underline">
+            <span className="grid"><strong className="text-lg">Réglages rapides</strong><small className="text-muted-foreground">Minuteur, flash et copies</small></span>
+          </AccordionTrigger>
+          <AccordionContent className="border-t p-4">
         {config ? (
-          <div className="day-quick-settings" aria-busy={working === "settings"}>
+          <div className="grid items-end gap-4 sm:grid-cols-3" aria-busy={working === "settings"}>
             <fieldset>
               <legend>Minuteur par défaut</legend>
-              <div className="day-choice-row">
+              <ToggleGroup
+                type="single"
+                value={String(config.default_shot_timer_seconds)}
+                onValueChange={(value) => value && saveQuickSetting({ default_shot_timer_seconds: Number(value) as ShotTimerSeconds })}
+                variant="outline"
+                spacing={0}
+                className="grid w-full grid-cols-3"
+              >
                 {TIMER_OPTIONS.map((seconds) => (
-                  <button
+                  <ToggleGroupItem
                     key={seconds}
-                    type="button"
-                    aria-pressed={config.default_shot_timer_seconds === seconds}
+                    value={String(seconds)}
                     disabled={working === "settings"}
-                    onClick={() => saveQuickSetting({ default_shot_timer_seconds: seconds })}
+                    className="min-h-11 font-bold data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
                   >
                     {seconds} s
-                  </button>
+                  </ToggleGroupItem>
                 ))}
-              </div>
+              </ToggleGroup>
             </fieldset>
-            <div className="day-toggle">
+            <div className="flex min-h-14 items-center justify-between gap-4 rounded-lg border px-3 py-2 [&_small]:block [&_small]:text-muted-foreground">
               <span>
                 <strong>Flash écran</strong>
                 <small>{config.screen_flash_enabled ? "Activé" : "Désactivé"}</small>
               </span>
-              <button
-                type="button"
-                className="day-switch"
-                role="switch"
+              <Switch
                 aria-label="Flash écran"
-                aria-checked={config.screen_flash_enabled}
+                checked={config.screen_flash_enabled}
                 disabled={working === "settings"}
-                onClick={() => saveQuickSetting({ screen_flash_enabled: !config.screen_flash_enabled })}
-              ><span /></button>
+                onCheckedChange={(checked) => saveQuickSetting({ screen_flash_enabled: checked })}
+              />
             </div>
-            <label className="day-copy-setting">
+            <label className="grid gap-2 text-sm text-muted-foreground">
               <span>Copies par tirage</span>
-              <select
-                value={config.copies_per_print}
+              <Select
+                value={String(config.copies_per_print)}
                 disabled={working === "settings"}
-                onChange={(event) => saveQuickSetting({ copies_per_print: Number(event.target.value) })}
+                onValueChange={(value) => saveQuickSetting({ copies_per_print: Number(value) })}
               >
-                {[1, 2, 3, 4].map((copies) => (
-                  <option key={copies} value={copies}>{copies}</option>
-                ))}
-              </select>
+                <SelectTrigger className="min-h-14"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {[1, 2, 3, 4].map((copies) => (
+                    <SelectItem key={copies} value={String(copies)}>{copies}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </label>
           </div>
         ) : (
-          <p className="text-muted">Chargement des réglages…</p>
+          <div className="grid gap-3 sm:grid-cols-3"><Skeleton className="h-14" /><Skeleton className="h-14" /><Skeleton className="h-14" /></div>
         )}
-        </div>
-      </details>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
 
-      <section className="day-section" aria-labelledby="day-photos-title">
-        <div className="day-section-heading">
+      <section className="rounded-xl border bg-card p-4" aria-labelledby="day-photos-title">
+        <div className="mb-4 flex items-start justify-between gap-4 [&_h2]:text-2xl [&_h2]:font-semibold [&_p]:mt-1 [&_p]:text-muted-foreground">
           <div>
             <h2 id="day-photos-title">Dernières photos</h2>
             <p>Un contrôle rapide, sans suppression pendant la soirée.</p>
           </div>
-          <button type="button" className="day-text-action" onClick={() => void loadPhotos()}>
+          <ShadButton type="button" variant="ghost" onClick={() => void loadPhotos()}>
             Actualiser
-          </button>
+          </ShadButton>
         </div>
         {photos.length > 0 ? (
-          <ul className="day-photo-strip">
+          <ul className="grid grid-cols-3 gap-3 sm:grid-cols-6 [&_img]:aspect-[3/2] [&_img]:w-full [&_img]:rounded-lg [&_img]:object-cover [&_span]:mt-1 [&_span]:block [&_span]:text-sm [&_span]:tabular-nums [&_span]:text-muted-foreground">
             {photos.map((photo) => (
               <li key={photo.session_id}>
                 <a href={photoViewUrl(photo.session_id)} target="_blank" rel="noreferrer">
@@ -282,27 +294,22 @@ export function DayOfView() {
             ))}
           </ul>
         ) : (
-          <p className="day-empty">Les premières photos apparaîtront ici.</p>
+          <p className="py-4 text-muted-foreground">Les premières photos apparaîtront ici.</p>
         )}
       </section>
 
-      <dialog
-        ref={releaseDialogRef}
-        className="day-confirm-dialog"
-        aria-labelledby="release-kiosk-title"
-        onClick={(event) => {
-          if (event.target === event.currentTarget) event.currentTarget.close();
-        }}
-      >
-        <div>
-          <h2 ref={releaseDialogTitleRef} id="release-kiosk-title" tabIndex={-1}>Ramener la borne à l’accueil ?</h2>
-          <p>La session en cours sera interrompue. Les invités devront recommencer leur parcours.</p>
-          <footer>
-            <Button tone="secondary" onClick={() => releaseDialogRef.current?.close()}>Annuler</Button>
-            <Button tone="warning" onClick={releaseKiosk}>Ramener à l’accueil</Button>
-          </footer>
-        </div>
-      </dialog>
+      <AlertDialog open={releaseDialogOpen} onOpenChange={setReleaseDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ramener la borne à l’accueil ?</AlertDialogTitle>
+            <AlertDialogDescription>La session en cours sera interrompue. Les invités devront recommencer leur parcours.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={releaseKiosk}>Ramener à l’accueil</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -340,7 +347,7 @@ function printingNextAction(bac: number, stock: number, ink: number) {
 
 function Fact({ icon, label, value, attention = false }: { icon: IconName; label: string; value: string; attention?: boolean }) {
   return (
-    <div className={attention ? "day-fact day-fact-attention" : "day-fact"}>
+    <div className={`grid min-w-0 grid-cols-[1.5rem_1fr] items-center gap-x-2 p-3 [&_svg]:size-6 [&>span]:text-xs [&>span]:text-muted-foreground [&>strong]:col-start-2 [&>strong]:whitespace-normal [&>strong]:leading-tight [&>strong]:text-sm [&>strong]:tabular-nums sm:[&>strong]:text-base ${attention ? "text-destructive" : ""}`}>
       <StatusIcon name={icon} />
       <span>{label}</span>
       <strong>{value}</strong>
@@ -350,13 +357,15 @@ function Fact({ icon, label, value, attention = false }: { icon: IconName; label
 
 function Consumable({ label, remaining, capacity }: { label: string; remaining: number; capacity: number }) {
   return (
-    <div className="day-consumable">
+    <div className="grid grid-cols-[1fr_auto_auto] items-baseline gap-2 rounded-lg border p-4 [&>span]:text-muted-foreground [&>strong]:text-3xl [&>strong]:leading-none [&>strong]:tabular-nums [&>small]:text-muted-foreground">
       <span>{label}</span>
       <strong>{remaining}</strong>
       <small>sur {capacity}</small>
-      <div className="day-consumable-track" aria-hidden="true">
-        <span style={{ width: `${Math.min(100, Math.max(0, (remaining / capacity) * 100))}%` }} />
-      </div>
+      <Progress
+        value={capacity > 0 ? Math.min(100, Math.max(0, (remaining / capacity) * 100)) : 0}
+        aria-label={`${label} : ${remaining} sur ${capacity}`}
+        className="col-span-full mt-2 h-1.5"
+      />
     </div>
   );
 }
@@ -389,3 +398,9 @@ function StatusIcon({ name }: { name: IconName }) {
 }
 
 const photoTime = (seconds: number) => new Date(seconds * 1000).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+
+const statusTone = {
+  ready: "border-emerald-600/40 text-emerald-700",
+  busy: "border-amber-600/40 text-amber-700",
+  attention: "border-destructive/40 text-destructive",
+} as const;

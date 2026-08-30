@@ -23,7 +23,7 @@ export function MaintenancePrintingView({ snapshot, saving, onSaveSettings, onRe
     <section className="grid min-h-0 grid-cols-[0.9fr_1.1fr] gap-4 overflow-hidden">
       <div className="grid min-h-0 grid-rows-[1.05fr_1fr] overflow-hidden rounded-[0.65rem] bg-surface">
         <div className="grid grid-cols-[3.5rem_minmax(0,1fr)] items-center gap-x-4 gap-y-1 px-5 py-[1.15rem]">
-          <MaintenanceIcon name="print" className="size-14 rounded-panel border-2 border-edge p-2.5 text-accent" />
+          <MaintenanceIcon name="print" className="size-14 rounded-panel border-2 border-edge p-2.5 text-signal" />
           <div><p className="text-lg font-medium text-muted">Tirages disponibles</p><p className="text-[4.5rem] leading-none font-bold tabular-nums max-h-[600px]:text-[4rem]">{printable}</p></div>
           <p className={`col-span-full mt-2 flex items-center gap-2.5 font-semibold ${health.printer_driver === "offline" ? "text-warn" : ""}`}><StatusMark state={health.printer_driver === "offline" ? "warning" : "ready"} />{printerLabel}</p>
         </div>

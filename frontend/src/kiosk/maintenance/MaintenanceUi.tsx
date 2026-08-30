@@ -21,7 +21,7 @@ export function MaintenanceFrame({ title, status, onBack, children }: {
   children: ReactNode;
 }) {
   return (
-    <main className="grid h-full grid-rows-[auto_1fr] gap-3 bg-ink p-4 text-body [--color-accent:#d8dee4] [--color-accent-ink:#101418] max-h-[600px]:p-3">
+    <main className="grid h-full grid-rows-[auto_1fr] gap-3 bg-ink p-4 text-body [--color-signal:#d8dee4] [--color-signal-ink:#101418] max-h-[600px]:p-3">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <GhostButton onClick={onBack}>Retour</GhostButton>
@@ -52,7 +52,7 @@ export function MaintenanceStatusBanner({ status }: { status: MaintenanceStatus 
   return <div className="flex min-h-14 items-center gap-3 px-1 text-lg font-semibold"><StatusMark state="ready" />Borne prête</div>;
 }
 
-export function MaintenanceIcon({ name, className = "size-[4.25rem] rounded-[0.55rem] bg-accent p-[0.9rem] fill-none stroke-current stroke-2 text-accent-ink [stroke-linecap:round] [stroke-linejoin:round]" }: {
+export function MaintenanceIcon({ name, className = "size-[4.25rem] rounded-[0.55rem] bg-signal p-[0.9rem] fill-none stroke-current stroke-2 text-signal-ink [stroke-linecap:round] [stroke-linejoin:round]" }: {
   name: "health" | "print" | "gallery" | "settings";
   className?: string;
 }) {
@@ -76,7 +76,7 @@ export function ProgressMeter({ value, max = 100, warning, ariaLabel, className 
   ariaLabel: string;
   className: string;
 }) {
-  return <progress value={value} max={max} aria-label={ariaLabel} className={`${className} block w-full appearance-none overflow-hidden rounded-full bg-edge [&::-webkit-progress-bar]:bg-edge ${warning ? "[&::-moz-progress-bar]:bg-warn [&::-webkit-progress-value]:bg-warn" : "[&::-moz-progress-bar]:bg-accent [&::-webkit-progress-value]:bg-accent"}`} />;
+  return <progress value={value} max={max} aria-label={ariaLabel} className={`${className} block w-full appearance-none overflow-hidden rounded-full bg-edge [&::-webkit-progress-bar]:bg-edge ${warning ? "[&::-moz-progress-bar]:bg-warn [&::-webkit-progress-value]:bg-warn" : "[&::-moz-progress-bar]:bg-signal [&::-webkit-progress-value]:bg-signal"}`} />;
 }
 
 export function MaintenanceChoice({ children, disabled, pressed, accentBorder = false, onClick }: {
@@ -86,5 +86,5 @@ export function MaintenanceChoice({ children, disabled, pressed, accentBorder = 
   accentBorder?: boolean;
   onClick: () => void;
 }) {
-  return <button type="button" disabled={disabled} aria-pressed={pressed} onClick={onClick} className={`min-h-[3.4rem] rounded-panel border-2 bg-transparent text-xl font-semibold text-body transition-[transform,background-color,color] duration-150 active:scale-[0.97] aria-pressed:border-accent aria-pressed:bg-accent aria-pressed:text-accent-ink disabled:cursor-wait ${accentBorder ? "border-accent" : "border-edge"}`}>{children}</button>;
+  return <button type="button" disabled={disabled} aria-pressed={pressed} onClick={onClick} className={`min-h-[3.4rem] rounded-panel border-2 bg-transparent text-xl font-semibold text-body transition-[transform,background-color,color] duration-150 active:scale-[0.97] aria-pressed:border-signal aria-pressed:bg-signal aria-pressed:text-signal-ink disabled:cursor-wait ${accentBorder ? "border-signal" : "border-edge"}`}>{children}</button>;
 }

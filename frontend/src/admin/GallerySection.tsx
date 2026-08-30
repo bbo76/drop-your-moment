@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 
+import { Button as ShadButton } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { ChevronLeft, ChevronRight, Download } from "lucide-react";
+import { Pagination, PaginationContent, PaginationItem } from "@/components/ui/pagination";
+import { Skeleton } from "@/components/ui/skeleton";
+
 import {
   api,
   ARCHIVE_URL,
@@ -46,14 +53,14 @@ export function GallerySection() {
   if (error) {
     return (
       <Section title="Galerie">
-        <p className="text-warn">{error}</p>
+        <p className="text-destructive">{error}</p>
       </Section>
     );
   }
   if (!page) {
     return (
       <Section title="Galerie">
-        <p className="text-muted">Chargement…</p>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-6">{Array.from({ length: 6 }, (_, index) => <Skeleton key={index} className="aspect-[3/2]" />)}</div>
       </Section>
     );
   }
@@ -86,24 +93,24 @@ export function GallerySection() {
   return (
     <Section title="Galerie">
       {page.total === 0 ? (
-        <p className="text-muted">Aucune photo pour l'instant.</p>
+        <p className="text-muted-foreground">Aucune photo pour l'instant.</p>
       ) : (
         <>
           <div className="mb-4 flex flex-wrap items-center gap-4 text-sm">
-            <span className="text-muted">
+            <span className="text-muted-foreground">
               {offset + 1}–{offset + shown} sur {page.total}
             </span>
             <a
               href={ARCHIVE_URL}
-              className="text-accent underline"
+              className="text-foreground underline"
               /* Le backend répond en flux : l'archive commence à arriver avant d'être
                  construite, il n'y a donc rien à attendre côté page. */
             >
               Télécharger tout (zip)
             </a>
-            <button onClick={() => void load()} className="text-muted underline">
+            <ShadButton variant="link" size="sm" onClick={() => void load()} className="px-0 text-muted-foreground">
               Rafraîchir
-            </button>
+            </ShadButton>
           </div>
 
           <ul className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-6">
@@ -112,17 +119,12 @@ export function GallerySection() {
             ))}
           </ul>
 
-          <div className="mt-4 flex gap-3">
-            <Button
-              onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
-              disabled={!hasPrevious}
-            >
-              Précédent
-            </Button>
-            <Button onClick={() => setOffset(offset + PAGE_SIZE)} disabled={!hasNext}>
-              Suivant
-            </Button>
-          </div>
+          <Pagination className="mt-4 justify-start">
+            <PaginationContent>
+              <PaginationItem><Button onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))} disabled={!hasPrevious}>Précédent</Button></PaginationItem>
+              <PaginationItem><Button onClick={() => setOffset(offset + PAGE_SIZE)} disabled={!hasNext}>Suivant</Button></PaginationItem>
+            </PaginationContent>
+          </Pagination>
 
           {selected && (
             <Lightbox
@@ -149,11 +151,12 @@ export function GallerySection() {
 function Thumbnail({ entry, onOpen }: { entry: GalleryEntry; onOpen: () => void }) {
   return (
     <li>
-      <button
+      <ShadButton
         type="button"
+        variant="ghost"
         onClick={onOpen}
         title="Afficher cette photo en grand"
-        className="block w-full cursor-zoom-in"
+        className="h-auto w-full cursor-zoom-in p-0"
       >
         <img
           src={thumbnailUrl(entry.session_id)}
@@ -161,10 +164,10 @@ function Thumbnail({ entry, onOpen }: { entry: GalleryEntry; onOpen: () => void 
           /* Chargement paresseux natif : une grille de 24 vignettes ne décode que ce qui
              est à l'écran, sans bibliothèque ni observateur d'intersection. */
           loading="lazy"
-          className="aspect-[3/2] w-full rounded border border-edge object-cover"
+          className="aspect-[3/2] w-full rounded border border-border object-cover"
         />
-      </button>
-      <p className="mt-1 text-xs text-muted">
+      </ShadButton>
+      <p className="mt-1 text-xs text-muted-foreground">
         {moment(entry.captured_at)} · {kilobytes(entry.size_bytes)}
       </p>
     </li>
@@ -194,7 +197,6 @@ function Lightbox({
 
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
       if (event.key === "ArrowLeft") onPrevious?.();
       if (event.key === "ArrowRight") onNext?.();
     };
@@ -203,95 +205,65 @@ function Lightbox({
   }, [onClose, onNext, onPrevious]);
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={`Photo du ${moment(entry.captured_at)}`}
-      className="fixed inset-0 z-50 grid bg-black/90 p-4 sm:p-8"
-      onClick={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
-    >
-      <div className="m-auto flex max-h-full max-w-6xl flex-col gap-4">
-        <div className="flex items-center justify-between gap-4">
-          <p className="text-sm text-muted">
-            {moment(entry.captured_at)} · {kilobytes(entry.size_bytes)}
-          </p>
-          <button type="button" onClick={onClose} className="text-2xl" aria-label="Fermer">
-            ×
-          </button>
-        </div>
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="flex max-h-[calc(100dvh-2rem)] max-w-[calc(100vw-2rem)] flex-col bg-background sm:max-w-6xl">
+        <DialogHeader>
+          <DialogTitle>Photo du {moment(entry.captured_at)}</DialogTitle>
+          <DialogDescription>{kilobytes(entry.size_bytes)}</DialogDescription>
+        </DialogHeader>
 
         <div className="flex min-h-0 items-center gap-3">
-          <button
+          <ShadButton
             type="button"
+            variant="ghost"
+            size="icon-lg"
             onClick={onPrevious}
             disabled={!onPrevious}
-            className="px-2 text-3xl disabled:invisible"
+            className="disabled:invisible"
             aria-label="Photo précédente"
           >
-            ‹
-          </button>
+            <ChevronLeft />
+          </ShadButton>
           <img
             src={photoViewUrl(entry.session_id)}
             alt={`Photo du ${moment(entry.captured_at)}`}
-            className="max-h-[75vh] min-w-0 rounded-panel object-contain"
+            className="max-h-[75vh] min-w-0 rounded-lg object-contain"
           />
-          <button
+          <ShadButton
             type="button"
+            variant="ghost"
+            size="icon-lg"
             onClick={onNext}
             disabled={!onNext}
-            className="px-2 text-3xl disabled:invisible"
+            className="disabled:invisible"
             aria-label="Photo suivante"
           >
-            ›
-          </button>
+            <ChevronRight />
+          </ShadButton>
         </div>
 
-        {confirmingDelete ? (
-          <div className="rounded-panel border border-warn bg-warn-bg p-4">
-            <p className="font-medium text-warn">Supprimer définitivement cette photo ?</p>
-            <p className="mt-1 text-sm text-muted">
-              La session complète sera effacée. Cette action est irréversible.
-            </p>
-            <div className="mt-4 flex flex-wrap justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setConfirmingDelete(false)}
-                disabled={deleting}
-                className="rounded border border-edge px-4 py-2 disabled:opacity-40"
-              >
-                Annuler
-              </button>
-              <button
-                type="button"
-                onClick={onDelete}
-                disabled={deleting}
-                className="rounded bg-warn px-4 py-2 font-medium text-ink disabled:opacity-40"
-              >
-                {deleting ? "Suppression…" : "Confirmer la suppression"}
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-wrap justify-end gap-3">
-            <a
-              href={photoDownloadUrl(entry.session_id)}
-              className="rounded bg-accent px-4 py-2 font-medium text-accent-ink"
-            >
-              Télécharger
-            </a>
-            <button
-              type="button"
-              onClick={() => setConfirmingDelete(true)}
-              className="rounded border border-warn px-4 py-2 text-warn"
-            >
-              Supprimer
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
+        <div className="flex flex-wrap justify-end gap-3">
+          <ShadButton asChild>
+            <a href={photoDownloadUrl(entry.session_id)}><Download />Télécharger</a>
+          </ShadButton>
+          <AlertDialog open={confirmingDelete} onOpenChange={setConfirmingDelete}>
+            <AlertDialogTrigger asChild>
+              <ShadButton type="button" variant="outline" className="border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive">Supprimer</ShadButton>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Supprimer définitivement cette photo ?</AlertDialogTitle>
+                <AlertDialogDescription>La session complète sera effacée. Cette action est irréversible.</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={deleting}>Annuler</AlertDialogCancel>
+                <AlertDialogAction variant="destructive" onClick={onDelete} disabled={deleting}>{deleting ? "Suppression…" : "Confirmer la suppression"}</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

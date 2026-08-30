@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react";
 
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
+
 import {
   api,
   FILTER_LABELS,
@@ -9,7 +15,7 @@ import {
   type PrintFormatPayload,
   type ShotTimerSeconds,
 } from "../shared/api";
-import { Button, Feedback, Field, inputClass, Section } from "./ui";
+import { Button, Feedback, Field, Section } from "./ui";
 
 /* Réglages de l'événement.
  *
@@ -39,7 +45,7 @@ export function EventSection() {
   if (!draft) {
     return (
       <Section title="Événement">
-        <Feedback error={error} notice="Chargement…" />
+        {error ? <Feedback error={error} /> : <div className="grid gap-3"><Skeleton className="h-10" /><Skeleton className="h-10" /><Skeleton className="h-24" /></div>}
       </Section>
     );
   }
@@ -97,39 +103,33 @@ export function EventSection() {
     <Section title="Événement">
       <div className="grid max-w-4xl gap-4">
         <Field label="Nom de l'événement">
-          <input
-            className={inputClass}
+          <Input
             value={draft.event_name}
             onChange={(e) => patch({ event_name: e.target.value })}
           />
         </Field>
 
         <Field label="Message de l’écran d’accueil">
-          <input
-            className={inputClass}
+          <Input
             value={draft.launch_message}
             maxLength={80}
             onChange={(e) => patch({ launch_message: e.target.value })}
           />
-          <span className="mt-1 block text-xs text-muted">
+          <span className="mt-1 block text-xs text-muted-foreground">
             Indépendant du nom de l’événement et de l’overlay photo.
           </span>
         </Field>
 
-        <p className="admin-context-note">
-          La couleur, la typographie et le flash écran se règlent sur la borne. Le flash
-          reste aussi disponible dans la Console Jour J pour être testé dans la lumière réelle.
-        </p>
+        <Alert className="max-w-[70ch]"><AlertDescription>La couleur, la typographie et le flash écran se règlent sur la borne. Le flash reste aussi disponible dans la Console Jour J pour être testé dans la lumière réelle.</AlertDescription></Alert>
 
         <fieldset>
-          <legend className="mb-1 text-sm text-muted">Filtres proposés</legend>
+          <legend className="mb-1 text-sm text-muted-foreground">Filtres proposés</legend>
           <div className="flex gap-4">
             {ALL_FILTERS.map((name) => (
-              <label key={name} className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
+              <label key={name} className="flex cursor-pointer items-center gap-2 text-sm">
+                <Checkbox
                   checked={draft.available_filters.includes(name)}
-                  onChange={() => toggleFilter(name)}
+                  onCheckedChange={() => toggleFilter(name)}
                 />
                 {FILTER_LABELS[name]}
               </label>
@@ -138,52 +138,48 @@ export function EventSection() {
         </fieldset>
 
         <fieldset>
-          <legend className="mb-1 text-sm text-muted">
+          <legend className="mb-1 text-sm text-muted-foreground">
             Format de sortie — fixe le recadrage et le cadre de visée, même sans imprimante
           </legend>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
             <Field label="Nom" className="sm:col-span-2">
-              <input
-                className={inputClass}
+              <Input
                 value={draft.print_format.name}
                 onChange={(e) => patchFormat({ name: e.target.value })}
               />
             </Field>
             <Field label="Largeur (mm)">
-              <input
+              <Input
                 type="number"
                 min={1}
-                className={inputClass}
                 value={draft.print_format.width_mm}
                 onChange={(e) => patchFormat({ width_mm: Number(e.target.value) })}
               />
             </Field>
             <Field label="Hauteur (mm)">
-              <input
+              <Input
                 type="number"
                 min={1}
-                className={inputClass}
                 value={draft.print_format.height_mm}
                 onChange={(e) => patchFormat({ height_mm: Number(e.target.value) })}
               />
             </Field>
             <Field label="DPI">
-              <input
+              <Input
                 type="number"
                 min={1}
-                className={inputClass}
                 value={draft.print_format.dpi}
                 onChange={(e) => patchFormat({ dpi: Number(e.target.value) })}
               />
             </Field>
           </div>
-          <p className="mt-1 text-sm text-muted">
+          <p className="mt-1 text-sm text-muted-foreground">
             Ratio : {(draft.print_format.width_mm / draft.print_format.height_mm).toFixed(3)}
           </p>
         </fieldset>
 
         <fieldset>
-          <legend className="mb-1 text-sm text-muted">
+          <legend className="mb-1 text-sm text-muted-foreground">
             Overlay — cadre ou logo composé par-dessus la photo. PNG transparent, au ratio
             du format de sortie
           </legend>
@@ -194,7 +190,7 @@ export function EventSection() {
                 alt="Overlay de l'événement"
                 /* Le damier rend la transparence visible : sur fond uni, un overlay opaque
                    et un overlay ajouré se ressemblent. */
-                className="h-36 rounded border border-edge bg-[repeating-conic-gradient(#333846_0_25%,transparent_0_50%)] bg-[length:16px_16px]"
+                className="h-36 rounded border border-border bg-[repeating-conic-gradient(#333846_0_25%,transparent_0_50%)] bg-[length:16px_16px]"
               />
               <Button
                 onClick={() => void runOverlayAction(api.deleteOverlay, "Overlay retiré.")}
@@ -203,12 +199,12 @@ export function EventSection() {
               </Button>
             </div>
           ) : (
-            <p className="text-sm text-muted">Aucun overlay — les photos sortiront sans cadre.</p>
+            <p className="text-sm text-muted-foreground">Aucun overlay — les photos sortiront sans cadre.</p>
           )}
           <div className="mt-3 flex flex-wrap items-center gap-3">
-            <label className="inline-flex min-h-12 cursor-pointer items-center rounded-panel bg-accent px-5 font-bold text-accent-ink transition-transform active:scale-[0.98]">
+            <label className="inline-flex min-h-12 cursor-pointer items-center rounded-lg bg-primary px-5 font-bold text-primary-foreground transition-transform active:scale-[0.98]">
               {draft.overlay_file ? "Remplacer l’overlay" : "Choisir un overlay PNG"}
-              <input
+              <Input
                 type="file"
                 accept="image/png"
                 className="sr-only"
@@ -225,43 +221,42 @@ export function EventSection() {
                 }}
               />
             </label>
-            <span className="max-w-md text-sm text-muted">
+            <span className="max-w-md text-sm text-muted-foreground">
               PNG transparent, de même orientation et de proportions proches. Définition recommandée : {Math.round((draft.print_format.width_mm / 25.4) * draft.print_format.dpi)}×{Math.round((draft.print_format.height_mm / 25.4) * draft.print_format.dpi)} px. Les fichiers plus grands sont réduits ; les plus petits ne sont pas agrandis.
             </span>
           </div>
         </fieldset>
 
         <Field label="Copies par tirage">
-          <input
+          <Input
             type="number"
             min={1}
             max={10}
-            className={inputClass}
             value={draft.copies_per_print}
             onChange={(e) => patch({ copies_per_print: Number(e.target.value) })}
           />
         </Field>
 
         <fieldset>
-          <legend className="mb-1 text-sm text-muted">Minuteur photo par défaut</legend>
-          <div className="inline-flex rounded-panel border-2 border-edge bg-surface p-1">
+          <legend className="mb-1 text-sm text-muted-foreground">Minuteur photo par défaut</legend>
+          <ToggleGroup
+            type="single"
+            value={String(draft.default_shot_timer_seconds)}
+            onValueChange={(value) => value && patch({ default_shot_timer_seconds: Number(value) as ShotTimerSeconds })}
+            variant="outline"
+            spacing={0}
+          >
             {SHOT_TIMER_OPTIONS.map((seconds) => (
-              <button
+              <ToggleGroupItem
                 key={seconds}
-                type="button"
-                aria-pressed={draft.default_shot_timer_seconds === seconds}
-                onClick={() => patch({ default_shot_timer_seconds: seconds })}
-                className={`min-h-11 min-w-16 rounded-lg px-4 font-bold transition-colors ${
-                  draft.default_shot_timer_seconds === seconds
-                    ? "bg-accent text-accent-ink"
-                    : "text-body"
-                }`}
+                value={String(seconds)}
+                className="min-h-11 min-w-16 font-bold data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
               >
                 {seconds} s
-              </button>
+              </ToggleGroupItem>
             ))}
-          </div>
-          <span className="mt-1 block text-xs text-muted">
+          </ToggleGroup>
+          <span className="mt-1 block text-xs text-muted-foreground">
             Présélectionné sur la borne ; chaque visiteur peut encore choisir 3, 5 ou 10 secondes.
           </span>
         </fieldset>

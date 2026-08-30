@@ -1,10 +1,30 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
+import { CalendarDays, Camera, CircleGauge, HeartPulse, LockKeyhole, Radio } from "lucide-react";
 
 import { DashboardOverview } from "./DashboardOverview";
 import { EventSection } from "./EventSection";
 import { GallerySection } from "./GallerySection";
 import { HealthSection } from "./HealthSection";
 import { SecuritySection } from "./SecuritySection";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 
 /* Backoffice complet, destiné à la préparation sur laptop. Le pilotage mobile du jour J
  * possède son propre point d'entrée et réutilise directement les mêmes API. */
@@ -25,35 +45,64 @@ export function AdminApp() {
   };
 
   return (
-    <div className="admin-app-shell">
-      <nav className="admin-nav" aria-label="Navigation de l’administration">
-        <button type="button" className="admin-brand" onClick={() => navigate("overview")}>
-          <strong>Drop Your Moment</strong>
-          <span>Administration</span>
-        </button>
-        <div className="admin-nav-items">
-          {NAV_ITEMS.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              aria-current={view === item.id ? "page" : undefined}
-              onClick={() => navigate(item.id)}
-            >
-              <AdminIcon name={item.icon} />
-              <span>{item.label}</span>
-            </button>
-          ))}
-        </div>
-      </nav>
+    <SidebarProvider className="bg-muted/30">
+      <Sidebar collapsible="icon" variant="inset">
+        <SidebarHeader className="p-3">
+          <Button type="button" variant="ghost" className="h-12 w-full justify-start gap-3 overflow-hidden px-2 group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-0!" onClick={() => navigate("overview")}>
+            <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">DY</span>
+            <span className="grid min-w-0 leading-tight group-data-[collapsible=icon]:hidden">
+              <strong className="truncate font-semibold">Drop Your Moment</strong>
+              <span className="truncate text-xs text-muted-foreground">Administration</span>
+            </span>
+          </Button>
+        </SidebarHeader>
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarGroupLabel>Gestion de la borne</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {NAV_ITEMS.map((item) => (
+                  <SidebarMenuItem key={item.id}>
+                    <SidebarMenuButton tooltip={item.label} isActive={view === item.id} onClick={() => navigate(item.id)}>
+                      <AdminIcon name={item.icon} />
+                      <span>{item.label}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
+        <SidebarFooter className="p-3">
+          <div className="flex items-center gap-3 rounded-lg border bg-background p-3 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:border-0 group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:p-0">
+            <span className="relative flex size-2.5 shrink-0"><span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500 opacity-40 motion-reduce:animate-none" /><span className="relative inline-flex size-2.5 rounded-full bg-emerald-600" /></span>
+            <span className="min-w-0 group-data-[collapsible=icon]:hidden"><strong className="block truncate text-sm font-medium">Borne connectée</strong><span className="block truncate text-xs text-muted-foreground">Réseau local</span></span>
+          </div>
+        </SidebarFooter>
+      </Sidebar>
 
-      <main className="admin-main">
+      <SidebarInset className="min-w-0 overflow-hidden">
+        <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:px-6">
+          <SidebarTrigger aria-label="Ouvrir la navigation" />
+          <Separator orientation="vertical" className="h-4" />
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem>Administration</BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem><BreadcrumbPage>{NAV_ITEMS.find(({ id }) => id === view)?.label}</BreadcrumbPage></BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+          <Badge variant="outline" className="ml-auto hidden gap-1.5 font-normal sm:flex"><Radio className="size-3 text-emerald-600" />Actualisation en direct</Badge>
+        </header>
+        <main className="min-w-0 flex-1 bg-muted/30 p-4 md:p-6 lg:p-8">
         {view === "overview" && <DashboardOverview />}
         {view === "event" && <EventSection />}
         {view === "gallery" && <GallerySection />}
         {view === "diagnostic" && <HealthSection />}
         {view === "security" && <SecuritySection />}
-      </main>
-    </div>
+        </main>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
 
@@ -73,13 +122,7 @@ const viewFromHash = (): AdminView => {
   return NAV_ITEMS.some(({ id }) => id === candidate) ? candidate : "overview";
 };
 
-function AdminIcon({ name }: { name: IconName }) {
-  const paths: Record<IconName, ReactNode> = {
-    overview: <><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /></>,
-    event: <><path d="M7 3v3M17 3v3M4 9h16" /><rect x="4" y="5" width="16" height="16" rx="2" /></>,
-    gallery: <><rect x="3" y="4" width="18" height="16" rx="2" /><circle cx="9" cy="10" r="2" /><path d="m4 17 5-4 4 3 3-2 4 3" /></>,
-    diagnostic: <path d="M3 12h4l2-6 4 12 2-6h6" />,
-    security: <path d="M12 3 5 6v5c0 4.7 2.7 8 7 10 4.3-2 7-5.3 7-10V6l-7-3Zm0 5v5m0 3h.01" />,
-  };
-  return <svg viewBox="0 0 24 24" aria-hidden="true">{paths[name]}</svg>;
-}
+const AdminIcon = ({ name }: { name: IconName }) => {
+  const Icon = { overview: CircleGauge, event: CalendarDays, gallery: Camera, diagnostic: HeartPulse, security: LockKeyhole }[name];
+  return <Icon />;
+};

@@ -41,7 +41,7 @@ export function PrimaryButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="min-h-16 cursor-pointer rounded-panel bg-accent px-8 text-xl font-medium text-accent-ink transition-[background-color,color,transform] duration-150 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40"
+      className="min-h-16 cursor-pointer rounded-panel bg-signal px-8 text-xl font-medium text-signal-ink transition-[background-color,color,transform] duration-150 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40"
     >
       {children}
     </button>

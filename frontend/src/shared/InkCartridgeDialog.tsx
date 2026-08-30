@@ -48,7 +48,7 @@ export function InkCartridgeDialog({
         <fieldset className="grid grid-cols-2 gap-3">
           <legend className="mb-2 text-[0.78rem] font-bold tracking-[0.08em] text-muted uppercase">Capacité de la cassette</legend>
           {([36, 54] as const).map((value) => (
-            <label key={value} className="grid min-h-18 cursor-pointer grid-cols-[1.25rem_1fr] items-center rounded-panel border-2 border-edge p-3 has-checked:border-accent has-checked:bg-[color-mix(in_srgb,var(--color-accent)_10%,transparent)]">
+            <label key={value} className="grid min-h-18 cursor-pointer grid-cols-[1.25rem_1fr] items-center rounded-panel border-2 border-edge p-3 has-checked:border-signal has-checked:bg-[color-mix(in_srgb,var(--color-signal)_10%,transparent)]">
               <input
                 type="radio"
                 name="ink-capacity"
@@ -70,7 +70,7 @@ export function InkCartridgeDialog({
 
         <div className="flex justify-end gap-2.5 max-[480px]:grid">
           <button type="button" disabled={saving} onClick={onClose} className="min-h-[2.85rem] rounded-[0.7rem] border border-edge px-4 font-bold disabled:cursor-not-allowed disabled:opacity-50">Annuler</button>
-          <button type="submit" disabled={saving} className="min-h-[2.85rem] rounded-[0.7rem] border border-accent bg-accent px-4 font-bold text-accent-ink disabled:cursor-not-allowed disabled:opacity-50 max-[480px]:row-start-1">
+          <button type="submit" disabled={saving} className="min-h-[2.85rem] rounded-[0.7rem] border border-signal bg-signal px-4 font-bold text-signal-ink disabled:cursor-not-allowed disabled:opacity-50 max-[480px]:row-start-1">
             {saving ? "Enregistrement…" : "Confirmer le remplacement"}
           </button>
         </div>
