@@ -47,6 +47,16 @@ def test_l_etat_du_job_reste_consultable(tmp_path: Path) -> None:
     assert driver.get_job_status(job.id) == job
 
 
+def test_le_pilote_neutre_peut_simuler_un_tirage_lent(tmp_path: Path) -> None:
+    now = [10.0]
+    driver = NullPrinterDriver(completion_delay_s=8.0, clock=lambda: now[0])
+    job = driver.print_image(tmp_path / "final.jpg", copies=1)
+
+    assert job.state is JobState.PRINTING
+    now[0] += 8.0
+    assert driver.get_job_status(job.id).state is JobState.COMPLETED
+
+
 def test_un_job_inconnu_est_refuse() -> None:
     """Mieux vaut un écran d'erreur qu'une session bloquée en PRINTING pour l'éternité."""
     with pytest.raises(PrintJobFailedError):

@@ -12,7 +12,7 @@ import {
 import { useKioskState } from "./useKioskState";
 import { MaintenanceAccess } from "./components/MaintenanceAccess";
 import { useEffect, useState } from "react";
-import { Wrench } from "lucide-react";
+import { Printer, Wrench } from "lucide-react";
 import { applyAccentTheme } from "../shared/theme";
 import {
   DEBUG_FAILURES,
@@ -36,8 +36,10 @@ export function App() {
     chooseFilter,
     retake,
     keepPhoto,
+    savePhoto,
   } = useKioskState();
   const system = mockSystemStatus(realSystem, debugFailure);
+  const printingAvailable = Boolean(system?.printer_ok && system.prints_remaining > 0);
 
   useEffect(() => {
     if (!event) return;
@@ -97,6 +99,7 @@ export function App() {
       return (
         <CenteredScreen>
           {maintenanceButton}
+          <PrintNotice system={system} />
           {debugEnabled && <DebugFailureBar value={debugFailure} onChange={setDebugFailure} />}
           <Title font={event.launch_font}>{event.launch_message}</Title>
           <Lede>Touchez l'écran pour prendre une photo</Lede>
@@ -137,6 +140,8 @@ export function App() {
             onChooseFilter={chooseFilter}
             onRetake={retake}
             onKeep={keepPhoto}
+            onSave={savePhoto}
+            printingAvailable={printingAvailable}
           />
       ) : (
         <CenteredScreen>
@@ -155,7 +160,7 @@ export function App() {
 
     case "printing":
     case "done":
-      return <ConfirmationScreen printing={session.state === "printing"} photoUrl={session.photo_url} remainingSeconds={session.remaining_seconds} />;
+      return <ConfirmationScreen printing={session.state === "printing"} outputMode={session.output_mode} photoUrl={session.photo_url} remainingSeconds={session.remaining_seconds} />;
   }
 }
 
@@ -167,19 +172,35 @@ function DebugFailureBar({
   onChange: (failure: DebugFailure) => void;
 }) {
   return (
-    <aside className="fixed bottom-3 left-1/2 z-60 flex -translate-x-1/2 items-center gap-1 rounded-panel border-2 border-warn bg-ink p-1.5 text-body" aria-label="Simulation visuelle des pannes">
-      <strong className="px-2 text-sm text-warn uppercase">Simulation</strong>
-      {DEBUG_FAILURES.map((failure) => (
-        <button
-          key={failure.value}
-          type="button"
-          aria-pressed={value === failure.value}
-          onClick={() => onChange(failure.value)}
-          className="min-h-10 rounded-[0.55rem] px-3 font-semibold text-body aria-pressed:bg-warn aria-pressed:text-ink"
-        >
-          {failure.label}
-        </button>
-      ))}
+    <aside className="fixed bottom-3 left-1/2 z-60 flex -translate-x-1/2 items-center gap-3 rounded-panel border-2 border-warn bg-ink p-2 text-body">
+      <label htmlFor="debug-failure" className="px-1 text-sm font-bold text-warn uppercase">Simulation</label>
+      <select
+        id="debug-failure"
+        value={value}
+        onChange={(event) => onChange(event.target.value as DebugFailure)}
+        className="min-h-11 min-w-64 rounded-[0.55rem] border-2 border-edge bg-surface px-3 text-base font-semibold text-body"
+      >
+        {DEBUG_FAILURES.map((failure) => <option key={failure.value} value={failure.value}>{failure.label}</option>)}
+      </select>
     </aside>
+  );
+}
+
+function PrintNotice({ system }: { system: NonNullable<ReturnType<typeof mockSystemStatus>> }) {
+  if (system.printer_ok && system.prints_remaining > 5) return null;
+
+  const message = !system.printer_ok
+    ? "Imprimante déconnectée"
+    : system.prints_remaining === 0
+      ? "Impression indisponible"
+      : system.prints_remaining <= 2
+        ? `Plus que ${system.prints_remaining} tirages`
+        : `${system.prints_remaining} tirages restants`;
+
+  return (
+    <div className="fixed top-4 right-20 flex min-h-14 items-center gap-2.5 rounded-panel border-2 border-warn bg-warn-bg px-4 text-base font-semibold text-warn" role="status">
+      <Printer className="size-5" aria-hidden="true" />
+      {message}
+    </div>
   );
 }

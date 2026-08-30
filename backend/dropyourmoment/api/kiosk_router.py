@@ -51,11 +51,14 @@ class SessionStatus(BaseModel):
     error: str | None = None
     # Porte déjà la révision : le frontend n'a pas à fabriquer son propre anti-cache.
     photo_url: str | None = None
+    output_mode: str | None = None
 
 
 class SystemStatus(BaseModel):
     camera_ok: bool
+    printer_ok: bool
     operator_attention: bool
+    prints_remaining: int
     camera_driver: str
     preview_size: tuple[int, int]
     still_size: tuple[int, int]
@@ -99,6 +102,7 @@ def _status(runtime: Runtime) -> SessionStatus:
         remaining_seconds=machine.remaining_seconds(),
         error=machine.last_error,
         photo_url=_photo_url(session),
+        output_mode=session.output_mode if session else None,
     )
 
 
@@ -133,12 +137,17 @@ def read_system_status(runtime: Runtime = Depends(get_runtime)) -> SystemStatus:
     caps = runtime.camera.get_capabilities()
     disk = shutil.disk_usage(runtime.settings.data_dir)
     camera_ok = runtime.camera.is_available()
-    paper_ok = runtime.counters.read().paper_remaining >= runtime.event.config.copies_per_print
+    copies = runtime.event.config.copies_per_print
+    prints_remaining = runtime.counters.read().paper_remaining // copies
     return SystemStatus(
         camera_ok=camera_ok,
+        # Le pilote neutre est disponible. Le pilote CUPS remplacera cette constante par
+        # son état de liaison réel lorsqu'il sera branché.
+        printer_ok=True,
         # Le kiosque n'expose ici qu'un signal discret. Les causes et les actions
         # restent derrière le PIN de maintenance.
-        operator_attention=not camera_ok or disk.free / disk.total <= 0.1 or not paper_ok,
+        operator_attention=not camera_ok or disk.free / disk.total <= 0.1 or prints_remaining <= 5,
+        prints_remaining=prints_remaining,
         camera_driver=caps.driver_name,
         preview_size=caps.preview_size,
         still_size=caps.still_size,
@@ -285,10 +294,8 @@ def print_photo(session_id: str, runtime: Runtime = Depends(get_runtime)) -> Ses
     un CHOOSE_FILTER supplémentaire — la machine à états est fermée par défaut. Il reste à
     vérifier que le fichier est bien là.
 
-    La réponse ne dit pas forcément PRINTING : avec le pilote neutre le job est terminé
-    avant même que `_status` le sonde, et le visiteur passe directement à la confirmation.
-    C'est le comportement honnête — l'écran d'attente n'a de sens que quand il y a vraiment
-    quelque chose à attendre.
+    La réponse ne dit pas forcément PRINTING : le pilote décide si le job est encore en
+    cours. En développement, le pilote neutre configuré simule cette attente.
     """
     session = _require_session(runtime, session_id)
     if session.final_path is None or not session.final_path.is_file():
@@ -307,6 +314,22 @@ def print_photo(session_id: str, runtime: Runtime = Depends(get_runtime)) -> Ses
         logger.error("tirage refusé pour la session %s : %s", session.id, exc)
         runtime.machine.fail(str(exc))
 
+    return _status(runtime)
+
+
+@router.post("/session/{session_id}/save", response_model=SessionStatus)
+def save_photo(session_id: str, runtime: Runtime = Depends(get_runtime)) -> SessionStatus:
+    """Conserve la photo dans la galerie sans demander de tirage."""
+    session = _require_session(runtime, session_id)
+    if session.final_path is None or not session.final_path.is_file():
+        raise HTTPException(status.HTTP_409_CONFLICT, detail="aucune photo à enregistrer")
+
+    try:
+        runtime.machine.save()
+    except InvalidTransitionError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+    runtime.purge_sessions()
     return _status(runtime)
 
 
