@@ -72,9 +72,7 @@ def test_info_evenement_separee_du_materiel(kiosk: TestClient) -> None:
     assert body["event_name"]
 
 
-def test_overlay_evenement_disponible_sur_api_kiosque(
-    kiosk: TestClient, runtime: Runtime
-) -> None:
+def test_overlay_evenement_disponible_sur_api_kiosque(kiosk: TestClient, runtime: Runtime) -> None:
     Image.new("RGBA", (148, 100), (255, 255, 255, 0)).save(runtime.event_store.overlay_path)
     runtime.event_store.save_config(
         runtime.event.config.model_copy(update={"overlay_file": OVERLAY_FILENAME})
