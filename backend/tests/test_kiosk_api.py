@@ -5,8 +5,10 @@ from collections.abc import Iterator
 
 import httpx
 from fastapi.testclient import TestClient
+from PIL import Image
 
 from dropyourmoment.api.kiosk_router import MJPEG_BOUNDARY, _mjpeg_frames
+from dropyourmoment.core.event_config import OVERLAY_FILENAME
 from dropyourmoment.core.print_format import POSTCARD_LANDSCAPE
 from dropyourmoment.core.session import SessionState
 from dropyourmoment.hardware.camera.mock_driver import MockCameraDriver
@@ -66,7 +68,26 @@ def test_info_evenement_separee_du_materiel(kiosk: TestClient) -> None:
     assert body["print_aspect_ratio"] == POSTCARD_LANDSCAPE.aspect_ratio
     assert body["available_filters"] == ["original", "bw", "sepia"]
     assert body["default_shot_timer_seconds"] == 3
+    assert body["overlay_url"] is None
     assert body["event_name"]
+
+
+def test_overlay_evenement_disponible_sur_api_kiosque(
+    kiosk: TestClient, runtime: Runtime
+) -> None:
+    Image.new("RGBA", (148, 100), (255, 255, 255, 0)).save(runtime.event_store.overlay_path)
+    runtime.event_store.save_config(
+        runtime.event.config.model_copy(update={"overlay_file": OVERLAY_FILENAME})
+    )
+    runtime.reload_event()
+
+    overlay_url = kiosk.get("/api/event").json()["overlay_url"]
+
+    assert overlay_url and overlay_url.startswith("/api/event/overlay?v=")
+    response = kiosk.get(overlay_url)
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/png"
+    assert response.headers["cache-control"] == "no-store"
 
 
 def test_camera_absente_signalee_sans_faire_tomber_l_api(runtime: Runtime) -> None:

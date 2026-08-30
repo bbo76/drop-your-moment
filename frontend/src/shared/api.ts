@@ -72,6 +72,8 @@ export interface EventInfo {
   available_filters: FilterName[];
   print_format_name: string;
   print_aspect_ratio: number;
+  /** PNG composé sur la zone conservée du retour live, déjà versionné par le backend. */
+  overlay_url: string | null;
   default_shot_timer_seconds: ShotTimerSeconds;
   screen_flash_enabled: boolean;
 }

@@ -34,42 +34,49 @@ export function computeFraming(
   };
 }
 
-/** Assombrit ce que le recadrage va retirer et matérialise la zone conservée.
+/** Met hors foyer ce que le recadrage va retirer et matérialise la zone conservée.
  *
  * Sans ce repère, les visiteurs se cadrent sur toute la largeur de l'aperçu et se
  * retrouvent coupés une fois la photo recadrée au ratio du format de sortie.
+ * `backdrop-filter` agit sur l'unique flux MJPEG déjà affiché : dupliquer l'image pour
+ * fabriquer le flou ouvrirait un second flux caméra et doublerait inutilement l'encodage.
  */
 export function FramingGuide({
   cropsWidth,
   maskPercent,
+  overlayUrl,
 }: {
   cropsWidth: boolean;
   maskPercent: number;
+  overlayUrl: string | null;
 }) {
-  if (maskPercent <= 0) return null;
+  const veil = "absolute bg-black/15 backdrop-blur-[6px] backdrop-brightness-50";
+  const overlayStyle = cropsWidth
+    ? { inset: `0 auto 0 ${maskPercent}%`, width: `${100 - 2 * maskPercent}%` }
+    : { inset: `${maskPercent}% 0 auto 0`, height: `${100 - 2 * maskPercent}%` };
 
   return (
-    <svg
-      viewBox="0 0 100 100"
-      preserveAspectRatio="none"
-      aria-hidden="true"
-      className="pointer-events-none absolute inset-0 size-full fill-black/55 stroke-white/65"
-    >
-      {cropsWidth ? (
+    <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+      {overlayUrl && (
+        <img
+          src={overlayUrl}
+          alt=""
+          draggable={false}
+          className="absolute h-full w-full object-fill"
+          style={overlayStyle}
+        />
+      )}
+      {maskPercent > 0 && (cropsWidth ? (
         <>
-          <rect width={maskPercent} height="100" stroke="none" />
-          <rect x={100 - maskPercent} width={maskPercent} height="100" stroke="none" />
-          <line x1={maskPercent} x2={maskPercent} y2="100" strokeWidth="2" strokeDasharray="8 8" vectorEffect="non-scaling-stroke" />
-          <line x1={100 - maskPercent} x2={100 - maskPercent} y2="100" strokeWidth="2" strokeDasharray="8 8" vectorEffect="non-scaling-stroke" />
+          <div className={`${veil} inset-y-0 left-0 border-r border-white/70`} style={{ width: `${maskPercent}%` }} />
+          <div className={`${veil} inset-y-0 right-0 border-l border-white/70`} style={{ width: `${maskPercent}%` }} />
         </>
       ) : (
         <>
-          <rect width="100" height={maskPercent} stroke="none" />
-          <rect y={100 - maskPercent} width="100" height={maskPercent} stroke="none" />
-          <line y1={maskPercent} y2={maskPercent} x2="100" strokeWidth="2" strokeDasharray="8 8" vectorEffect="non-scaling-stroke" />
-          <line y1={100 - maskPercent} y2={100 - maskPercent} x2="100" strokeWidth="2" strokeDasharray="8 8" vectorEffect="non-scaling-stroke" />
+          <div className={`${veil} inset-x-0 top-0 border-b border-white/70`} style={{ height: `${maskPercent}%` }} />
+          <div className={`${veil} inset-x-0 bottom-0 border-t border-white/70`} style={{ height: `${maskPercent}%` }} />
         </>
-      )}
-    </svg>
+      ))}
+    </div>
   );
 }

@@ -11,6 +11,7 @@ const SHOT_TIMER_OPTIONS: ShotTimerSeconds[] = [3, 5, 10];
 interface Props {
   previewSize: [number, number];
   printAspectRatio: number;
+  overlayUrl: string | null;
   remainingSeconds: number | null;
   defaultShotTimerSeconds: ShotTimerSeconds;
   screenFlashEnabled: boolean;
@@ -32,6 +33,7 @@ type Phase =
 export function PreviewScreen({
   previewSize,
   printAspectRatio,
+  overlayUrl,
   remainingSeconds,
   defaultShotTimerSeconds,
   screenFlashEnabled,
@@ -87,14 +89,14 @@ export function PreviewScreen({
   return (
     <main className="grid h-full grid-rows-[1fr_auto] gap-3 bg-black p-3">
       <div
-        className="relative m-auto max-h-full min-h-0 w-full max-w-full overflow-hidden rounded-panel bg-black"
-        // La largeur est prise, le ratio en déduit la hauteur, et max-h la borne en
-        // réduisant la largeur d'autant. On tient l'image entière — la rogner ferait
+        className="relative m-auto h-full max-h-full min-h-0 w-auto max-w-full overflow-hidden rounded-panel bg-black"
+        // La hauteur disponible est prise et le ratio en déduit la largeur. On tient
+        // l'image entière sans l'étirer — la rogner ferait
         // mentir le cadre de visée sur ce qui est réellement conservé.
         style={{ aspectRatio: framing.aspectRatio }}
       >
         <img ref={preview} src={streamUrl} alt="" className="block h-full w-full" />
-        <FramingGuide {...framing} />
+        <FramingGuide {...framing} overlayUrl={overlayUrl} />
 
         {phase.kind === "counting" && (
           <div className="pointer-events-none absolute inset-0 grid place-content-center">
@@ -118,7 +120,7 @@ export function PreviewScreen({
       <div className="relative grid min-h-22 grid-cols-[minmax(0,1fr)_auto_14rem_8rem] items-center gap-3 rounded-panel bg-ink p-3 max-[900px]:gap-2 max-[900px]:p-2 [&>button]:w-full">
         <span className="text-lg leading-tight font-medium tracking-[0.01em] text-muted max-[900px]:max-w-36 max-[900px]:text-base">
           {framing.maskPercent > 0 && phase.kind === "waiting"
-            ? "Cadrez-vous entre les pointillés"
+            ? "La zone nette sera conservée"
             : ""}
         </span>
 

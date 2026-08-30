@@ -116,6 +116,7 @@ export function App() {
         <PreviewScreen
             previewSize={system.preview_size}
             printAspectRatio={event.print_aspect_ratio}
+            overlayUrl={event.overlay_url}
             remainingSeconds={session.remaining_seconds}
             defaultShotTimerSeconds={event.default_shot_timer_seconds}
             screenFlashEnabled={event.screen_flash_enabled}
