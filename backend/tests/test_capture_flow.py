@@ -104,10 +104,10 @@ def test_choix_de_filtre_change_l_image(kiosk: TestClient, runtime: Runtime) -> 
     before = final_path(runtime.settings.sessions_dir, session_id).read_bytes()
 
     after_body = kiosk.post(
-        f"/api/session/{session_id}/filter", json={"name": FilterName.BW}
+        f"/api/session/{session_id}/filter", json={"name": FilterName.BW_STUDIO}
     ).json()
 
-    assert after_body["selected_filter"] == FilterName.BW
+    assert after_body["selected_filter"] == FilterName.BW_STUDIO
     assert after_body["state"] == SessionState.REVIEW
     after = final_path(runtime.settings.sessions_dir, session_id).read_bytes()
     assert before != after
@@ -130,7 +130,7 @@ def test_aller_retour_entre_filtres(kiosk: TestClient, runtime: Runtime) -> None
 
     kiosk.post(f"/api/session/{session_id}/filter", json={"name": FilterName.SEPIA})
     sepia_first = path.read_bytes()
-    kiosk.post(f"/api/session/{session_id}/filter", json={"name": FilterName.BW})
+    kiosk.post(f"/api/session/{session_id}/filter", json={"name": FilterName.BW_STUDIO})
     kiosk.post(f"/api/session/{session_id}/filter", json={"name": FilterName.SEPIA})
 
     assert path.read_bytes() == sepia_first, "recomposer depuis le brut doit être stable"
@@ -138,7 +138,9 @@ def test_aller_retour_entre_filtres(kiosk: TestClient, runtime: Runtime) -> None
 
 def test_filtre_non_propose_refuse(kiosk: TestClient, runtime: Runtime) -> None:
     """Un événement peut n'offrir que certains filtres ; l'API doit tenir la liste."""
-    runtime.event.config = EventConfig(available_filters=[FilterName.ORIGINAL, FilterName.BW])
+    runtime.event.config = EventConfig(
+        available_filters=[FilterName.ORIGINAL, FilterName.BW_STUDIO]
+    )
     body = start_and_capture(kiosk)
 
     response = kiosk.post(

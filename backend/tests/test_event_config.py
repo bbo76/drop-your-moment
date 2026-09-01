@@ -41,7 +41,7 @@ def test_config_relue_a_l_identique(tmp_path: Path) -> None:
             launch_message="Venez créer un souvenir",
             launch_font="prestigious",
             accent_color="#8b5cf6",
-            available_filters=[FilterName.ORIGINAL, FilterName.BW],
+            available_filters=[FilterName.ORIGINAL, FilterName.BW_STUDIO],
             copies_per_print=2,
             default_shot_timer_seconds=10,
             screen_flash_enabled=False,
@@ -54,7 +54,7 @@ def test_config_relue_a_l_identique(tmp_path: Path) -> None:
     assert event.config.launch_message == "Venez créer un souvenir"
     assert event.config.launch_font == "prestigious"
     assert event.config.accent_color == "#8b5cf6"
-    assert event.config.available_filters == [FilterName.ORIGINAL, FilterName.BW]
+    assert event.config.available_filters == [FilterName.ORIGINAL, FilterName.BW_STUDIO]
     assert event.config.copies_per_print == 2
     assert event.config.default_shot_timer_seconds == 10
     assert event.config.screen_flash_enabled is False
@@ -82,6 +82,16 @@ def test_ancienne_duree_de_flash_ne_casse_pas_la_configuration(tmp_path: Path) -
     assert event.config.event_name == "Ancien événement"
     assert event.config.launch_message == "Ancien événement"
     assert event.config.screen_flash_enabled is True
+
+
+def test_ancien_filtre_noir_et_blanc_devient_le_rendu_studio() -> None:
+    config = EventConfig(available_filters=["original", "bw", "bw_studio", "sepia"])
+
+    assert config.available_filters == [
+        FilterName.ORIGINAL,
+        FilterName.BW_STUDIO,
+        FilterName.SEPIA,
+    ]
 
 
 def test_config_corrompue_ne_bloque_pas_le_demarrage(

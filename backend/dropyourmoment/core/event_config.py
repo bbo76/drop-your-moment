@@ -59,7 +59,11 @@ class EventConfig(BaseModel):
     overlay_file: str | None = None
 
     available_filters: list[FilterName] = Field(
-        default_factory=lambda: [FilterName.ORIGINAL, FilterName.BW, FilterName.SEPIA]
+        default_factory=lambda: [
+            FilterName.ORIGINAL,
+            FilterName.BW_STUDIO,
+            FilterName.SEPIA,
+        ]
     )
     print_format: PrintFormat = Field(default_factory=lambda: POSTCARD_LANDSCAPE.model_copy())
     copies_per_print: int = Field(default=1, ge=1, le=10)
@@ -72,11 +76,19 @@ class EventConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def _reuse_event_name_for_legacy_launch_message(cls, value: object) -> object:
-        """Préserve le titre des événements créés avant la séparation des deux champs."""
-        if isinstance(value, dict) and "launch_message" not in value and "event_name" in value:
-            return {**value, "launch_message": value["event_name"]}
-        return value
+    def _migrate_legacy_config(cls, value: object) -> object:
+        """Préserve les configurations créées avant les renommages de champs et filtres."""
+        if not isinstance(value, dict):
+            return value
+
+        migrated = {**value}
+        if "launch_message" not in migrated and "event_name" in migrated:
+            migrated["launch_message"] = migrated["event_name"]
+        if isinstance(filters := migrated.get("available_filters"), list):
+            migrated["available_filters"] = list(
+                dict.fromkeys("bw_studio" if name == "bw" else name for name in filters)
+            )
+        return migrated
 
     @field_validator("overlay_file")
     @classmethod

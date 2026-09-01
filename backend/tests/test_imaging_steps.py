@@ -5,7 +5,12 @@ from __future__ import annotations
 import pytest
 from PIL import Image
 
-from dropyourmoment.imaging.filters import FilterName, apply_filter
+from dropyourmoment.imaging.filters import (
+    SEPIA_HIGHLIGHT,
+    SEPIA_SHADOW,
+    FilterName,
+    apply_filter,
+)
 from dropyourmoment.imaging.steps import apply_overlay, crop_to_aspect, overlay_matches_ratio
 
 POSTCARD_RATIO = 148 / 100  # 1.48
@@ -121,24 +126,33 @@ def test_validation_du_ratio_d_overlay() -> None:
 # --- Filtres -----------------------------------------------------------------------
 
 
-def test_filtre_original_conserve_les_couleurs() -> None:
+def test_filtre_naturel_embellit_subtilement_les_couleurs() -> None:
     result = apply_filter(solid((10, 10), (200, 50, 25)), FilterName.ORIGINAL)
 
-    assert result.getpixel((5, 5)) == (200, 50, 25)
+    assert result.getpixel((5, 5)) != (200, 50, 25)
 
 
-def test_filtre_noir_et_blanc_desature() -> None:
-    result = apply_filter(solid((10, 10), (200, 50, 25)), FilterName.BW)
+def test_filtre_noir_et_blanc_studio_etend_les_tons_et_renforce_le_contraste() -> None:
+    image = Image.new("RGB", (3, 1))
+    image.putdata([(40, 40, 40), (128, 128, 128), (210, 210, 210)])
 
-    red, green, blue = result.getpixel((5, 5))
-    assert red == green == blue, "un gris a ses trois canaux égaux"
+    result = apply_filter(image, FilterName.BW_STUDIO)
+
+    assert result.getpixel((0, 0)) == (0, 0, 0)
+    assert result.getpixel((2, 0)) == (255, 255, 255)
+    assert result.getpixel((1, 0))[0] > 128
 
 
 def test_filtre_sepia_rechauffe_l_image() -> None:
-    result = apply_filter(solid((10, 10), (128, 128, 128)), FilterName.SEPIA)
+    image = Image.new("RGB", (3, 1))
+    image.putdata([(40, 40, 40), (128, 128, 128), (210, 210, 210)])
 
-    red, green, blue = result.getpixel((5, 5))
+    result = apply_filter(image, FilterName.SEPIA)
+
+    red, green, blue = result.getpixel((1, 0))
     assert red > green > blue, "virage chaud attendu"
+    assert result.getpixel((0, 0)) == SEPIA_SHADOW
+    assert result.getpixel((2, 0)) == SEPIA_HIGHLIGHT
 
 
 def test_les_filtres_ne_modifient_pas_la_source() -> None:

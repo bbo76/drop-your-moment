@@ -69,7 +69,7 @@ def test_l_overlay_n_est_pas_filtre(raw_shot: Path) -> None:
     Si l'overlay était composé avant le filtre, ce rouge saturé sortirait en gris avec le
     filtre N&B — et le logo d'un client partirait avec lui.
     """
-    result = ImagePipeline(event(red_band_overlay())).compose(raw_shot, FilterName.BW)
+    result = ImagePipeline(event(red_band_overlay())).compose(raw_shot, FilterName.BW_STUDIO)
 
     width, height = result.size
     red, green, blue = result.getpixel((width // 2, height // 10))
@@ -103,7 +103,7 @@ def test_changer_de_filtre_est_reproductible(raw_shot: Path) -> None:
     pipeline = ImagePipeline(event(red_band_overlay()))
 
     first = pipeline.compose(raw_shot, FilterName.SEPIA)
-    pipeline.compose(raw_shot, FilterName.BW)
+    pipeline.compose(raw_shot, FilterName.BW_STUDIO)
     again = pipeline.compose(raw_shot, FilterName.SEPIA)
 
     assert first.tobytes() == again.tobytes()
