@@ -28,7 +28,7 @@ def test_lecture_de_la_configuration_active(admin: TestClient) -> None:
     assert body["launch_message"] == "Bienvenue"
     assert body["launch_font"] == "modern"
     assert body["accent_color"] == "#ffd400"
-    assert body["available_filters"] == ["original", "bw", "sepia"]
+    assert body["available_filters"] == ["original", "bw_studio", "sepia"]
     assert body["copies_per_print"] == 1
     assert body["default_shot_timer_seconds"] == 3
     assert body["screen_flash_enabled"] is True
@@ -52,7 +52,7 @@ def test_aller_retour_de_la_configuration(admin: TestClient) -> None:
     assert relu["launch_message"] == "Bienvenue à notre mariage"
     assert relu["launch_font"] == "prestigious"
     assert relu["accent_color"] == "#8b5cf6"
-    assert relu["available_filters"] == ["original", "bw"]
+    assert relu["available_filters"] == ["original", "bw_studio"]
     assert relu["copies_per_print"] == 2
     assert relu["default_shot_timer_seconds"] == 10
     assert relu["screen_flash_enabled"] is False
@@ -97,7 +97,7 @@ def test_le_kiosque_voit_le_changement_sans_redemarrage(
     assert vu_par_le_kiosque["launch_message"] == "Faites les fous !"
     assert vu_par_le_kiosque["launch_font"] == "handwritten"
     assert vu_par_le_kiosque["accent_color"] == "#f97316"
-    assert vu_par_le_kiosque["available_filters"] == ["bw"]
+    assert vu_par_le_kiosque["available_filters"] == ["bw_studio"]
     assert vu_par_le_kiosque["default_shot_timer_seconds"] == 5
     assert vu_par_le_kiosque["screen_flash_enabled"] is False
 

@@ -69,7 +69,7 @@ def test_info_evenement_separee_du_materiel(kiosk: TestClient) -> None:
     body = kiosk.get("/api/event").json()
 
     assert body["print_aspect_ratio"] == POSTCARD_LANDSCAPE.aspect_ratio
-    assert body["available_filters"] == ["original", "bw", "sepia"]
+    assert body["available_filters"] == ["original", "bw_studio", "sepia"]
     assert body["default_shot_timer_seconds"] == 3
     assert body["overlay_url"] is None
     assert body["event_name"]

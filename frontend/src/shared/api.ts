@@ -8,12 +8,12 @@
 /** États de la machine à états de session, côté serveur. */
 export type SessionState = "idle" | "preview" | "review" | "printing" | "done" | "error";
 
-export type FilterName = "original" | "bw" | "sepia";
+export type FilterName = "original" | "bw_studio" | "sepia";
 export type ShotTimerSeconds = 3 | 5 | 10;
 
 export const FILTER_LABELS: Record<FilterName, string> = {
-  original: "Original",
-  bw: "Noir & blanc",
+  original: "Naturel",
+  bw_studio: "Noir & blanc",
   sepia: "Sépia",
 };
 
