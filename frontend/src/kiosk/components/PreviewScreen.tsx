@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 import { BLANK_PIXEL, previewStreamUrl, type ShotTimerSeconds } from "../../shared/api";
 import { computeFraming, FramingGuide } from "./FramingGuide";
@@ -100,13 +100,7 @@ export function PreviewScreen({
 
         {phase.kind === "counting" && (
           <div className="pointer-events-none absolute inset-0 grid place-content-center">
-            <span
-              // `key` remonté à chaque chiffre pour rejouer l'animation d'apparition.
-              key={phase.value}
-              className="grid size-[1.08em] place-items-center rounded-[0.12em] bg-signal text-[30vmin] leading-none font-black text-signal-ink shadow-[0_0.12em_0.28em_rgb(0_0_0/35%)] motion-safe:animate-pulse"
-            >
-              {phase.value}
-            </span>
+            <CountdownNumber value={phase.value} />
           </div>
         )}
 
@@ -146,7 +140,7 @@ export function PreviewScreen({
             </div>
           </fieldset>
         ) : (
-          <span className="pointer-events-none absolute inset-0 grid place-items-center text-3xl leading-[1.08] font-bold tracking-[-0.02em] text-signal">
+          <span className="capture-cue pointer-events-none absolute inset-0 grid place-items-center text-3xl leading-[1.08] font-bold tracking-[-0.02em] text-signal">
             Souriez…
           </span>
         )}
@@ -167,5 +161,18 @@ export function PreviewScreen({
         </span>
       </div>
     </main>
+  );
+}
+
+function CountdownNumber({ value }: { value: number }) {
+  return (
+    <span className="relative grid size-[1.08em] place-items-center overflow-hidden rounded-[0.12em] bg-signal text-[30vmin] leading-none font-black text-signal-ink">
+      <span
+        className="countdown-reel"
+        style={{ "--countdown-value": value } as CSSProperties}
+        aria-hidden="true"
+      />
+      <span className="sr-only" aria-live="polite">{value}</span>
+    </span>
   );
 }

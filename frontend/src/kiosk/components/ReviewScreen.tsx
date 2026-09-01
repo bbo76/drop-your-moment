@@ -40,7 +40,7 @@ export function ReviewScreen({
         <img
           src={photoUrl}
           alt="Votre photo"
-          className="max-h-full max-w-full rounded-panel object-contain"
+          className="photo-develop max-h-full max-w-full rounded-panel object-contain"
         />
       </div>
 
@@ -113,7 +113,7 @@ function FilterButton({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`min-h-14 cursor-pointer rounded-panel border-2 px-5 text-left text-lg font-medium ${
+      className={`min-h-14 cursor-pointer rounded-panel border-2 px-5 text-left text-lg font-medium transition-[background-color,border-color,color,transform] duration-240 active:scale-[0.98] ${
         active
           ? "border-signal bg-signal text-signal-ink"
           : "border-edge text-body"

@@ -34,12 +34,6 @@ export function ConfirmationScreen({ printing, outputMode, photoUrl, remainingSe
     <main className="grid h-full grid-cols-[1.16fr_1fr] gap-5 p-5">
       <div className="relative grid min-h-0 place-content-center overflow-hidden rounded-panel bg-black">
         {photoUrl && <img src={photoUrl} alt="Votre photo" className="max-h-full max-w-full object-contain" />}
-        {printing && (
-          <div className="absolute inset-x-0 bottom-0 grid h-3 grid-cols-4" aria-hidden="true">
-            <span className="bg-[#48d7e8]" /><span className="bg-[#f05aa6]" />
-            <span className="bg-signal" /><span className="bg-body" />
-          </div>
-        )}
       </div>
 
       {printing ? (
@@ -72,7 +66,7 @@ export function ConfirmationScreen({ printing, outputMode, photoUrl, remainingSe
         </section>
       ) : (
         <section className="grid place-content-center justify-items-start gap-4 rounded-panel bg-signal p-8 text-signal-ink">
-          <span className="grid size-14 place-items-center rounded-full border-[3px] border-signal-ink" aria-hidden="true">
+          <span className="success-mark grid size-14 place-items-center rounded-full border-[3px] border-signal-ink" aria-hidden="true">
             <Check className="size-8" strokeWidth={3} />
           </span>
           <h1 className="max-w-[10ch] text-5xl leading-none font-bold tracking-[-0.02em]">
