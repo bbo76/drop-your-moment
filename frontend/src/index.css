@@ -80,6 +80,81 @@ input[type="radio"] {
   accent-color: var(--color-signal);
 }
 
+.countdown-reel {
+  position: relative;
+  display: block;
+  width: 2ch;
+  height: 1em;
+  overflow: hidden;
+}
+
+.countdown-reel::before {
+  content: "0\A 1\A 2\A 3\A 4\A 5\A 6\A 7\A 8\A 9\A 10";
+  position: absolute;
+  top: calc(var(--countdown-value) * -1em);
+  left: 0;
+  width: 100%;
+  white-space: pre;
+  text-align: center;
+  transition: top 1s cubic-bezier(1, 0, 0, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .countdown-reel::before { transition: none; }
+}
+
+@keyframes capture-cue {
+  from {
+    opacity: 0;
+    clip-path: inset(0 48%);
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(0);
+  }
+}
+
+@keyframes photo-develop {
+  from {
+    opacity: 0.45;
+    filter: brightness(0.55) contrast(0.85);
+    clip-path: inset(3% 6% round var(--radius-panel));
+    transform: scale(0.985);
+  }
+  to {
+    opacity: 1;
+    filter: brightness(1) contrast(1);
+    clip-path: inset(0 round var(--radius-panel));
+    transform: scale(1);
+  }
+}
+
+@keyframes success-stroke {
+  from { stroke-dashoffset: 40; }
+  to { stroke-dashoffset: 0; }
+}
+
+.capture-cue {
+  animation: capture-cue 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.photo-develop {
+  animation: photo-develop 680ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.success-mark svg > * {
+  stroke-dasharray: 40;
+  animation: success-stroke 520ms 160ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .capture-cue,
+  .photo-develop,
+  .success-mark svg > * {
+    animation: none;
+  }
+}
+
 /* Le module admin possède une identité d'outil neutre, indépendante de l'événement. Ces
    jetons sont portés par le body : le kiosque et sa maintenance conservent strictement
    leur palette et continuent seuls à recevoir la couleur personnalisée. */
