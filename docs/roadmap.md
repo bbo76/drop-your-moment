@@ -127,7 +127,8 @@ La maintenance tactile du kiosque n'est pas modifiée. Le rendu est vérifié sa
 
 Le premier contact avec le vrai matériel est en cours. L'installation Trixie, le venv
 avec accès aux paquets système, l'ouverture du capteur IMX708 et l'aperçu MJPEG sont
-validés sur un Raspberry Pi 4.
+validés sur un Raspberry Pi 4. Le parcours visiteur complet fonctionne avec le vrai
+capteur, de l'accueil au retour à l'accueil après conservation de la photo.
 
 - ✅ Prérequis Trixie : `python3-picamera2`, `rpicam-apps`, `nodejs`, `npm`, pnpm
 - ✅ `uv venv --python /usr/bin/python3 --system-site-packages` puis `uv sync --no-dev
@@ -184,7 +185,6 @@ Aucun changement d'API ni de machine à états attendu : le pilote neutre est re
 
 | quoi | pourquoi ça compte |
 |---|---|
-| **Parcours complet avec picamera2** | Le flux tient 29,9 images/s et la capture composée prend 356 ms en moyenne ; le parcours visiteur complet reste à confirmer depuis l'interface. |
 | **Rendu visuel du kiosque** | Le rythme du décompte et la taille des cibles tactiles sur 7 pouces sont des jugements qui demandent l'écran réel. |
 | **Impression CP1500 depuis ce logiciel** | L'impression via CUPS est confirmée fonctionnelle sur le Pi, mais pas encore depuis cette application. |
 | **Sondage caméra sur une machine où la webcam s'ouvre** | Le code est exercé et la liste des noms système est confirmée, mais l'autorisation caméra de macOS n'étant pas accordée au processus qui lance le backend, aucun index n'a jamais répondu ici. La partie « index » reste à voir avec une webcam réellement ouvrable. |
