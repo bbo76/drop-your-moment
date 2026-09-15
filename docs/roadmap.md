@@ -127,13 +127,15 @@ La maintenance tactile du kiosque n'est pas modifiée. Le rendu est vérifié sa
 
 Le premier contact avec le vrai matériel est en cours. L'installation Trixie, le venv
 avec accès aux paquets système, l'ouverture du capteur IMX708 et l'aperçu MJPEG sont
-validés sur un Raspberry Pi 4.
+validés sur un Raspberry Pi 4. Le parcours visiteur complet fonctionne avec le vrai
+capteur, de l'accueil au retour à l'accueil après conservation de la photo.
 
 - ✅ Prérequis Trixie : `python3-picamera2`, `rpicam-apps`, `nodejs`, `npm`, pnpm
 - ✅ `uv venv --python /usr/bin/python3 --system-site-packages` puis `uv sync --no-dev
   --inexact` — validé avec Python 3.13 et Picamera2 fourni par apt
 - Bascule sur `picamera2_driver`, mesure de la fluidité de l'aperçu et de la latence de
-  capture — aperçu fonctionnel, mesures restantes
+  capture — aperçu mesuré à 29,9 images/s ; capture et composition en 356 ms de moyenne
+  sur cinq prises (346 ms de médiane, 343 ms après la première)
 - Service systemd, Cage et Chromium en kiosque sur Raspberry Pi OS Lite
 - Réglages finaux : résolution d'aperçu, qualité JPEG, timeouts
 
@@ -183,7 +185,6 @@ Aucun changement d'API ni de machine à états attendu : le pilote neutre est re
 
 | quoi | pourquoi ça compte |
 |---|---|
-| **Performances du pilote picamera2** | Le capteur et l'aperçu MJPEG fonctionnent sur le Pi ; la fluidité effective et la latence de capture restent à mesurer. |
 | **Rendu visuel du kiosque** | Le rythme du décompte et la taille des cibles tactiles sur 7 pouces sont des jugements qui demandent l'écran réel. |
 | **Impression CP1500 depuis ce logiciel** | L'impression via CUPS est confirmée fonctionnelle sur le Pi, mais pas encore depuis cette application. |
 | **Sondage caméra sur une machine où la webcam s'ouvre** | Le code est exercé et la liste des noms système est confirmée, mais l'autorisation caméra de macOS n'étant pas accordée au processus qui lance le backend, aucun index n'a jamais répondu ici. La partie « index » reste à voir avec une webcam réellement ouvrable. |
