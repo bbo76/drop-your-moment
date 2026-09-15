@@ -133,7 +133,8 @@ validés sur un Raspberry Pi 4.
 - ✅ `uv venv --python /usr/bin/python3 --system-site-packages` puis `uv sync --no-dev
   --inexact` — validé avec Python 3.13 et Picamera2 fourni par apt
 - Bascule sur `picamera2_driver`, mesure de la fluidité de l'aperçu et de la latence de
-  capture — aperçu fonctionnel, mesures restantes
+  capture — aperçu mesuré à 29,9 images/s ; capture et composition en 356 ms de moyenne
+  sur cinq prises (346 ms de médiane, 343 ms après la première)
 - Service systemd, Cage et Chromium en kiosque sur Raspberry Pi OS Lite
 - Réglages finaux : résolution d'aperçu, qualité JPEG, timeouts
 
@@ -183,7 +184,7 @@ Aucun changement d'API ni de machine à états attendu : le pilote neutre est re
 
 | quoi | pourquoi ça compte |
 |---|---|
-| **Performances du pilote picamera2** | Le capteur et l'aperçu MJPEG fonctionnent sur le Pi ; la fluidité effective et la latence de capture restent à mesurer. |
+| **Parcours complet avec picamera2** | Le flux tient 29,9 images/s et la capture composée prend 356 ms en moyenne ; le parcours visiteur complet reste à confirmer depuis l'interface. |
 | **Rendu visuel du kiosque** | Le rythme du décompte et la taille des cibles tactiles sur 7 pouces sont des jugements qui demandent l'écran réel. |
 | **Impression CP1500 depuis ce logiciel** | L'impression via CUPS est confirmée fonctionnelle sur le Pi, mais pas encore depuis cette application. |
 | **Sondage caméra sur une machine où la webcam s'ouvre** | Le code est exercé et la liste des noms système est confirmée, mais l'autorisation caméra de macOS n'étant pas accordée au processus qui lance le backend, aucun index n'a jamais répondu ici. La partie « index » reste à voir avec une webcam réellement ouvrable. |
