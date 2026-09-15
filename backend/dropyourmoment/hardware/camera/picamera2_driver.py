@@ -30,7 +30,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 from picamera2 import Picamera2
-from picamera2.encoders import MJPEGEncoder
+from picamera2.encoders import MJPEGEncoder, Quality
 from picamera2.outputs import FileOutput
 
 from dropyourmoment.core.errors import CameraCaptureError, CameraNotAvailableError
@@ -45,8 +45,6 @@ logger = logging.getLogger(__name__)
 
 STILL_SIZE = (2304, 1296)
 PREVIEW_SIZE = (640, 360)
-PREVIEW_QUALITY = 75
-
 # Les buffers `main` pèsent ~9 Mo chacun en RGB888. La valeur par défaut de picamera2
 # est généreuse ; 4 suffit pour un flux mono-client et économise ~20 Mo sur le Pi.
 BUFFER_COUNT = 4
@@ -107,8 +105,9 @@ class Picamera2Driver(CameraDriver):
                 )
             )
             camera.start_recording(
-                MJPEGEncoder(q=PREVIEW_QUALITY),
+                MJPEGEncoder(),
                 FileOutput(self._buffer),
+                quality=Quality.HIGH,
                 name="lores",
             )
         except Exception as exc:
