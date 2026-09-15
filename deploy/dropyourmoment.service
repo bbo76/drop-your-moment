@@ -1,0 +1,15 @@
+[Unit]
+Description=Drop Your Moment backend
+After=network.target
+
+[Service]
+Type=simple
+User=photobooth
+WorkingDirectory=/home/photobooth/drop-your-moment/backend
+Environment=DYM_CAMERA_DRIVER=picamera2
+ExecStart=/home/photobooth/drop-your-moment/backend/.venv/bin/python -m dropyourmoment.main
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

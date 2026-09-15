@@ -283,6 +283,34 @@ L'affichage local restera minimal : Cage lancera directement Chromium sur la ver
 Lite, sans environnement de bureau complet. Son installation et son service sont traités
 séparément, après les mesures caméra.
 
+### Démarrage automatique sur Raspberry Pi OS Lite
+
+Les unités supposent l'utilisateur `photobooth` et le dépôt dans
+`/home/photobooth/drop-your-moment`, comme l'installation cible. Après avoir construit le
+frontend et créé le venv :
+
+```sh
+sudo apt install cage chromium curl
+sudo install -m 0644 deploy/dropyourmoment.service /etc/systemd/system/
+sudo install -m 0644 deploy/dropyourmoment-kiosk.service /etc/systemd/system/
+sudo install -m 0644 deploy/cage.pam /etc/pam.d/cage
+sudo systemctl daemon-reload
+sudo systemctl enable dropyourmoment.service dropyourmoment-kiosk.service
+sudo systemctl set-default graphical.target
+```
+
+Le backend peut être validé sans écran avant d'activer le kiosque :
+
+```sh
+sudo systemctl start dropyourmoment.service
+systemctl status dropyourmoment.service
+journalctl -u dropyourmoment.service -f
+```
+
+Après branchement de la dalle, redémarrer. Cage prend `tty1`, attend que l'API locale
+réponde, puis lance Chromium sur le kiosque. Les deux services redémarrent automatiquement
+après une panne ; les journaux restent accessibles par SSH avec `journalctl`.
+
 ## Licence
 
 MIT — voir [LICENSE](LICENSE).

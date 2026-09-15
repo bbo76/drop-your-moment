@@ -1,0 +1,26 @@
+[Unit]
+Description=Drop Your Moment kiosk
+Wants=dbus.socket systemd-logind.service dropyourmoment.service
+After=dbus.socket systemd-logind.service systemd-user-sessions.service dropyourmoment.service
+Conflicts=getty@tty1.service
+After=getty@tty1.service
+ConditionPathExists=/dev/tty0
+
+[Service]
+Type=simple
+User=photobooth
+ExecStart=/home/photobooth/drop-your-moment/deploy/start-kiosk.sh
+ExecStartPost=+/usr/bin/chvt 1
+Restart=always
+RestartSec=2
+UtmpIdentifier=tty1
+UtmpMode=user
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+TTYVTDisallocate=yes
+StandardInput=tty-fail
+PAMName=cage
+
+[Install]
+WantedBy=graphical.target
