@@ -294,6 +294,9 @@ sudo apt install cage chromium curl
 sudo install -m 0644 deploy/dropyourmoment.service /etc/systemd/system/
 sudo install -m 0644 deploy/dropyourmoment-kiosk.service /etc/systemd/system/
 sudo install -m 0644 deploy/cage.pam /etc/pam.d/cage
+sudo install -m 0644 deploy/99-dropyourmoment-input.rules /etc/udev/rules.d/
+sudo install -d /etc/chromium/policies/managed
+sudo install -m 0644 deploy/chromium-policy.json /etc/chromium/policies/managed/dropyourmoment.json
 sudo systemctl daemon-reload
 sudo systemctl enable dropyourmoment.service dropyourmoment-kiosk.service
 sudo systemctl set-default graphical.target

@@ -1,0 +1,3 @@
+# Les périphériques HDMI-CEC du Pi annoncent une capacité pointeur sans en être un.
+# Cage affiche sinon un curseur fantôme au centre de la borne.
+KERNEL=="event[0-9]*", SUBSYSTEM=="input", ATTRS{name}=="vc4-hdmi-*", ENV{LIBINPUT_IGNORE_DEVICE}="1"

@@ -10,6 +10,7 @@ exec cage -d -- chromium \
     --ozone-platform=wayland \
     --kiosk \
     --lang=fr-FR \
+    --accept-lang=fr-FR,fr \
     --no-first-run \
     --noerrdialogs \
     --disable-features=Translate,TranslateUI \
