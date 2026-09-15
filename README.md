@@ -253,7 +253,7 @@ Variables d'environnement préfixées `DYM_` (voir
 ```sh
 sudo apt install python3-picamera2 rpicam-apps nodejs npm
 sudo npm install -g pnpm    # ou : corepack enable
-rpicam-hello                    # valider le capteur AVANT tout Python
+rpicam-hello --list-cameras     # valider le capteur AVANT tout Python
 
 cd backend
 # L'interpréteur est épinglé sur celui du système, et --system-site-packages expose les
@@ -275,8 +275,13 @@ contre le libcamera système et ne s'installe donc pas par pip :
   autre. `uv sync` préserve ensuite ce réglage (`include-system-site-packages` reste vrai
   dans `pyvenv.cfg`).
 
-Le compositeur de Trixie est **labwc** (Wayland), donc l'autostart de Chromium passe par
-`~/.config/labwc/autostart` et non `.xinitrc`.
+Cette procédure a été validée sur Raspberry Pi 4, Raspberry Pi OS Trixie 64 bits Lite,
+Python 3.13 et Camera Module 3 (IMX708) : le venv voit bien le paquet système Picamera2,
+le capteur s'ouvre et l'aperçu MJPEG est servi par l'application.
+
+L'affichage local restera minimal : Cage lancera directement Chromium sur la version
+Lite, sans environnement de bureau complet. Son installation et son service sont traités
+séparément, après les mesures caméra.
 
 ## Licence
 
