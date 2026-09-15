@@ -9,8 +9,10 @@ done
 exec cage -d -- chromium \
     --ozone-platform=wayland \
     --kiosk \
+    --lang=fr-FR \
     --no-first-run \
     --noerrdialogs \
+    --disable-features=Translate,TranslateUI \
     --disable-session-crashed-bubble \
     --disable-pinch \
     --overscroll-history-navigation=0 \
