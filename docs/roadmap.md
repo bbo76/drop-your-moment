@@ -1,6 +1,6 @@
 # Feuille de route
 
-État au 22 août 2026.
+État au 15 septembre 2026.
 
 Le projet avance par jalons. Chacun se termine sur quelque chose d'observable, pas sur
 une couche technique : c'est ce qui permet de vérifier sur le vrai matériel avant
@@ -125,15 +125,16 @@ La maintenance tactile du kiosque n'est pas modifiée. Le rendu est vérifié sa
 
 ### ⬜ Jalon 6 — Validation sur le Raspberry Pi
 
-Le premier contact avec le vrai matériel. Le pilote picamera2 est écrit contre la
-documentation et **n'a jamais été exécuté**.
+Le premier contact avec le vrai matériel est en cours. L'installation Trixie, le venv
+avec accès aux paquets système, l'ouverture du capteur IMX708 et l'aperçu MJPEG sont
+validés sur un Raspberry Pi 4.
 
-- Prérequis Trixie : `python3-picamera2`, `rpicam-apps`, `nodejs`, `npm`, pnpm
-- `uv venv --python /usr/bin/python3 --system-site-packages` puis `uv sync --no-dev
-  --inexact` — voir le README pour les raisons
+- ✅ Prérequis Trixie : `python3-picamera2`, `rpicam-apps`, `nodejs`, `npm`, pnpm
+- ✅ `uv venv --python /usr/bin/python3 --system-site-packages` puis `uv sync --no-dev
+  --inexact` — validé avec Python 3.13 et Picamera2 fourni par apt
 - Bascule sur `picamera2_driver`, mesure de la fluidité de l'aperçu et de la latence de
-  capture
-- Service systemd, autostart de Chromium en kiosque sous **labwc** (Wayland, pas X11)
+  capture — aperçu fonctionnel, mesures restantes
+- Service systemd, Cage et Chromium en kiosque sur Raspberry Pi OS Lite
 - Réglages finaux : résolution d'aperçu, qualité JPEG, timeouts
 
 ### ✅ Pilote webcam universel — macOS, Windows, USB
@@ -182,9 +183,8 @@ Aucun changement d'API ni de machine à états attendu : le pilote neutre est re
 
 | quoi | pourquoi ça compte |
 |---|---|
-| **Pilote picamera2 jamais exécuté** | Écrit contre la documentation. Configuration à un seul mode capteur, encodeur MJPEG sur le flux `lores`, capture depuis `main` sans changement de mode : tout cela est à confirmer sur le Pi. |
+| **Performances du pilote picamera2** | Le capteur et l'aperçu MJPEG fonctionnent sur le Pi ; la fluidité effective et la latence de capture restent à mesurer. |
 | **Rendu visuel du kiosque** | Le rythme du décompte et la taille des cibles tactiles sur 7 pouces sont des jugements qui demandent l'écran réel. |
-| **uv + `--system-site-packages` sur le Pi** | Le mécanisme est vérifié (`include-system-site-packages` survit à `uv sync`), mais la combinaison exacte avec `python3-picamera2` reste à confirmer sur place. |
 | **Impression CP1500 depuis ce logiciel** | L'impression via CUPS est confirmée fonctionnelle sur le Pi, mais pas encore depuis cette application. |
 | **Sondage caméra sur une machine où la webcam s'ouvre** | Le code est exercé et la liste des noms système est confirmée, mais l'autorisation caméra de macOS n'étant pas accordée au processus qui lance le backend, aucun index n'a jamais répondu ici. La partie « index » reste à voir avec une webcam réellement ouvrable. |
 | **Galerie et archive à l'échelle d'un vrai événement** | Vérifié sur 30 photos de synthèse. Le zip en flux et la vignette sans cache sont conçus pour plusieurs centaines, et c'est le Pi qui le dira — pas un MacBook. |
