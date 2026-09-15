@@ -123,21 +123,26 @@ Le module administratif adopte un thème neutre fixe, indépendant du branding �
 La maintenance tactile du kiosque n'est pas modifiée. Le rendu est vérifié sans débordement
 à 320 et 390 px ainsi que sur desktop, sans application native ni PWA.
 
-### ⬜ Jalon 6 — Validation sur le Raspberry Pi
+### ✅ Jalon 6 — Validation sur le Raspberry Pi
 
-Le premier contact avec le vrai matériel est en cours. L'installation Trixie, le venv
+Le premier contact avec le vrai matériel est terminé. L'installation Trixie, le venv
 avec accès aux paquets système, l'ouverture du capteur IMX708 et l'aperçu MJPEG sont
 validés sur un Raspberry Pi 4. Le parcours visiteur complet fonctionne avec le vrai
-capteur, de l'accueil au retour à l'accueil après conservation de la photo.
+capteur, de l'accueil au retour à l'accueil après conservation de la photo. La dalle
+Waveshare 1024×600, le tactile et le démarrage autonome après extinction complète ont
+également été validés sur Raspberry Pi OS Lite.
 
 - ✅ Prérequis Trixie : `python3-picamera2`, `rpicam-apps`, `nodejs`, `npm`, pnpm
 - ✅ `uv venv --python /usr/bin/python3 --system-site-packages` puis `uv sync --no-dev
   --inexact` — validé avec Python 3.13 et Picamera2 fourni par apt
-- Bascule sur `picamera2_driver`, mesure de la fluidité de l'aperçu et de la latence de
+- ✅ Bascule sur `picamera2_driver`, mesure de la fluidité de l'aperçu et de la latence de
   capture — aperçu mesuré à 29,9 images/s ; capture et composition en 356 ms de moyenne
   sur cinq prises (346 ms de médiane, 343 ms après la première)
-- Service systemd, Cage et Chromium en kiosque sur Raspberry Pi OS Lite
-- Réglages finaux : résolution d'aperçu, qualité JPEG, timeouts
+- ✅ Services systemd, Cage et Chromium en kiosque sur Raspberry Pi OS Lite — lancement
+  automatique après démarrage à froid, écran tactile opérationnel, curseur fantôme et
+  proposition de traduction supprimés
+- ✅ Réglages matériels initiaux : aperçu 640×360 à 29,9 images/s, capture 2304×1296 et
+  parcours complet validé sur la dalle réelle
 
 ### ✅ Pilote webcam universel — macOS, Windows, USB
 
@@ -185,7 +190,7 @@ Aucun changement d'API ni de machine à états attendu : le pilote neutre est re
 
 | quoi | pourquoi ça compte |
 |---|---|
-| **Rendu visuel du kiosque** | Le rythme du décompte et la taille des cibles tactiles sur 7 pouces sont des jugements qui demandent l'écran réel. |
+| **Rythme du décompte avec flash logiciel** | La dalle réelle a révélé que le flash part après « 1 » sans matérialiser « 0 », ce qui donne l'impression d'écourter le délai choisi. |
 | **Impression CP1500 depuis ce logiciel** | L'impression via CUPS est confirmée fonctionnelle sur le Pi, mais pas encore depuis cette application. |
 | **Sondage caméra sur une machine où la webcam s'ouvre** | Le code est exercé et la liste des noms système est confirmée, mais l'autorisation caméra de macOS n'étant pas accordée au processus qui lance le backend, aucun index n'a jamais répondu ici. La partie « index » reste à voir avec une webcam réellement ouvrable. |
 | **Galerie et archive à l'échelle d'un vrai événement** | Vérifié sur 30 photos de synthèse. Le zip en flux et la vignette sans cache sont conçus pour plusieurs centaines, et c'est le Pi qui le dira — pas un MacBook. |
