@@ -183,6 +183,25 @@ export function DayOfView() {
         )}
       </section>
 
+      <Accordion type="single" collapsible className="rounded-xl border bg-card">
+        <AccordionItem value="diagnostic" className="border-0">
+          <AccordionTrigger className="min-h-18 px-4 py-3 hover:no-underline">
+            <span className="grid text-left"><strong className="text-lg">Diagnostic</strong><small className={powerNeedsAttention(health) ? "text-destructive" : "text-muted-foreground"}>{diagnosticSummary(health)}</small></span>
+          </AccordionTrigger>
+          <AccordionContent className="border-t p-4">
+            <dl className="divide-y">
+              <DiagnosticRow label="Alimentation" value={powerLabel(health)} attention={powerNeedsAttention(health)} />
+              <DiagnosticRow label="Température" value={health.temperature_c === null ? "Indisponible" : `${Math.round(health.temperature_c)} °C`} attention={health.temperature_c !== null && health.temperature_c >= 80} />
+              <DiagnosticRow label="Stockage libre" value={`${(health.disk_free_bytes / 1024 ** 3).toFixed(1).replace(".", ",")} Go`} attention={health.disk_free_bytes < 2 * 1024 ** 3} />
+            </dl>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <DiagnosticMeter label="Processeur" value={health.cpu_percent} />
+              <DiagnosticMeter label="Mémoire" value={health.memory_percent} />
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+
       <Accordion type="single" collapsible defaultValue="printing" className="rounded-xl border bg-card">
         <AccordionItem value="printing" className="border-0">
           <AccordionTrigger className="min-h-18 px-4 py-3 hover:no-underline">
@@ -377,6 +396,15 @@ function Consumable({ label, remaining, capacity }: { label: string; remaining: 
   );
 }
 
+function DiagnosticRow({ label, value, attention = false }: { label: string; value: string; attention?: boolean }) {
+  return <div className="flex min-h-12 items-center justify-between gap-4 py-2"><dt className="text-muted-foreground">{label}</dt><dd className={`text-right font-semibold tabular-nums ${attention ? "text-destructive" : ""}`}>{value}</dd></div>;
+}
+
+function DiagnosticMeter({ label, value }: { label: string; value: number }) {
+  const percent = Math.min(100, Math.max(0, value));
+  return <div className="rounded-lg border p-3"><div className="flex items-baseline justify-between gap-4"><span className="text-muted-foreground">{label}</span><strong className={percent >= 85 ? "text-destructive" : ""}>{Math.round(percent)} %</strong></div><Progress value={percent} aria-label={`${label} : ${Math.round(percent)} %`} className="mt-2 h-1.5" /></div>;
+}
+
 const STATE_LABELS: Record<AdminHealth["session_state"], string> = {
   idle: "Accueil",
   preview: "Cadrage",
@@ -387,6 +415,10 @@ const STATE_LABELS: Record<AdminHealth["session_state"], string> = {
 };
 
 const stateLabel = (state: AdminHealth["session_state"]) => STATE_LABELS[state];
+
+const powerNeedsAttention = (health: AdminHealth) => health.undervoltage_now === true || health.undervoltage_occurred === true || health.throttled_now === true || health.throttled_occurred === true;
+const powerLabel = (health: AdminHealth) => health.undervoltage_now ? "Sous-tension active" : health.undervoltage_occurred ? "Sous-tension détectée" : health.throttled_now ? "Performances limitées" : health.throttled_occurred ? "Limitation détectée" : health.undervoltage_now === null ? "Indisponible" : "Stable";
+const diagnosticSummary = (health: AdminHealth) => powerNeedsAttention(health) ? powerLabel(health) : `CPU ${Math.round(health.cpu_percent)} % · RAM ${Math.round(health.memory_percent)} %`;
 
 type IconName = "check" | "attention" | "camera" | "storage" | "temperature" | "printer" | "wifi" | "pulse";
 
