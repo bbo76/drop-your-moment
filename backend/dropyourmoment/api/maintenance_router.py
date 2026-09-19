@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import subprocess
 from typing import Literal
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Query, Response, status
@@ -18,8 +19,10 @@ from dropyourmoment.api.admin_router import (
 )
 from dropyourmoment.api.kiosk_router import get_runtime
 from dropyourmoment.core.event_config import LaunchFont
+from dropyourmoment.core.session import SessionState
 from dropyourmoment.runtime import Runtime
 from dropyourmoment.storage.gallery import list_sessions, thumbnail_jpeg
+from dropyourmoment.system_power import PowerAction
 
 router = APIRouter(prefix="/api/maintenance")
 COOKIE_NAME = "dym_maintenance"
@@ -40,6 +43,7 @@ class MaintenanceSettings(BaseModel):
 class MaintenanceSnapshot(BaseModel):
     health: AdminHealth
     settings: MaintenanceSettings
+    power_available: bool
 
 
 def _authorized(
@@ -87,7 +91,28 @@ def maintenance_status(runtime: Runtime = Depends(_authorized)) -> MaintenanceSn
             accent_color=config.accent_color,
             launch_font=config.launch_font,
         ),
+        power_available=runtime.system_power.available,
     )
+
+
+@router.post("/power/{action}", status_code=status.HTTP_202_ACCEPTED)
+def request_power_action(
+    action: PowerAction, runtime: Runtime = Depends(_authorized)
+) -> None:
+    if runtime.machine.state is not SessionState.IDLE:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail="une session photo est en cours ; attendez son retour à l’accueil",
+        )
+    try:
+        runtime.system_power.request(action)
+    except RuntimeError as exc:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="la commande système a échoué",
+        ) from exc
 
 
 @router.put("/settings", response_model=MaintenanceSettings)
