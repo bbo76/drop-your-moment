@@ -4,7 +4,7 @@ import type { MaintenanceSnapshot } from "../../shared/api";
 import { InkCartridgeDialog } from "../../shared/InkCartridgeDialog";
 import { PaperStockDialog } from "../../shared/PaperStockDialog";
 import { supplyLevels } from "./maintenanceDiagnostics";
-import { MaintenanceChoice, MaintenanceIcon, ProgressMeter, StatusMark } from "./MaintenanceUi";
+import { MaintenanceChoice, MaintenanceIcon, ProgressMeter, WarningMark } from "./MaintenanceUi";
 
 export function MaintenancePrintingView({ snapshot, saving, onSaveSettings, onReloadCassette, onReplaceInk, onSetPaperStock }: {
   snapshot: MaintenanceSnapshot;
@@ -25,7 +25,7 @@ export function MaintenancePrintingView({ snapshot, saving, onSaveSettings, onRe
         <div className="grid grid-cols-[3.5rem_minmax(0,1fr)] items-center gap-x-4 gap-y-1 px-5 py-[1.15rem]">
           <MaintenanceIcon name="print" className="size-14 rounded-panel border-2 border-edge p-2.5 text-signal" />
           <div><p className="text-lg font-medium text-muted">Tirages disponibles</p><p className="text-[4.5rem] leading-none font-bold tabular-nums max-h-[600px]:text-[4rem]">{printable}</p></div>
-          <p className={`col-span-full mt-2 flex items-center gap-2.5 font-semibold ${health.printer_driver === "offline" ? "text-warn" : ""}`}><StatusMark state={health.printer_driver === "offline" ? "warning" : "ready"} />{printerLabel}</p>
+          <p className={`col-span-full mt-2 flex items-center gap-2.5 font-semibold ${health.printer_driver === "offline" ? "text-warn" : "text-signal"}`}>{health.printer_driver === "offline" && <WarningMark />}{printerLabel}</p>
         </div>
         <div className="grid content-center gap-3.5 border-t-2 border-edge px-5 py-4">
           <PrintSupply label="Bac" remaining={cassette} capacity={health.counters.cassette_capacity} />

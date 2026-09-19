@@ -48,7 +48,7 @@ export function MaintenanceStatusBanner({ status }: { status: MaintenanceStatus 
       </div>
     );
   }
-  return <div className="flex min-h-14 items-center gap-3 px-1 text-lg font-semibold"><StatusMark state="ready" />Borne prête</div>;
+  return <div className="flex min-h-14 items-center px-1 text-lg font-semibold text-signal">Borne prête</div>;
 }
 
 export function MaintenanceIcon({ name, className = "size-[4.25rem] rounded-[0.55rem] bg-signal p-[0.9rem] fill-none stroke-current stroke-2 text-signal-ink [stroke-linecap:round] [stroke-linejoin:round]" }: {
@@ -60,10 +60,7 @@ export function MaintenanceIcon({ name, className = "size-[4.25rem] rounded-[0.5
   return <Icon className={className} strokeWidth={2} />;
 }
 
-export function StatusMark({ state }: { state: "ready" | "warning" }) {
-  if (state === "ready") {
-    return <span className="size-3 flex-none rounded-full bg-signal" aria-hidden="true" />;
-  }
+export function WarningMark() {
   return (
     <span className="inline-grid size-[1.65rem] flex-none place-items-center rounded-[0.3rem] border-2 border-current text-warn" aria-hidden="true">
       <CircleAlert className="size-4" strokeWidth={2.5} />

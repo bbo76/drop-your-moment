@@ -1,7 +1,7 @@
 import { Camera, HardDrive, PlugZap, Thermometer, type LucideIcon } from "lucide-react";
 
 import type { MaintenanceSnapshot } from "../../shared/api";
-import { ProgressMeter, StatusMark } from "./MaintenanceUi";
+import { ProgressMeter, WarningMark } from "./MaintenanceUi";
 
 export function MaintenanceHealthView({ snapshot }: { snapshot: MaintenanceSnapshot }) {
   const { health } = snapshot;
@@ -13,8 +13,8 @@ export function MaintenanceHealthView({ snapshot }: { snapshot: MaintenanceSnaps
       <div className="grid min-h-0 grid-rows-[1fr_1.2fr] overflow-hidden rounded-[0.65rem] bg-surface">
         <div className="grid min-h-0 grid-cols-[3.5rem_minmax(0,1fr)_auto] items-center gap-4 p-5">
           <HealthIcon name="camera" />
-          <div className="min-w-0"><p className="text-lg font-medium text-muted">Caméra</p><p className={`text-3xl font-bold ${health.camera_ok ? "" : "text-warn"}`}>{health.camera_ok ? "Prête à photographier" : "Non détectée"}</p><p className="mt-1 text-base text-muted">{health.camera_ok ? "Connexion et capture opérationnelles" : "Vérifiez le câble et redémarrez la borne"}</p></div>
-          <StatusMark state={health.camera_ok ? "ready" : "warning"} />
+          <div className="min-w-0"><p className="text-lg font-medium text-muted">Caméra</p><p className={`text-3xl font-bold ${health.camera_ok ? "text-signal" : "text-warn"}`}>{health.camera_ok ? "Prête à photographier" : "Non détectée"}</p><p className="mt-1 text-base text-muted">{health.camera_ok ? "Connexion et capture opérationnelles" : "Vérifiez le câble et redémarrez la borne"}</p></div>
+          {!health.camera_ok && <WarningMark />}
         </div>
         <div className="grid min-h-0 grid-cols-[3.5rem_minmax(0,1fr)] items-center gap-4 border-t-2 border-edge p-5">
           <HealthIcon name="storage" />
