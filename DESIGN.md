@@ -10,6 +10,7 @@ colors:
   action-yellow: "#ffd400"
   night-field: "#101418"
   operational-surface: "#1a2026"
+  maintenance-signal: "#d8dee4"
   structural-edge: "#46515c"
   warm-body: "#f6f4ed"
   muted-steel: "#aab2b9"
@@ -83,12 +84,11 @@ components:
     rounded: "{rounded.block}"
     padding: "0.85rem"
   status-ready:
-    backgroundColor: "{colors.action-yellow}"
-    textColor: "{colors.night-field}"
+    backgroundColor: "transparent"
+    textColor: "{colors.maintenance-signal}"
     typography: "{typography.label}"
-    rounded: "{rounded.control}"
-    padding: "0 1.25rem"
-    height: "3rem"
+    padding: "0 0.25rem"
+    height: "3.5rem"
 ---
 
 # Design System: Drop Your Moment — Kiosk
@@ -115,7 +115,7 @@ La palette oppose un champ nocturne à un signal jaune très saturé, puis utili
 
 ### Primary
 
-- **Jaune signal**: action principale, sélection active, état prêt, bande de décision du décompte et panneau de confirmation.
+- **Jaune signal**: action principale, sélection active, bande de décision du décompte et panneau de confirmation dans le parcours invité.
 
 ### Secondary
 
@@ -128,18 +128,19 @@ La palette oppose un champ nocturne à un signal jaune très saturé, puis utili
 - **Surface opérationnelle**: panneaux de revue et blocs de maintenance.
 - **Arête structurelle**: bordures, séparateurs, contrôles inactifs et piste de bascule.
 - **Blanc chaud**: texte principal et repère lumineux.
+- **Signal de maintenance**: gris très clair réservé aux icônes, jauges et libellés d'état sain de la maintenance locale ; il reste distinct de la couleur événementielle.
 - **Acier discret**: texte secondaire, légendes et contours de saisie incomplets.
 
 ### Named Rules
 
-**The Signal Yellow Rule.** Le jaune indique une action, une sélection, un état prêt ou une confirmation ; il ne remplit jamais l'écran comme simple ambiance.
+**The Signal Yellow Rule.** Le jaune indique une action, une sélection ou une confirmation dans le parcours invité ; il ne remplit jamais l'écran comme simple ambiance et ne colore pas les états sains de la maintenance.
 
 Le jaune signal est la valeur par défaut, mais l'opérateur peut remplacer cette couleur
 par événement. La couleur d'encre sur l'accent est alors calculée selon sa luminance afin
 de conserver un contraste fort. Le champ nocturne et les surfaces opérationnelles restent
 stables pour préserver l'identité et la lisibilité de la borne.
 
-**The Redundant State Rule.** Toute couleur d'état est accompagnée d'un libellé, d'un point, d'une position ou d'un changement de remplissage.
+**The Explicit State Rule.** Toute couleur d'état est accompagnée d'un libellé explicite. En maintenance, un état sain reste sobre : son libellé coloré suffit et aucun point ou glyphe de validation ne le répète. Un incident ajoute au texte corail une icône d'alerte ou un picto matériel afin de rester identifiable sans dépendre de la couleur.
 
 ## Typography
 
@@ -207,7 +208,7 @@ Le système est plat par défaut et n'utilise pas d'ombres pour empiler les pann
 
 ## Shapes
 
-Les panneaux et contrôles utilisent des rectangles légèrement arrondis : 0.75rem pour les boutons et états, 0.9rem pour les grands blocs et 0.6rem pour les actions compactes. Les points d'état, points de PIN et poignées de bascule sont circulaires ; la piste de bascule est une capsule. Les bordures de 2px matérialisent les choix et les structures, avec 3px pour les repères circulaires.
+Les panneaux et contrôles utilisent des rectangles légèrement arrondis : 0.75rem pour les boutons et états, 0.9rem pour les grands blocs et 0.6rem pour les actions compactes. Les points de PIN et poignées de bascule sont circulaires ; la piste de bascule est une capsule. Les points d'état sont réservés aux surfaces compactes où le libellé complet n'est pas affiché, comme l'accès maintenance depuis l'accueil. Les bordures de 2px matérialisent les choix et les structures, avec 3px pour les repères circulaires.
 
 ## Components
 
@@ -254,7 +255,10 @@ qu’une session commence afin de ne jamais recouvrir l’aperçu, la photo ou l
 et pour éviter qu’un invité interrompe le parcours au milieu d’une prise.
 Un point corail sur la clé signale qu’une vérification opérateur est nécessaire, sans
 exposer le diagnostic aux invités. Dans la maintenance, chaque incident associe un picto
-matériel, un libellé explicite et une couleur d’état ; le picto ne remplace jamais le texte.
+matériel ou une icône d'alerte, un libellé explicite et une couleur d’état ; le picto ne
+remplace jamais le texte. À l'inverse, « Borne prête », « Prête à photographier » et
+« CP1500 connectée » restent des libellés seuls dans le signal gris clair : aucun point ni
+coche ne répète un état sain déjà nommé.
 
 ### Portail complet
 
@@ -313,9 +317,17 @@ La Console Jour J mobile est une vue dédiée, pas une réduction du shell deskt
 est composé directement en Tailwind et réutilise les `Button` et `Feedback` partagés fondés
 sur shadcn/ui. Dans une colonne plafonnée à 42rem avec prise en compte des safe areas, elle
 ordonne : disponibilité, retours d'action, trois faits essentiels, geste d'urgence
-conditionnel, impression, réglages rapides, puis photos récentes. La rangée Écran / Caméra /
+conditionnel, diagnostic, impression, réglages rapides, puis photos récentes. La rangée Écran / Caméra /
 Tirages conserve trois colonnes ; les valeurs autorisent le retour à la ligne afin que
 **« 15 possibles »** reste entier et lisible sur smartphone, sans ellipse ni troncature.
+
+Le panneau Diagnostic utilise lui aussi les éléments natifs `<details>` / `<summary>`. Avant
+ouverture, son résumé expose une icône d'alimentation puis l'état électrique, le CPU et la
+RAM ; une sous-tension ou une limitation détectée passe immédiatement en rouge. Une fois
+déplié, il regroupe alimentation, température, stockage, processeur et mémoire dans une vue
+de santé compacte, sans reproduire les cartes du portail desktop. Une mesure électrique
+indisponible hors Raspberry Pi est présentée comme telle et ne dégrade pas le reste du
+diagnostic.
 
 Les panneaux Impression et Réglages rapides conservent les éléments natifs `<details>` /
 `<summary>` : grande cible tactile, signe plus ou moins, état ouvert natif et contenu révélé
@@ -349,8 +361,9 @@ Le PIN ne présente pas de champ texte. Quatre points affichent la progression s
 
 ### Status and Choices
 
-Les états associent un glyphe explicite et un libellé ; l'état prêt local reste léger, sans
-fond de bouton. Les choix tactiles conservent `aria-pressed` et combinent remplissage, coche
+Les incidents associent un glyphe explicite, un libellé et la couleur corail. L'état prêt
+local reste léger : libellé seul en signal gris clair, sans fond de bouton, point ni coche.
+Les choix tactiles conservent `aria-pressed` et combinent remplissage, coche
 ou changement de position. Une aide affichée doit tenir intégralement : elle passe sous son
 titre plutôt que d'être tronquée.
 
@@ -379,6 +392,7 @@ tirage ; le ratio 1024:600 de l'écran ne doit jamais être confondu avec l'un o
 - **Do** dimensionner les contrôles pour le doigt avec une hauteur minimale observée de 3.4rem à 4.5rem selon leur importance.
 - **Do** maintenir les alignements stricts des zones image, décision, santé et réglages.
 - **Do** écrire des consignes françaises courtes, chaleureuses et immédiatement actionnables.
+- **Do** garder les états sains de la maintenance textuels et réserver les glyphes d'état aux incidents ou aux emplacements sans libellé complet.
 - **Do** respecter `prefers-reduced-motion` pour toutes les transitions et animations.
 
 ### Don't:
@@ -387,4 +401,5 @@ tirage ; le ratio 1024:600 de l'écran ne doit jamais être confondu avec l'un o
 - **Don't** ajouter de verre, de dégradé décoratif ou d'ombres de cartes à ce matériau plat.
 - **Don't** exposer de jargon technique dans le parcours invité.
 - **Don't** compter sur le survol, un pointeur précis ou la couleur seule pour expliquer un état.
+- **Don't** ajouter un point ou une coche à côté d'un libellé qui nomme déjà explicitement un état sain.
 - **Don't** introduire du défilement sur la surface kiosk.

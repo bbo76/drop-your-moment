@@ -106,6 +106,10 @@ class AdminHealth(BaseModel):
     memory_total_bytes: int
     memory_percent: float
     temperature_c: float | None
+    undervoltage_now: bool | None
+    undervoltage_occurred: bool | None
+    throttled_now: bool | None
+    throttled_occurred: bool | None
 
 
 @router.get("/system/health", response_model=AdminHealth)
@@ -141,6 +145,10 @@ def read_health(runtime: Runtime = Depends(get_runtime)) -> AdminHealth:
         memory_total_bytes=metrics.memory_total_bytes,
         memory_percent=metrics.memory_percent,
         temperature_c=metrics.temperature_c,
+        undervoltage_now=metrics.undervoltage_now,
+        undervoltage_occurred=metrics.undervoltage_occurred,
+        throttled_now=metrics.throttled_now,
+        throttled_occurred=metrics.throttled_occurred,
     )
 
 

@@ -22,6 +22,7 @@ from pydantic import BaseModel
 from dropyourmoment.core.errors import CameraError, InvalidTransitionError, PrinterError
 from dropyourmoment.core.event_config import LaunchFont
 from dropyourmoment.core.session import Session, SessionState
+from dropyourmoment.hardware.system_metrics import read_system_metrics
 from dropyourmoment.imaging.filters import FilterName
 from dropyourmoment.imaging.pipeline import CompositionError, save_jpeg
 from dropyourmoment.runtime import Runtime
@@ -139,6 +140,7 @@ def read_system_status(runtime: Runtime = Depends(get_runtime)) -> SystemStatus:
     camera_ok = runtime.camera.is_available()
     copies = runtime.event.config.copies_per_print
     prints_remaining = runtime.counters.read().paper_remaining // copies
+    power = read_system_metrics()
     return SystemStatus(
         camera_ok=camera_ok,
         # Le pilote neutre est disponible. Le pilote CUPS remplacera cette constante par
@@ -146,7 +148,15 @@ def read_system_status(runtime: Runtime = Depends(get_runtime)) -> SystemStatus:
         printer_ok=True,
         # Le kiosque n'expose ici qu'un signal discret. Les causes et les actions
         # restent derrière le PIN de maintenance.
-        operator_attention=not camera_ok or disk.free / disk.total <= 0.1 or prints_remaining <= 5,
+        operator_attention=(
+            not camera_ok
+            or disk.free / disk.total <= 0.1
+            or prints_remaining <= 5
+            or power.undervoltage_now is True
+            or power.undervoltage_occurred is True
+            or power.throttled_now is True
+            or power.throttled_occurred is True
+        ),
         prints_remaining=prints_remaining,
         camera_driver=caps.driver_name,
         preview_size=caps.preview_size,

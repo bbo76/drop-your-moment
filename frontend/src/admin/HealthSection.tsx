@@ -186,6 +186,18 @@ export function HealthSection() {
           <Meter label="Mémoire" value={health.memory_used_bytes} capacity={health.memory_total_bytes} format={gigabytes} />
         </Group>
 
+        <Group
+          title="Alimentation"
+          icon="resources"
+          value={health.undervoltage_now === null ? "Indisponible" : health.undervoltage_now ? "Sous-tension" : "OK"}
+          tone={health.undervoltage_now || health.undervoltage_occurred || health.throttled_now || health.throttled_occurred ? "attention" : "neutral"}
+        >
+          <Row label="Sous-tension actuelle" value={flagLabel(health.undervoltage_now)} />
+          <Row label="Sous-tension historique" value={flagLabel(health.undervoltage_occurred)} />
+          <Row label="Throttling actuel" value={flagLabel(health.throttled_now)} />
+          <Row label="Throttling historique" value={flagLabel(health.throttled_occurred)} />
+        </Group>
+
       </div>
 
       <Dialog open={scan !== null} onOpenChange={(open) => { if (!open) setScan(null); }}>
@@ -321,6 +333,7 @@ const SESSION_LABELS: Record<AdminHealth["session_state"], string> = {
 };
 
 const sessionLabel = (state: AdminHealth["session_state"]) => SESSION_LABELS[state];
+const flagLabel = (value: boolean | null) => value === null ? "Indisponible" : value ? "Détecté" : "Non";
 
 const size = ([width, height]: [number, number]) => `${width}×${height}`;
 

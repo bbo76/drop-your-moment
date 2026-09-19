@@ -314,6 +314,31 @@ Après branchement de la dalle, redémarrer. Cage prend `tty1`, attend que l'API
 réponde, puis lance Chromium sur le kiosque. Les deux services redémarrent automatiquement
 après une panne ; les journaux restent accessibles par SSH avec `journalctl`.
 
+### Mettre la borne à jour
+
+Depuis le dépôt sur le Pi, une seule commande récupère une branche, synchronise les
+dépendances, reconstruit le frontend, redémarre le backend, attend que son API réponde puis
+relance Chromium :
+
+```sh
+./deploy/update.sh main
+```
+
+Le nom de branche est facultatif et vaut `main` par défaut. Une branche de test se déploie
+de la même manière, puis le retour à la version normale reste immédiat :
+
+```sh
+./deploy/update.sh codex/ma-branche
+./deploy/update.sh main
+```
+
+Si `task` est installé sur le Pi, les équivalents sont `task deploy REF=codex/ma-branche`
+et `task deploy` pour revenir sur `main`. Le script refuse de démarrer si le dépôt contient
+des modifications locales et n'accepte qu'une mise à jour Git en fast-forward, afin de ne
+jamais écraser silencieusement un travail fait directement sur la borne. Un échec de
+dépendances ou de build survient avant le redémarrage des services : la version déjà lancée
+continue donc de servir l'événement.
+
 ## Licence
 
 MIT — voir [LICENSE](LICENSE).

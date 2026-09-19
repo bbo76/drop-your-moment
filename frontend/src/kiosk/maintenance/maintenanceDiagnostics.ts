@@ -17,7 +17,11 @@ export function maintenanceDiagnostics(snapshot: MaintenanceSnapshot) {
     || storageLow
     || (health.temperature_c !== null && health.temperature_c >= 80)
     || health.cpu_percent >= 85
-    || health.memory_percent >= 85;
+    || health.memory_percent >= 85
+    || health.undervoltage_now === true
+    || health.undervoltage_occurred === true
+    || health.throttled_now === true
+    || health.throttled_occurred === true;
   const paperLow = supplies.printable <= 5;
 
   const status: MaintenanceStatus = paperLow
@@ -52,6 +56,10 @@ function printingDetail(supplies: ReturnType<typeof supplyLevels>, copies: numbe
 }
 
 function healthDetail(health: AdminHealth) {
+  if (health.undervoltage_now) return "Sous-tension active · vérifier l’alimentation et le câble";
+  if (health.undervoltage_occurred) return "Sous-tension détectée · vérifier l’alimentation et le câble";
+  if (health.throttled_now) return "Performances limitées · vérifier alimentation et température";
+  if (health.throttled_occurred) return "Throttling détecté depuis le démarrage · à surveiller";
   if (!health.camera_ok) return "Caméra absente · vérifier la connexion";
   if (health.disk_free_bytes / health.disk_total_bytes <= 0.1) return "Stockage presque plein · libérer de l’espace";
   if (health.temperature_c !== null && health.temperature_c >= 80) return "Température élevée · vérifier les aérations";
