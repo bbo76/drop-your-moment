@@ -1,9 +1,12 @@
-import { Camera, HardDrive, PlugZap, Thermometer, type LucideIcon } from "lucide-react";
+import { useState } from "react";
+import { Camera, HardDrive, PlugZap, Power, RotateCw, Thermometer, type LucideIcon } from "lucide-react";
 
 import type { MaintenanceSnapshot } from "../../shared/api";
-import { ProgressMeter, WarningMark } from "./MaintenanceUi";
+import { MaintenanceChoice, ProgressMeter, WarningMark } from "./MaintenanceUi";
 
-export function MaintenanceHealthView({ snapshot }: { snapshot: MaintenanceSnapshot }) {
+export function MaintenanceHealthView({ snapshot, onPowerAction }: { snapshot: MaintenanceSnapshot; onPowerAction: (action: "reboot" | "poweroff") => Promise<void> }) {
+  const [confirmation, setConfirmation] = useState<"reboot" | "poweroff" | null>(null);
+  const [powerError, setPowerError] = useState<string | null>(null);
   const { health } = snapshot;
   const freeRatio = health.disk_free_bytes / health.disk_total_bytes;
   const freePercent = Math.round(freeRatio * 100);
@@ -23,10 +26,17 @@ export function MaintenanceHealthView({ snapshot }: { snapshot: MaintenanceSnaps
       </div>
       <div className="flex min-h-0 flex-col rounded-[0.65rem] bg-surface p-5">
         <div className="flex items-center gap-4 border-b-2 border-edge pb-4"><HealthIcon name="power" /><div><p className="text-base font-medium text-muted">Alimentation</p><p className={`text-2xl font-bold ${powerWarning(health) ? "text-warn" : ""}`}>{powerLabel(health)}</p><p className="mt-1 text-sm leading-tight text-muted">{powerDetail(health)}</p></div></div>
-        <div className="flex flex-1 flex-col justify-center gap-5"><div className="flex items-center gap-3"><HealthIcon name="temperature" /><div><p className="font-medium text-muted">Température</p><p className={`text-2xl font-bold tabular-nums ${health.temperature_c !== null && health.temperature_c >= 80 ? "text-warn" : ""}`}>{health.temperature_c === null ? "Indisponible" : `${Math.round(health.temperature_c)} °C`}</p></div></div><ResourceMeter label="Processeur" percent={health.cpu_percent} /><ResourceMeter label="Mémoire" percent={health.memory_percent} /></div>
+        <div className="flex flex-1 flex-col justify-center gap-4"><div className="flex items-center gap-3"><HealthIcon name="temperature" /><div><p className="font-medium text-muted">Température</p><p className={`text-2xl font-bold tabular-nums ${health.temperature_c !== null && health.temperature_c >= 80 ? "text-warn" : ""}`}>{health.temperature_c === null ? "Indisponible" : `${Math.round(health.temperature_c)} °C`}</p></div></div><ResourceMeter label="Processeur" percent={health.cpu_percent} /><ResourceMeter label="Mémoire" percent={health.memory_percent} /></div>
+        <div className="grid gap-2 border-t-2 border-edge pt-3"><p className={`text-sm ${powerError ? "text-warn" : "text-muted"}`}>{powerError ?? (snapshot.power_available ? "Actions disponibles lorsque la borne est au repos." : "Indisponible hors Raspberry Pi avec systemd.")}</p><MaintenanceChoice disabled={!snapshot.power_available} onClick={() => { setPowerError(null); setConfirmation("reboot"); }}><span className="flex items-center justify-center gap-2"><RotateCw className="size-5" />Redémarrer la borne</span></MaintenanceChoice><MaintenanceChoice disabled={!snapshot.power_available} onClick={() => { setPowerError(null); setConfirmation("poweroff"); }}><span className="flex items-center justify-center gap-2"><Power className="size-5" />Éteindre la borne</span></MaintenanceChoice></div>
       </div>
+      {confirmation && <PowerConfirmation action={confirmation} onCancel={() => setConfirmation(null)} onConfirm={async () => { const action = confirmation; setConfirmation(null); try { await onPowerAction(action); } catch { setPowerError("Action refusée : une session photo est peut-être en cours."); } }} />}
     </section>
   );
+}
+
+function PowerConfirmation({ action, onCancel, onConfirm }: { action: "reboot" | "poweroff"; onCancel: () => void; onConfirm: () => Promise<void> }) {
+  const reboot = action === "reboot";
+  return <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-6" role="alertdialog" aria-modal="true" aria-labelledby="power-title"><div className={`w-full max-w-xl rounded-panel border-2 bg-ink p-8 ${reboot ? "border-signal" : "border-warn"}`}><h2 id="power-title" className="text-3xl font-bold">{reboot ? "Redémarrer la borne ?" : "Éteindre la borne ?"}</h2><p className="mt-4 text-xl text-muted">{reboot ? "Le kiosque reviendra automatiquement après le redémarrage." : "La borne restera éteinte. Il faudra appuyer physiquement sur son alimentation pour la rallumer."}</p><div className="mt-8 grid grid-cols-2 gap-3"><button type="button" className="min-h-16 rounded-panel border-2 border-edge text-xl font-semibold" onClick={onCancel}>Annuler</button><button type="button" className={`min-h-16 rounded-panel text-xl font-bold text-ink ${reboot ? "bg-signal" : "bg-warn"}`} onClick={() => void onConfirm()}>{reboot ? "Confirmer le redémarrage" : "Confirmer l’arrêt"}</button></div></div></div>;
 }
 
 function HealthIcon({ name }: { name: "camera" | "storage" | "temperature" | "power" }) {
