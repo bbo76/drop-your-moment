@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
 import psutil
 
 PI_THERMAL_ZONE = Path("/sys/class/thermal/thermal_zone0/temp")
+THROTTLED_COMMAND = ("vcgencmd", "get_throttled")
 
 
 @dataclass(frozen=True)
@@ -17,6 +19,10 @@ class SystemMetrics:
     memory_total_bytes: int
     memory_percent: float
     temperature_c: float | None
+    undervoltage_now: bool | None
+    undervoltage_occurred: bool | None
+    throttled_now: bool | None
+    throttled_occurred: bool | None
 
 
 def read_system_metrics() -> SystemMetrics:
@@ -26,12 +32,34 @@ def read_system_metrics() -> SystemMetrics:
     rappelle toutes les deux secondes, ce qui fournit naturellement la fenêtre de mesure.
     """
     memory = psutil.virtual_memory()
+    power = _power_flags()
     return SystemMetrics(
         cpu_percent=psutil.cpu_percent(interval=None),
         memory_used_bytes=memory.used,
         memory_total_bytes=memory.total,
         memory_percent=memory.percent,
         temperature_c=_temperature_c(),
+        undervoltage_now=power[0],
+        undervoltage_occurred=power[1],
+        throttled_now=power[2],
+        throttled_occurred=power[3],
+    )
+
+
+def _power_flags() -> tuple[bool | None, bool | None, bool | None, bool | None]:
+    """Sous-tension et throttling actuels/historiques, ou indisponibles hors Pi."""
+    try:
+        result = subprocess.run(
+            THROTTLED_COMMAND, capture_output=True, text=True, check=True, timeout=1
+        )
+        value = int(result.stdout.strip().split("=", 1)[1], 16)
+    except (OSError, subprocess.SubprocessError, ValueError, IndexError):
+        return None, None, None, None
+    return (
+        bool(value & 1),
+        bool(value & (1 << 16)),
+        bool(value & (1 << 2)),
+        bool(value & (1 << 18)),
     )
 
 

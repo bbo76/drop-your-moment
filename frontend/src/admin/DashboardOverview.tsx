@@ -127,6 +127,7 @@ export function DashboardOverview() {
               <SummaryRow label="Caméra" value={health.camera_ok ? "Prête" : "Absente"} attention={!health.camera_ok} />
               <SummaryRow label="Stockage libre" value={gigabytes(health.disk_free_bytes)} attention={health.disk_free_bytes < 2 * 1024 ** 3} />
               <SummaryRow label="Température" value={health.temperature_c === null ? "Non mesurée" : `${health.temperature_c.toFixed(0)} °C`} attention={health.temperature_c !== null && health.temperature_c >= 80} />
+              <SummaryRow label="Alimentation" value={powerLabel(health)} attention={powerWarning(health)} />
             </dl>
           ) : <p className="grid min-h-48 place-items-center p-8 text-center text-muted-foreground">Lecture de l’état de la borne…</p>}
         </OverviewPanel>
@@ -161,6 +162,7 @@ function readiness(health: AdminHealth | null, error: string | null) {
   if (!health) return { tone: "busy" as const, title: "Connexion à la borne…", detail: "Lecture de son état en cours." };
   if (health.maintenance_active) return { tone: "attention" as const, title: "Maintenance en cours", detail: "Une personne intervient directement sur la borne." };
   if (!health.camera_ok) return { tone: "attention" as const, title: "Intervention nécessaire", detail: "La caméra n’est pas disponible." };
+  if (powerWarning(health)) return { tone: "attention" as const, title: "Alimentation à vérifier", detail: "Une sous-tension ou une limitation des performances a été détectée." };
   if (health.session_state !== "idle") return { tone: "busy" as const, title: "Une session est en cours", detail: "La borne est utilisée par des invités." };
   return { tone: "ready" as const, title: "La borne est prête", detail: "Tout est disponible pour les invités." };
 }
@@ -175,3 +177,5 @@ const sessionLabel = (health: AdminHealth | null) => health ? (health.maintenanc
 const gigabytes = (bytes: number) => `${(bytes / 1024 ** 3).toFixed(1).replace(".", ",")} Go`;
 const time = (date: Date) => date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 const photoTime = (epoch: number) => time(new Date(epoch * 1000));
+const powerWarning = (health: AdminHealth) => health.undervoltage_now === true || health.undervoltage_occurred === true || health.throttled_now === true || health.throttled_occurred === true;
+const powerLabel = (health: AdminHealth) => health.undervoltage_now ? "Sous-tension active" : health.undervoltage_occurred ? "Sous-tension détectée" : health.throttled_now ? "Performances limitées" : health.throttled_occurred ? "Throttling détecté" : health.undervoltage_now === null ? "Non mesurée" : "OK";

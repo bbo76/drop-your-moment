@@ -432,6 +432,10 @@ def test_la_sante_repond_a_tenir_la_soiree(admin: TestClient) -> None:
     assert 0 < body["memory_used_bytes"] <= body["memory_total_bytes"]
     assert 0 <= body["memory_percent"] <= 100
     assert body["temperature_c"] is None or isinstance(body["temperature_c"], float)
+    assert body["undervoltage_now"] is None
+    assert body["undervoltage_occurred"] is None
+    assert body["throttled_now"] is None
+    assert body["throttled_occurred"] is None
 
 
 def test_la_sante_signale_la_maintenance_locale(

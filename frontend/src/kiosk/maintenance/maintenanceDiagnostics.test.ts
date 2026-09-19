@@ -42,10 +42,18 @@ const snapshot = {
     memory_total_bytes: 100,
     memory_percent: 10,
     temperature_c: 40,
+    undervoltage_now: false,
+    undervoltage_occurred: false,
+    throttled_now: false,
+    throttled_occurred: false,
   },
 } satisfies MaintenanceSnapshot;
 
 assert.equal(maintenanceDiagnostics(snapshot).status, "ready");
+assert.equal(
+  maintenanceDiagnostics({ ...snapshot, health: { ...snapshot.health, undervoltage_now: true } }).healthDetail,
+  "Sous-tension active · vérifier l’alimentation et le câble",
+);
 assert.equal(
   maintenanceDiagnostics({
     ...snapshot,

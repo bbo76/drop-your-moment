@@ -150,6 +150,10 @@ export interface AdminHealth {
   memory_total_bytes: number;
   memory_percent: number;
   temperature_c: number | null;
+  undervoltage_now: boolean | null;
+  undervoltage_occurred: boolean | null;
+  throttled_now: boolean | null;
+  throttled_occurred: boolean | null;
 }
 
 /** Un index de caméra qui s'ouvre, et la taille que le pilote y annonce. */

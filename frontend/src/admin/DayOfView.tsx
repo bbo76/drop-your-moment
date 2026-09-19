@@ -327,6 +327,12 @@ function getReadiness(health: AdminHealth, error: string | null): Readiness {
   if (!health.camera_ok) {
     return { tone: "attention", title: "Intervention nécessaire", detail: "La caméra n’est pas disponible." };
   }
+  if (health.undervoltage_now || health.undervoltage_occurred) {
+    return { tone: "attention", title: "Alimentation à vérifier", detail: "Vérifiez le bloc secteur et le câble USB-C de la borne." };
+  }
+  if (health.throttled_now || health.throttled_occurred) {
+    return { tone: "attention", title: "Performances limitées", detail: "Vérifiez l’alimentation et les aérations de la borne." };
+  }
   if (health.disk_free_bytes < 2 * 1024 ** 3) {
     return { tone: "attention", title: "Stockage à surveiller", detail: "Il reste moins de 2 Go disponibles." };
   }

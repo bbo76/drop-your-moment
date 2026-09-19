@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 from collections.abc import Iterator
+from types import SimpleNamespace
 
 import httpx
 from fastapi.testclient import TestClient
@@ -58,6 +59,23 @@ def test_statut_systeme_signale_un_bac_papier_vide(kiosk: TestClient, runtime: R
 
     assert body["operator_attention"] is True
     assert body["prints_remaining"] == 0
+
+
+def test_statut_systeme_signale_une_sous_tension(kiosk: TestClient, monkeypatch) -> None:
+    from dropyourmoment.api import kiosk_router
+
+    monkeypatch.setattr(
+        kiosk_router,
+        "read_system_metrics",
+        lambda: SimpleNamespace(
+            undervoltage_now=False,
+            undervoltage_occurred=True,
+            throttled_now=False,
+            throttled_occurred=False,
+        ),
+    )
+
+    assert kiosk.get("/api/system/status").json()["operator_attention"] is True
 
 
 def test_info_evenement_separee_du_materiel(kiosk: TestClient) -> None:
