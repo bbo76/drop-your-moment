@@ -72,6 +72,11 @@ tasks:
     cmds:
       - pnpm install
 
+  deploy:
+    desc: "Met à jour et relance le Pi — task deploy REF=main"
+    cmds:
+      - ./deploy/update.sh '{{.REF | default "main"}}'
+
   check:
     desc: Tout ce que vérifie la CI, dans le même ordre
     cmds:
