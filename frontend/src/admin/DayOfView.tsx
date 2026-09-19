@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Activity, Camera, Check, Database, Printer, Thermometer, TriangleAlert, Wifi } from "lucide-react";
+import { Activity, Camera, Check, Database, PlugZap, Printer, Thermometer, TriangleAlert, Wifi } from "lucide-react";
 
 import { Button as ShadButton } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -186,7 +186,7 @@ export function DayOfView() {
       <Accordion type="single" collapsible className="rounded-xl border bg-card">
         <AccordionItem value="diagnostic" className="border-0">
           <AccordionTrigger className="min-h-18 px-4 py-3 hover:no-underline">
-            <span className="grid text-left"><strong className="text-lg">Diagnostic</strong><small className={powerNeedsAttention(health) ? "text-destructive" : "text-muted-foreground"}>{diagnosticSummary(health)}</small></span>
+            <span className="grid text-left"><strong className="text-lg">Diagnostic</strong><small className={`mt-0.5 flex items-center gap-1.5 ${powerNeedsAttention(health) ? "font-semibold text-destructive" : "text-muted-foreground"}`}><PlugZap className="size-4 flex-none" aria-hidden="true" />{diagnosticSummary(health)}</small></span>
           </AccordionTrigger>
           <AccordionContent className="border-t p-4">
             <dl className="divide-y">
@@ -418,7 +418,7 @@ const stateLabel = (state: AdminHealth["session_state"]) => STATE_LABELS[state];
 
 const powerNeedsAttention = (health: AdminHealth) => health.undervoltage_now === true || health.undervoltage_occurred === true || health.throttled_now === true || health.throttled_occurred === true;
 const powerLabel = (health: AdminHealth) => health.undervoltage_now ? "Sous-tension active" : health.undervoltage_occurred ? "Sous-tension détectée" : health.throttled_now ? "Performances limitées" : health.throttled_occurred ? "Limitation détectée" : health.undervoltage_now === null ? "Indisponible" : "Stable";
-const diagnosticSummary = (health: AdminHealth) => powerNeedsAttention(health) ? powerLabel(health) : `CPU ${Math.round(health.cpu_percent)} % · RAM ${Math.round(health.memory_percent)} %`;
+const diagnosticSummary = (health: AdminHealth) => `${powerLabel(health)} · CPU ${Math.round(health.cpu_percent)} % · RAM ${Math.round(health.memory_percent)} %`;
 
 type IconName = "check" | "attention" | "camera" | "storage" | "temperature" | "printer" | "wifi" | "pulse";
 
