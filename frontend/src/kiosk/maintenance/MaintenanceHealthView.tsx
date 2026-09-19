@@ -22,7 +22,7 @@ export function MaintenanceHealthView({ snapshot }: { snapshot: MaintenanceSnaps
         </div>
       </div>
       <div className="flex min-h-0 flex-col rounded-[0.65rem] bg-surface p-5">
-        <div className="flex items-center gap-4 border-b-2 border-edge pb-4"><HealthIcon name="power" /><div><p className="text-base font-medium text-muted">Alimentation</p><p className={`text-2xl font-bold ${powerWarning(health) ? "text-warn" : ""}`}>{powerLabel(health)}</p></div></div>
+        <div className="flex items-center gap-4 border-b-2 border-edge pb-4"><HealthIcon name="power" /><div><p className="text-base font-medium text-muted">Alimentation</p><p className={`text-2xl font-bold ${powerWarning(health) ? "text-warn" : ""}`}>{powerLabel(health)}</p><p className="mt-1 text-sm leading-tight text-muted">{powerDetail(health)}</p></div></div>
         <div className="flex flex-1 flex-col justify-center gap-5"><div className="flex items-center gap-3"><HealthIcon name="temperature" /><div><p className="font-medium text-muted">Température</p><p className={`text-2xl font-bold tabular-nums ${health.temperature_c !== null && health.temperature_c >= 80 ? "text-warn" : ""}`}>{health.temperature_c === null ? "Indisponible" : `${Math.round(health.temperature_c)} °C`}</p></div></div><ResourceMeter label="Processeur" percent={health.cpu_percent} /><ResourceMeter label="Mémoire" percent={health.memory_percent} /></div>
       </div>
     </section>
@@ -43,3 +43,4 @@ function ResourceMeter({ label, percent }: { label: string; percent: number }) {
 const gigabytes = (bytes: number) => `${(bytes / 1024 ** 3).toFixed(1)} Go`;
 const powerWarning = (health: MaintenanceSnapshot["health"]) => health.undervoltage_now === true || health.undervoltage_occurred === true || health.throttled_now === true || health.throttled_occurred === true;
 const powerLabel = (health: MaintenanceSnapshot["health"]) => health.undervoltage_now ? "Sous-tension active" : health.undervoltage_occurred ? "Sous-tension détectée" : health.throttled_now ? "Performances limitées" : health.throttled_occurred ? "Throttling détecté" : health.undervoltage_now === null ? "Indisponible" : "Alimentation OK";
+const powerDetail = (health: MaintenanceSnapshot["health"]) => powerWarning(health) ? "Vérifiez le bloc secteur et le câble USB-C" : health.undervoltage_now === null ? "Mesure disponible sur Raspberry Pi" : "Aucune anomalie depuis le démarrage";

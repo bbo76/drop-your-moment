@@ -101,6 +101,10 @@ assert.equal(mockSystemStatus(system, "paper-critical")?.prints_remaining, 2);
 assert.equal(mockSystemStatus(system, "paper-empty")?.prints_remaining, 0);
 assert.equal(mockSystemStatus(system, "printer")?.printer_ok, false);
 assert.equal(
+  maintenanceDiagnostics(mockMaintenanceSnapshot(snapshot, "power")).healthDetail,
+  "Sous-tension active · vérifier l’alimentation et le câble",
+);
+assert.equal(
   maintenanceDiagnostics(mockMaintenanceSnapshot(snapshot, "paper-empty")).printingDetail,
   "Stock papier insuffisant · à mettre à jour",
 );

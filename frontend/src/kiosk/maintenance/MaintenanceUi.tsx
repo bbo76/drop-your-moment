@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import {
   Activity,
   Camera,
-  Check,
   CircleAlert,
   HardDrive,
   Images,
@@ -62,9 +61,12 @@ export function MaintenanceIcon({ name, className = "size-[4.25rem] rounded-[0.5
 }
 
 export function StatusMark({ state }: { state: "ready" | "warning" }) {
+  if (state === "ready") {
+    return <span className="size-3 flex-none rounded-full bg-signal" aria-hidden="true" />;
+  }
   return (
-    <span className={`inline-grid size-[1.65rem] flex-none place-items-center rounded-[0.3rem] border-2 text-base leading-none font-bold ${state === "ready" ? "border-[#7fc6a4] bg-[#7fc6a4] text-[#101418]" : "border-current text-warn"}`} aria-hidden="true">
-      {state === "ready" ? <Check className="size-4" strokeWidth={3} /> : <CircleAlert className="size-4" strokeWidth={2.5} />}
+    <span className="inline-grid size-[1.65rem] flex-none place-items-center rounded-[0.3rem] border-2 border-current text-warn" aria-hidden="true">
+      <CircleAlert className="size-4" strokeWidth={2.5} />
     </span>
   );
 }

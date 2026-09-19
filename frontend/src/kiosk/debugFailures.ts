@@ -8,6 +8,7 @@ export type DebugFailure =
   | "cassette"
   | "printer"
   | "camera"
+  | "power"
   | "disk";
 
 export const DEBUG_FAILURES: Array<{ value: DebugFailure; label: string }> = [
@@ -18,6 +19,7 @@ export const DEBUG_FAILURES: Array<{ value: DebugFailure; label: string }> = [
   { value: "cassette", label: "Bac vide" },
   { value: "printer", label: "Imprimante" },
   { value: "camera", label: "Caméra" },
+  { value: "power", label: "Sous-tension" },
   { value: "disk", label: "Disque" },
 ];
 
@@ -56,6 +58,10 @@ export function mockMaintenanceSnapshot(
   const health = {
     ...snapshot.health,
     camera_ok: true,
+    undervoltage_now: false,
+    undervoltage_occurred: false,
+    throttled_now: false,
+    throttled_occurred: false,
     disk_free_bytes: Math.max(
       snapshot.health.disk_free_bytes,
       Math.floor(snapshot.health.disk_total_bytes * 0.2),
@@ -78,6 +84,8 @@ export function mockMaintenanceSnapshot(
     health.printer_driver = "offline";
   } else if (failure === "camera") {
     health.camera_ok = false;
+  } else if (failure === "power") {
+    health.undervoltage_now = true;
   } else if (failure === "disk") {
     health.disk_free_bytes = Math.floor(health.disk_total_bytes * 0.05);
   }
