@@ -35,9 +35,11 @@ class SystemPower:
 
     executor: Callable[[PowerAction], None] = _run_systemctl
     available: bool = field(
-        default_factory=lambda: _is_raspberry_pi_systemd()
-        and Path("/usr/bin/systemctl").is_file()
-        and Path("/usr/bin/sudo").is_file()
+        default_factory=lambda: (
+            _is_raspberry_pi_systemd()
+            and Path("/usr/bin/systemctl").is_file()
+            and Path("/usr/bin/sudo").is_file()
+        )
     )
 
     def request(self, action: PowerAction) -> None:

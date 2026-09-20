@@ -96,9 +96,7 @@ def maintenance_status(runtime: Runtime = Depends(_authorized)) -> MaintenanceSn
 
 
 @router.post("/power/{action}", status_code=status.HTTP_202_ACCEPTED)
-def request_power_action(
-    action: PowerAction, runtime: Runtime = Depends(_authorized)
-) -> None:
+def request_power_action(action: PowerAction, runtime: Runtime = Depends(_authorized)) -> None:
     if runtime.machine.state is not SessionState.IDLE:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
