@@ -1,15 +1,14 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { Camera, Home, Timer } from "lucide-react";
 
 import { BLANK_PIXEL, previewStreamUrl, type ShotTimerSeconds } from "../../shared/api";
-import { computeFraming, FramingGuide } from "./FramingGuide";
-import { GhostButton, PrimaryButton } from "./Screen";
+import { FramingGuide } from "./FramingGuide";
 
 const RETURN_HINT_THRESHOLD_S = 20;
 const COUNTDOWN_STEP_MS = 1000;
 const SHOT_TIMER_OPTIONS: ShotTimerSeconds[] = [3, 5, 10];
 
 interface Props {
-  previewSize: [number, number];
   printAspectRatio: number;
   overlayUrl: string | null;
   remainingSeconds: number | null;
@@ -31,7 +30,6 @@ type Phase =
   | { kind: "capturing" };
 
 export function PreviewScreen({
-  previewSize,
   printAspectRatio,
   overlayUrl,
   remainingSeconds,
@@ -40,9 +38,9 @@ export function PreviewScreen({
   onCapture,
   onCancel,
 }: Props) {
-  const framing = computeFraming(previewSize, printAspectRatio);
   const [phase, setPhase] = useState<Phase>({ kind: "waiting" });
   const [shotTimerSeconds, setShotTimerSeconds] = useState(defaultShotTimerSeconds);
+  const [timerOpen, setTimerOpen] = useState(false);
 
   // Figé à la première image du composant : recalculer l'URL à chaque rendu redémarrerait
   // le flux MJPEG.
@@ -87,79 +85,116 @@ export function PreviewScreen({
     remainingSeconds <= RETURN_HINT_THRESHOLD_S;
 
   return (
-    <main className="grid h-full grid-rows-[1fr_auto] gap-3 bg-black p-3">
+    <main className="relative flex h-full overflow-hidden bg-ink">
+      <aside className="relative z-10 flex min-w-17 flex-1 items-end justify-center bg-ink pb-3">
+        {phase.kind === "waiting" && (
+          <fieldset className="relative">
+            <legend className="sr-only">Durée du minuteur</legend>
+            <div
+              id="shot-timer-options"
+              aria-hidden={!timerOpen}
+              className={`absolute bottom-16 left-1/2 grid -translate-x-1/2 gap-1.5 transition-[opacity,transform] duration-180 ease-out motion-reduce:transition-none ${
+                timerOpen
+                  ? "translate-y-0 opacity-100"
+                  : "pointer-events-none translate-y-2 opacity-0"
+              }`}
+            >
+              {SHOT_TIMER_OPTIONS.map((seconds) => (
+                <button
+                  key={seconds}
+                  type="button"
+                  disabled={!timerOpen}
+                  aria-pressed={shotTimerSeconds === seconds}
+                  onClick={() => {
+                    setShotTimerSeconds(seconds);
+                    setTimerOpen(false);
+                  }}
+                  className={`size-14 cursor-pointer rounded-full border-2 text-lg font-bold tabular-nums transition-[background-color,color,transform] duration-150 active:scale-[0.97] ${
+                    shotTimerSeconds === seconds
+                      ? "border-signal bg-signal text-signal-ink"
+                      : "border-edge bg-surface text-body"
+                  }`}
+                >
+                  {seconds}<span className="text-sm font-medium"> s</span>
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              aria-label={`Minuteur, ${shotTimerSeconds} secondes`}
+              aria-expanded={timerOpen}
+              aria-controls="shot-timer-options"
+              onClick={() => setTimerOpen((open) => !open)}
+              className={`grid size-14 cursor-pointer place-items-center rounded-full border-2 bg-surface text-body transition-[background-color,color,transform] duration-150 active:scale-[0.97] ${
+                timerOpen ? "border-signal text-signal" : "border-edge"
+              }`}
+            >
+              <Timer aria-hidden="true" className="size-7" strokeWidth={2.25} />
+            </button>
+          </fieldset>
+        )}
+      </aside>
+
       <div
-        className="relative m-auto h-full max-h-full min-h-0 w-auto max-w-full overflow-hidden rounded-panel bg-black"
-        // La hauteur disponible est prise et le ratio en déduit la largeur. On tient
-        // l'image entière sans l'étirer — la rogner ferait
-        // mentir le cadre de visée sur ce qui est réellement conservé.
-        style={{ aspectRatio: framing.aspectRatio }}
+        className="relative h-full shrink-0 overflow-hidden bg-black"
+        // Ce rectangle est le fichier final : `object-cover` reproduit exactement le
+        // recadrage central du pipeline, puis l'overlay en épouse les quatre bords.
+        style={{ aspectRatio: printAspectRatio }}
       >
-        <img ref={preview} src={streamUrl} alt="" className="block h-full w-full" />
-        <FramingGuide {...framing} overlayUrl={overlayUrl} />
+        <img ref={preview} src={streamUrl} alt="" className="block h-full w-full object-cover" />
+        <FramingGuide overlayUrl={overlayUrl} />
 
         {phase.kind === "counting" && (
           <div className="pointer-events-none absolute inset-0 grid place-content-center">
             <CountdownNumber value={phase.value} />
           </div>
         )}
-
-        {/* Flash logiciel : un éclairage d'appoint gratuit sur une borne, et le signal
-            que la photo est prise. */}
-        {phase.kind === "capturing" && screenFlashEnabled && (
-          <div className="pointer-events-none absolute inset-0 bg-white" />
-        )}
       </div>
 
-      <div className="relative grid min-h-22 grid-cols-[minmax(0,1fr)_auto_14rem_8rem] items-center gap-3 rounded-panel bg-ink p-3 max-[900px]:gap-2 max-[900px]:p-2 [&>button]:w-full">
-        <span className="text-lg leading-tight font-medium tracking-[0.01em] text-muted max-[900px]:max-w-36 max-[900px]:text-base">
-          {framing.maskPercent > 0 && phase.kind === "waiting"
-            ? "La zone nette sera conservée"
-            : ""}
-        </span>
-
-        {phase.kind === "waiting" ? (
-          <fieldset>
-            <legend className="sr-only">Durée du minuteur</legend>
-            <div className="flex h-16 items-stretch rounded-panel border-2 border-edge bg-surface p-1">
-              {SHOT_TIMER_OPTIONS.map((seconds) => (
-                <button
-                  key={seconds}
-                  type="button"
-                  aria-pressed={shotTimerSeconds === seconds}
-                  onClick={() => setShotTimerSeconds(seconds)}
-                  className={`min-h-13 min-w-14 cursor-pointer rounded-lg px-3 text-lg font-bold tabular-nums transition-[background-color,color,transform] duration-150 active:scale-[0.97] max-[900px]:min-w-12 max-[900px]:px-2 ${
-                    shotTimerSeconds === seconds
-                      ? "bg-signal text-signal-ink"
-                      : "text-body"
-                  }`}
-                >
-                  {seconds} s
-                </button>
-              ))}
-            </div>
-          </fieldset>
-        ) : (
-          <span className="capture-cue pointer-events-none absolute inset-0 grid place-items-center text-3xl leading-[1.08] font-bold tracking-[-0.02em] text-signal">
-            Souriez…
-          </span>
-        )}
-
+      <aside className="relative z-10 flex min-w-17 flex-1 items-end justify-center bg-ink pb-3">
         {phase.kind === "waiting" && (
-          <PrimaryButton
-            onClick={() => setPhase({ kind: "counting", value: shotTimerSeconds })}
+          <button
+            type="button"
+            aria-label="Retour à l'accueil"
+            onClick={onCancel}
+            className="grid size-14 cursor-pointer place-items-center rounded-full border-2 border-edge bg-surface text-body transition-[background-color,color,transform] duration-150 active:scale-[0.97]"
           >
-            Prendre la photo
-          </PrimaryButton>
+            <Home aria-hidden="true" className="size-7" strokeWidth={2.25} />
+          </button>
         )}
+      </aside>
 
-        <span className="flex items-center justify-end gap-3">
-          <span className="text-base leading-[1.3] font-normal text-muted max-[900px]:hidden">
-            {showReturnHint && `Retour à l'accueil dans ${Math.ceil(remainingSeconds)} s`}
-          </span>
-          {phase.kind === "waiting" && <GhostButton onClick={onCancel}>Annuler</GhostButton>}
+      {phase.kind === "waiting" && (
+        <>
+          <div className="absolute bottom-3 left-1/2 z-20 -translate-x-1/2">
+            <button
+              type="button"
+              aria-label="Prendre la photo"
+              onClick={() => setPhase({ kind: "counting", value: shotTimerSeconds })}
+              className="grid size-24 cursor-pointer place-items-center rounded-full border-4 border-ink bg-signal text-signal-ink transition-transform duration-150 active:scale-[0.94]"
+            >
+              <Camera aria-hidden="true" className="size-11" strokeWidth={2.25} />
+            </button>
+          </div>
+
+          {showReturnHint && (
+            <p className="absolute top-3 left-1/2 z-20 -translate-x-1/2 rounded-panel bg-ink px-5 py-2 text-base font-medium text-body">
+              Retour à l'accueil dans {Math.ceil(remainingSeconds)} s
+            </p>
+          )}
+        </>
+      )}
+
+      {phase.kind !== "waiting" && (
+        <span className="capture-cue pointer-events-none absolute bottom-5 left-1/2 z-20 -translate-x-1/2 rounded-panel bg-ink px-5 py-2 text-3xl leading-[1.08] font-bold tracking-[-0.02em] text-signal">
+          Souriez…
         </span>
-      </div>
+      )}
+
+      {/* Le flash couvre désormais toute la dalle, pas seulement le futur tirage. */}
+      {phase.kind === "capturing" && screenFlashEnabled && (
+        <div className="pointer-events-none absolute inset-0 z-30 bg-white" />
+      )}
     </main>
   );
 }
