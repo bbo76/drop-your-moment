@@ -141,8 +141,9 @@ Waveshare 1024×600, le tactile et le démarrage autonome après extinction comp
 - ✅ Services systemd, Cage et Chromium en kiosque sur Raspberry Pi OS Lite — lancement
   automatique après démarrage à froid, écran tactile opérationnel, curseur fantôme et
   proposition de traduction supprimés
-- ✅ Réglages matériels initiaux : aperçu 640×360 à 29,9 images/s, capture 2304×1296 et
-  parcours complet validé sur la dalle réelle
+- ✅ Réglages matériels finaux : aperçu 640×360 en qualité MJPEG haute à 29,9 images/s,
+  capture 2304×1296, timeouts aperçu/review de 60/90 s, viseur plein cadre et parcours
+  complet validés sur la dalle réelle
 
 ### ✅ Pilote webcam universel — macOS, Windows, USB
 
