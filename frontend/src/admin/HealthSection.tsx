@@ -104,7 +104,7 @@ export function HealthSection() {
           ? "pilote neutre — aucune imprimante branchée"
           : `CUPS — ${config.printer_name}`,
       }));
-      setPrinterFeedback({ notice: "Destination d’impression appliquée et conservée." });
+      setPrinterFeedback({ notice: "Destination mise à jour." });
     } catch (cause) {
       setPrinterFeedback({ error: cause instanceof Error ? cause.message : String(cause) });
     } finally {

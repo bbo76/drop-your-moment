@@ -96,14 +96,8 @@ export function DashboardOverview() {
               <SummaryRow label="Filtres" value={config.available_filters.map((filter) => FILTER_LABELS[filter]).join(" · ")} />
               <SummaryRow
                 label="Format"
-                value={
-                  <span className="grid gap-0.5">
-                    <span>{config.print_format.name}</span>
-                    <small>{config.copies_per_print} copie{config.copies_per_print > 1 ? "s" : ""}</small>
-                  </span>
-                }
+                value={config.print_format.name}
               />
-              <SummaryRow label="Minuteur" value={`${config.default_shot_timer_seconds} secondes`} />
             </dl>
           ) : <div className="grid min-h-48 gap-3 p-6"><Skeleton className="h-8" /><Skeleton className="h-8" /><Skeleton className="h-8" /></div>}
         </OverviewPanel>
