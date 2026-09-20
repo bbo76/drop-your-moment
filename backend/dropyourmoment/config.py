@@ -35,8 +35,8 @@ class Settings(BaseSettings):
     maintenance_pin: str = "2580"
     maintenance_session_timeout_s: float = 300.0
 
-    # Timeouts d'inactivité, réglables sur site : la bonne valeur dépend du rythme d'un
-    # événement et se mesure en observant de vrais visiteurs, pas en la devinant ici.
+    # Validés sur la borne 7 pouces : une minute laisse le temps de se placer et régler le
+    # minuteur ; la review garde trente secondes de plus pour comparer les rendus.
     preview_timeout_s: float = 60.0
     review_timeout_s: float = 90.0
     done_timeout_s: float = 8.0

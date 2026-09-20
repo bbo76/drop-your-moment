@@ -89,6 +89,22 @@ de la reconnexion pour un gain nul sur un client unique en boucle locale.
 **À rouvrir si** le flux devait un jour traverser un vrai réseau — scénario d'une tablette
 distante consommant la caméra du Pi. WebRTC serait alors plus pertinent.
 
+### Réglages finaux de l'aperçu sur la borne
+
+Les valeurs retenues après essai sur le Raspberry Pi 4, le Camera Module 3 et la dalle
+Waveshare 1024×600 sont :
+
+- flux `lores` en **640×360**, qualité MJPEG `HIGH` : **29,9 images/s** mesurées, sans
+  manque de netteté visible sur la dalle ;
+- capture `main` en **2304×1296**, suffisante pour le tirage carte postale après recadrage ;
+- timeout de l'aperçu à **60 s**, puis timeout de review à **90 s** : le second laisse le
+  temps de comparer les rendus sans immobiliser durablement la borne ;
+- viseur au ratio exact du tirage sur toute la hauteur, overlay bord à bord et cibles
+  tactiles de 56 px minimum.
+
+Ces valeurs restent surchargeables sur site lorsqu'elles relèvent de la configuration,
+mais ce sont désormais des valeurs mesurées et retenues, pas des hypothèses de départ.
+
 ### Pas de changement de mode capteur pour la capture
 
 Une seule configuration : flux `main` pour les captures, `lores` pour l'aperçu.

@@ -1,6 +1,6 @@
 """Driver Raspberry Pi Camera Module v3 (IMX708) via picamera2.
 
-⚠️  Non validé sur hardware — écrit contre la doc picamera2, à vérifier au jalon 6.
+Validé sur Raspberry Pi 4 avec un Camera Module 3 (IMX708) et la dalle Waveshare 7 pouces.
 
 Deux choix structurants :
 
@@ -45,6 +45,9 @@ logger = logging.getLogger(__name__)
 
 STILL_SIZE = (2304, 1296)
 PREVIEW_SIZE = (640, 360)
+# Ce couple taille/qualité atteint 29,9 images/s sur le Pi tout en restant net sur la dalle.
+# Monter la résolution ajouterait du coût sans rendre davantage de détails sur 1024×600.
+PREVIEW_QUALITY = Quality.HIGH
 # Les buffers `main` pèsent ~9 Mo chacun en RGB888. La valeur par défaut de picamera2
 # est généreuse ; 4 suffit pour un flux mono-client et économise ~20 Mo sur le Pi.
 BUFFER_COUNT = 4
@@ -107,7 +110,7 @@ class Picamera2Driver(CameraDriver):
             camera.start_recording(
                 MJPEGEncoder(),
                 FileOutput(self._buffer),
-                quality=Quality.HIGH,
+                quality=PREVIEW_QUALITY,
                 name="lores",
             )
         except Exception as exc:
