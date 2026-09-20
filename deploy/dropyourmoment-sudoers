@@ -1,0 +1,2 @@
+# Autorise uniquement les deux actions d'alimentation exposées par la maintenance locale.
+photobooth ALL=(root) NOPASSWD: /usr/bin/systemctl reboot, /usr/bin/systemctl poweroff

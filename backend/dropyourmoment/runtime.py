@@ -27,6 +27,7 @@ from dropyourmoment.imaging.pipeline import ImagePipeline
 from dropyourmoment.storage.counters import CounterStore
 from dropyourmoment.storage.maintenance_pin import MaintenancePinStore
 from dropyourmoment.storage.retention import purge
+from dropyourmoment.system_power import SystemPower
 
 
 @dataclass
@@ -37,6 +38,7 @@ class Runtime:
     machine: SessionMachine
     event_store: EventStore
     event: LoadedEvent
+    system_power: SystemPower = field(default_factory=SystemPower)
     pipeline: ImagePipeline = field(init=False)
     counters: CounterStore = field(init=False)
     print_flow: PrintFlow = field(init=False)

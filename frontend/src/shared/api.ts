@@ -122,6 +122,7 @@ export interface MaintenanceSettings {
 export interface MaintenanceSnapshot {
   health: AdminHealth;
   settings: MaintenanceSettings;
+  power_available: boolean;
 }
 
 /** Diagnostic servi par le portail d'administration, sur l'autre socket.
@@ -274,6 +275,11 @@ export const api = {
   replaceMaintenanceInk: (capacity: 36 | 54) =>
     post<CounterReading>("/api/maintenance/ink/replace", { capacity }),
   reloadCassette: () => post<CounterReading>("/api/maintenance/cassette/reload"),
+  requestPowerAction: async (action: "reboot" | "poweroff") => {
+    const path = `/api/maintenance/power/${action}`;
+    const response = await fetch(path, { method: "POST", cache: "no-store" });
+    if (!response.ok) throw new Error(await errorMessage(response, path));
+  },
   health: () => request<AdminHealth>("/admin/system/health"),
   releaseKiosk: () => post<SessionStatus>("/admin/session/home"),
   setPaperStock: (capacity: number) =>

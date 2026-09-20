@@ -5,6 +5,7 @@ import { mockMaintenanceSnapshot, mockSystemStatus } from "../debugFailures.ts";
 import { maintenanceDiagnostics } from "./maintenanceDiagnostics.ts";
 
 const snapshot = {
+  power_available: true,
   settings: {
     copies_per_print: 1,
     default_shot_timer_seconds: 3,

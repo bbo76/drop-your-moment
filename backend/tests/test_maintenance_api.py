@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 
 from dropyourmoment.runtime import Runtime
+from dropyourmoment.system_power import SystemPower
 
 
 def _unlock(kiosk: TestClient, pin: str = "2580") -> None:
@@ -116,3 +117,40 @@ def test_les_routes_de_maintenance_ne_sont_pas_sur_le_portail_lan(
     admin: TestClient,
 ) -> None:
     assert admin.post("/api/maintenance/unlock", json={"pin": "2580"}).status_code == 404
+
+
+def test_les_actions_systeme_sont_protegees_et_simulees(
+    kiosk: TestClient, runtime: Runtime
+) -> None:
+    calls: list[str] = []
+    runtime.system_power = SystemPower(executor=calls.append, available=True)
+
+    assert kiosk.post("/api/maintenance/power/reboot").status_code == 401
+    _unlock(kiosk)
+    assert kiosk.post("/api/maintenance/power/reboot").status_code == 202
+    assert kiosk.post("/api/maintenance/power/poweroff").status_code == 202
+    assert calls == ["reboot", "poweroff"]
+
+
+def test_une_action_systeme_refuse_toute_session_active(
+    kiosk: TestClient, runtime: Runtime
+) -> None:
+    calls: list[str] = []
+    runtime.system_power = SystemPower(executor=calls.append, available=True)
+    assert kiosk.post("/api/session").status_code == 200
+    _unlock(kiosk)
+
+    response = kiosk.post("/api/maintenance/power/poweroff")
+
+    assert response.status_code == 409
+    assert calls == []
+
+
+def test_les_actions_systeme_sont_indisponibles_hors_pi(
+    kiosk: TestClient, runtime: Runtime
+) -> None:
+    runtime.system_power = SystemPower(available=False)
+    _unlock(kiosk)
+
+    assert kiosk.get("/api/maintenance/status").json()["power_available"] is False
+    assert kiosk.post("/api/maintenance/power/reboot").status_code == 503

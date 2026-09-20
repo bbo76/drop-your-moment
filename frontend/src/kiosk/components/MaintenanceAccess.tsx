@@ -54,15 +54,17 @@ type MaintenanceView = "home" | "health" | "printing" | "gallery" | "settings";
 
 function MaintenancePanel({ onExpired, onExit, debugFailure }: { onExpired: () => void; onExit: () => void; debugFailure: DebugFailure }) {
   const [view, setView] = useState<MaintenanceView>("home");
+  const [powerTransition, setPowerTransition] = useState<"reboot" | "poweroff" | null>(null);
   const maintenance = useMaintenance(debugFailure, onExpired);
   const { snapshot, error, saving, saveSettings } = maintenance;
   if (!snapshot) return <main className="grid h-full place-content-center bg-ink text-center text-body"><p className="text-3xl font-bold">Lecture de la borne…</p>{error && <p className="mt-4 text-warn">{error}</p>}</main>;
+  if (powerTransition) return <PowerTransition action={powerTransition} />;
   const diagnostics = maintenanceDiagnostics(snapshot);
   const back = () => setView("home");
   if (view === "health") return <MaintenanceFrame title="Santé de la borne" status={diagnostics.status} onBack={back}><MaintenanceHealthView snapshot={snapshot} /></MaintenanceFrame>;
   if (view === "printing") return <MaintenanceFrame title="Impression" status={diagnostics.status} onBack={back}><MaintenancePrintingView snapshot={snapshot} saving={saving} onSaveSettings={saveSettings} onReloadCassette={maintenance.reloadCassette} onReplaceInk={maintenance.replaceInk} onSetPaperStock={maintenance.setPaperStock} /></MaintenanceFrame>;
   if (view === "gallery") return <MaintenanceFrame title="Galerie photo" status={diagnostics.status} onBack={back}><MaintenanceGalleryView onExpired={onExpired} /></MaintenanceFrame>;
-  if (view === "settings") return <MaintenanceFrame title="Réglages borne" status={diagnostics.status} onBack={back}><MaintenanceSettingsView snapshot={snapshot} saving={saving} onSaveSettings={saveSettings} /></MaintenanceFrame>;
+  if (view === "settings") return <MaintenanceFrame title="Réglages borne" status={diagnostics.status} onBack={back}><MaintenanceSettingsView snapshot={snapshot} saving={saving} onSaveSettings={saveSettings} onPowerAction={async (action) => { setPowerTransition(action); try { await api.requestPowerAction(action); } catch (cause) { setPowerTransition(null); throw cause; } }} /></MaintenanceFrame>;
   const { settings } = snapshot;
   return (
     <main className="grid h-full grid-rows-[auto_1fr] gap-4 bg-ink p-4 text-body [--color-signal:#d8dee4] [--color-signal-ink:#101418] max-h-[600px]:gap-3 max-h-[600px]:p-3">
@@ -76,6 +78,11 @@ function MaintenancePanel({ onExpired, onExit, debugFailure }: { onExpired: () =
       {error && <p className="fixed bottom-3 left-4 rounded-panel bg-warn-bg px-4 py-2 text-lg font-medium text-warn" role="status">{error}</p>}
     </main>
   );
+}
+
+function PowerTransition({ action }: { action: "reboot" | "poweroff" }) {
+  const reboot = action === "reboot";
+  return <main className="grid h-full place-content-center bg-ink px-8 text-center text-body"><div className="mx-auto size-16 animate-pulse rounded-full bg-signal" /><h1 className="mt-8 text-5xl font-bold">{reboot ? "Redémarrage en cours" : "Arrêt en cours"}</h1><p className="mt-5 text-2xl text-muted">{reboot ? "La borne reviendra automatiquement au kiosque." : "Attendez l’extinction complète avant de débrancher."}</p>{!reboot && <p className="mt-3 text-lg text-muted">Une remise sous tension physique sera nécessaire.</p>}</main>;
 }
 
 function MaintenanceTile({ icon, title, detail, attention = false, onClick }: { icon: "health" | "print" | "gallery" | "settings"; title: string; detail: string; attention?: boolean; onClick: () => void }) {
