@@ -9,6 +9,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from dropyourmoment.core.session import StateTimeouts
 from dropyourmoment.hardware.camera.factory import CameraDriverName
+from dropyourmoment.hardware.printer.factory import PrinterDriverName
 from dropyourmoment.storage.retention import RetentionPolicy
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -21,6 +22,10 @@ class Settings(BaseSettings):
     # Index de webcam (macOS, Windows) ou chemin `/dev/videoN` (Linux). Ne concerne
     # que le driver opencv : le capteur CSI du Pi n'a pas de sélection à faire.
     camera_device: int | str = 0
+
+    printer_driver: PrinterDriverName = PrinterDriverName.NULL
+    # Nom de file CUPS. Sans valeur, le pilote utilise l'imprimante par défaut de CUPS.
+    printer_name: str | None = None
 
     # Le kiosque n'écoute que sur la boucle locale et l'admin sur toutes les interfaces.
     # C'est cette paire d'adresses de bind — et non une frontière de process — qui porte

@@ -6,10 +6,12 @@ import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Activity, Camera, Clock3, Database, Printer, Wrench } from "lucide-react";
 
-import { api, type AdminHealth, type CameraScan } from "../shared/api";
-import { Button, Row, Section } from "./ui";
+import { api, type AdminHealth, type CameraScan, type PrinterConfiguration } from "../shared/api";
+import { Button, Feedback, Row, Section } from "./ui";
 
 /* Tableau de bord : « est-ce que la borne va tenir la soirée ? »
  *
@@ -24,6 +26,10 @@ export function HealthSection() {
   const [scanning, setScanning] = useState(false);
   const [releasing, setReleasing] = useState(false);
   const [releaseDialogOpen, setReleaseDialogOpen] = useState(false);
+  const [printerConfig, setPrinterConfig] = useState<PrinterConfiguration | null>(null);
+  const [printerChoice, setPrinterChoice] = useState("null");
+  const [printerSaving, setPrinterSaving] = useState(false);
+  const [printerFeedback, setPrinterFeedback] = useState<{ error?: string; notice?: string }>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -47,6 +53,13 @@ export function HealthSection() {
       cancelled = true;
       clearTimeout(timer);
     };
+  }, []);
+
+  useEffect(() => {
+    api.printerConfig().then((config) => {
+      setPrinterConfig(config);
+      setPrinterChoice(config.driver === "cups" && config.printer_name ? config.printer_name : "null");
+    }, (cause) => setPrinterFeedback({ error: String(cause) }));
   }, []);
 
   /* Jamais au chargement, jamais en boucle : le sondage ouvre chaque périphérique tour à
@@ -73,6 +86,29 @@ export function HealthSection() {
       setError(String(cause));
     } finally {
       setReleasing(false);
+    }
+  };
+
+  const savePrinter = async () => {
+    setPrinterSaving(true);
+    setPrinterFeedback({});
+    try {
+      const config = await api.savePrinterConfig(
+        printerChoice === "null" ? "null" : "cups",
+        printerChoice === "null" ? null : printerChoice,
+      );
+      setPrinterConfig(config);
+      setHealth((current) => current && ({
+        ...current,
+        printer_driver: config.driver === "null"
+          ? "pilote neutre — aucune imprimante branchée"
+          : `CUPS — ${config.printer_name}`,
+      }));
+      setPrinterFeedback({ notice: "Destination d’impression appliquée et conservée." });
+    } catch (cause) {
+      setPrinterFeedback({ error: cause instanceof Error ? cause.message : String(cause) });
+    } finally {
+      setPrinterSaving(false);
     }
   };
 
@@ -137,6 +173,37 @@ export function HealthSection() {
           value={`${printableNow} possibles`}
           tone={printableNow <= 5 ? "warning" : "neutral"}
         >
+          <dt className="col-span-full pt-1">
+            <Label htmlFor="printer-destination">Destination des tirages</Label>
+          </dt>
+          <dd className="col-span-full grid gap-2 border-b pb-4! text-left!">
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Select value={printerChoice} onValueChange={(value) => { setPrinterChoice(value); setPrinterFeedback({}); }} disabled={!printerConfig || printerSaving}>
+                <SelectTrigger id="printer-destination" className="min-h-11 flex-1">
+                  <SelectValue placeholder="Chargement des imprimantes…" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="null">Simulation — aucun papier</SelectItem>
+                  {printerConfig?.available_printers.map((printer) => (
+                    <SelectItem key={printer} value={printer}>{printer} — via CUPS</SelectItem>
+                  ))}
+                  {printerConfig?.driver === "cups" && printerConfig.printer_name && !printerConfig.available_printers.includes(printerConfig.printer_name) && (
+                    <SelectItem value={printerConfig.printer_name} disabled>{printerConfig.printer_name} — indisponible</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+              <Button
+                onClick={() => void savePrinter()}
+                disabled={!printerConfig || printerSaving || printerChoice === (printerConfig.driver === "cups" ? printerConfig.printer_name : "null")}
+              >
+                {printerSaving ? "Application…" : "Appliquer"}
+              </Button>
+            </div>
+            {printerConfig?.cups_error && (
+              <p className="text-sm text-destructive">CUPS indisponible : {printerConfig.cups_error}</p>
+            )}
+            <Feedback error={printerFeedback.error} notice={printerFeedback.notice} />
+          </dd>
           <Row label="Cumul de l'événement" value={`${counters.prints_total}`} />
           <Meter label="Papier" value={paperRemaining} capacity={counters.paper_stock_capacity} />
           <Meter label="Bac CP1500" value={trayRemaining} capacity={counters.cassette_capacity} />

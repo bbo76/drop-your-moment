@@ -157,6 +157,13 @@ export interface AdminHealth {
   throttled_occurred: boolean | null;
 }
 
+export interface PrinterConfiguration {
+  driver: "null" | "cups";
+  printer_name: string | null;
+  available_printers: string[];
+  cups_error: string | null;
+}
+
 /** Un index de caméra qui s'ouvre, et la taille que le pilote y annonce. */
 export interface ProbedCamera {
   index: number;
@@ -281,6 +288,13 @@ export const api = {
     if (!response.ok) throw new Error(await errorMessage(response, path));
   },
   health: () => request<AdminHealth>("/admin/system/health"),
+  printerConfig: () => request<PrinterConfiguration>("/admin/printer"),
+  savePrinterConfig: (driver: "null" | "cups", printerName: string | null) =>
+    request<PrinterConfiguration>("/admin/printer", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ driver, printer_name: printerName }),
+    }),
   releaseKiosk: () => post<SessionStatus>("/admin/session/home"),
   setPaperStock: (capacity: number) =>
     post<CounterReading>("/admin/counters/paper-stock", { capacity }),

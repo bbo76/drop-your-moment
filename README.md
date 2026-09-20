@@ -240,6 +240,8 @@ Variables d'environnement préfixées `DYM_` (voir
 |---|---|---|
 | `CAMERA_DRIVER` | `auto` | `mock`, `picamera2` ou `opencv` ; `auto` essaie `picamera2 → opencv → mock` |
 | `CAMERA_DEVICE` | `0` | index de webcam, ou chemin `/dev/videoN` ; driver `opencv` seulement |
+| `PRINTER_DRIVER` | `null` | `null` pour simuler, `cups` pour imprimer réellement |
+| `PRINTER_NAME` | défaut CUPS | nom de la file CUPS à utiliser |
 | `PREVIEW_TIMEOUT_S` | `60` | retour à l'accueil si le visiteur s'éloigne devant l'aperçu |
 | `REVIEW_TIMEOUT_S` | `90` | idem sur l'écran de review |
 | `KIOSK_HOST` / `ADMIN_HOST` | `127.0.0.1` / `0.0.0.0` | adresses de bind |
@@ -248,10 +250,14 @@ Variables d'environnement préfixées `DYM_` (voir
 | `RETENTION_MAX_AGE_DAYS` | `30` | âge au-delà duquel une session est purgée |
 | `RETENTION_MAX_TOTAL_GB` | `8` | plafond du dossier `data/sessions`, filet contre le disque plein |
 
+Le portail d’administration permet ensuite de choisir « Simulation — aucun papier » ou
+l’une des files découvertes par CUPS. Ce choix est conservé dans `data/printer.json` et
+prend le pas sur les variables `PRINTER_*` aux démarrages suivants.
+
 ## Installation sur le Pi (Raspberry Pi OS Trixie)
 
 ```sh
-sudo apt install python3-picamera2 rpicam-apps nodejs npm
+sudo apt install python3-picamera2 python3-cups rpicam-apps nodejs npm
 sudo npm install -g pnpm    # ou : corepack enable
 rpicam-hello --list-cameras     # valider le capteur AVANT tout Python
 

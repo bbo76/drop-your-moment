@@ -15,13 +15,19 @@ import time
 from dataclasses import dataclass, field
 
 from dropyourmoment.config import Settings
+from dropyourmoment.core.errors import PrinterError
 from dropyourmoment.core.event_config import EventStore, LoadedEvent
 from dropyourmoment.core.print_flow import PrintFlow
-from dropyourmoment.core.session import SessionMachine
+from dropyourmoment.core.session import SessionMachine, SessionState
 from dropyourmoment.hardware.camera.base import CameraDriver
 from dropyourmoment.hardware.camera.factory import build_camera_driver
 from dropyourmoment.hardware.printer.base import PrinterDriver
-from dropyourmoment.hardware.printer.null_driver import NullPrinterDriver
+from dropyourmoment.hardware.printer.factory import (
+    PrinterSelection,
+    build_printer_driver,
+    load_printer_selection,
+    save_printer_selection,
+)
 from dropyourmoment.imaging.filters import FilterName
 from dropyourmoment.imaging.pipeline import ImagePipeline
 from dropyourmoment.storage.counters import CounterStore
@@ -38,6 +44,7 @@ class Runtime:
     machine: SessionMachine
     event_store: EventStore
     event: LoadedEvent
+    printer_selection: PrinterSelection | None = None
     system_power: SystemPower = field(default_factory=SystemPower)
     pipeline: ImagePipeline = field(init=False)
     counters: CounterStore = field(init=False)
@@ -47,6 +54,10 @@ class Runtime:
     _maintenance_expires_at: float = field(default=0.0, init=False, repr=False)
 
     def __post_init__(self) -> None:
+        if self.printer_selection is None:
+            self.printer_selection = PrinterSelection(
+                self.settings.printer_driver, self.settings.printer_name
+            )
         self.pipeline = ImagePipeline(self.event)
         self.counters = CounterStore(self.settings.data_dir)
         self.maintenance_pin = MaintenancePinStore(
@@ -64,15 +75,40 @@ class Runtime:
     @classmethod
     def build(cls, settings: Settings) -> Runtime:
         store = EventStore(settings.event_dir)
+        selection = load_printer_selection(
+            settings.data_dir,
+            PrinterSelection(settings.printer_driver, settings.printer_name),
+        )
         return cls(
             settings=settings,
             camera=build_camera_driver(settings.camera_driver, settings.camera_device),
-            # Pilote neutre pendant toute la phase numérique : le parcours va jusqu'au
-            # bout sans imprimante branchée. Le jalon 7 branche ici le pilote CUPS.
-            printer=NullPrinterDriver(completion_delay_s=settings.simulated_print_duration_s),
+            printer=build_printer_driver(
+                selection.driver,
+                selection.printer_name,
+                settings.simulated_print_duration_s,
+            ),
             machine=SessionMachine(timeouts=settings.state_timeouts()),
             event_store=store,
             event=store.load(),
+            printer_selection=selection,
+        )
+
+    def select_printer(self, selection: PrinterSelection) -> None:
+        if self.machine.state is SessionState.PRINTING:
+            raise PrinterError("attendez la fin du tirage avant de changer d’imprimante")
+        printer = build_printer_driver(
+            selection.driver,
+            selection.printer_name,
+            self.settings.simulated_print_duration_s,
+        )
+        save_printer_selection(self.settings.data_dir, selection)
+        self.printer = printer
+        self.printer_selection = selection
+        self.print_flow = PrintFlow(
+            machine=self.machine,
+            printer=printer,
+            counters=self.counters,
+            on_completed=self.purge_sessions,
         )
 
     def reload_event(self) -> None:
