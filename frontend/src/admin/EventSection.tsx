@@ -1,9 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 
 import {
@@ -12,8 +17,8 @@ import {
   overlayUrl,
   type EventConfigPayload,
   type FilterName,
+  type PrinterConfiguration,
   type PrintFormatPayload,
-  type ShotTimerSeconds,
 } from "../shared/api";
 import { Button, Feedback, Field, Section } from "./ui";
 
@@ -28,18 +33,29 @@ import { Button, Feedback, Field, Section } from "./ui";
  * enregistrement. Seul le téléversement écrit ce champ. */
 
 const ALL_FILTERS = Object.keys(FILTER_LABELS) as FilterName[];
-const SHOT_TIMER_OPTIONS: ShotTimerSeconds[] = [3, 5, 10];
+const PRINT_PRESETS = [
+  { id: "postcard", label: "Carte postale", width: 148, height: 100, detail: "Format standard" },
+  { id: "l", label: "Format L", width: 119, height: 89, detail: "Format compact" },
+  { id: "card", label: "Format carte", width: 86, height: 54, detail: "Cassette PCC-CP400" },
+] as const;
+
+type PrintPreset = (typeof PRINT_PRESETS)[number];
+type Orientation = "landscape" | "portrait";
+
 export function EventSection() {
   const [draft, setDraft] = useState<EventConfigPayload | null>(null);
+  const [printerConfig, setPrinterConfig] = useState<PrinterConfiguration | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   // Anti-cache de l'aperçu : l'URL de l'overlay est fixe, donc rien ne rechargerait
   // l'image après un remplacement.
   const [overlayRevision, setOverlayRevision] = useState(0);
+  const [overlayPreviewOpen, setOverlayPreviewOpen] = useState(false);
 
   useEffect(() => {
     api.eventConfig().then(setDraft, (cause) => setError(String(cause)));
+    api.printerConfig().then(setPrinterConfig, () => setPrinterConfig(null));
   }, []);
 
   if (!draft) {
@@ -57,6 +73,25 @@ export function EventSection() {
 
   const patchFormat = (changes: Partial<PrintFormatPayload>) =>
     patch({ print_format: { ...draft.print_format, ...changes } });
+
+  const preset = matchingPreset(draft.print_format);
+  const orientation: Orientation = draft.print_format.width_mm >= draft.print_format.height_mm
+    ? "landscape"
+    : "portrait";
+  const customFormatAllowed = printerConfig?.driver === "null"
+    || /pdf/i.test(printerConfig?.printer_name ?? "");
+
+  const choosePreset = (choice: PrintPreset, nextOrientation = orientation) => {
+    const landscape = nextOrientation === "landscape";
+    patch({
+      print_format: {
+        name: `${choice.label} ${landscape ? "paysage" : "portrait"}`,
+        width_mm: landscape ? choice.width : choice.height,
+        height_mm: landscape ? choice.height : choice.width,
+        dpi: 300,
+      },
+    });
+  };
 
   const toggleFilter = (name: FilterName) =>
     patch({
@@ -78,6 +113,7 @@ export function EventSection() {
     try {
       const { overlay_file } = await action();
       setDraft({ ...draft, overlay_file });
+      setOverlayPreviewOpen(false);
       setOverlayRevision((revision) => revision + 1);
       setNotice(successMessage);
     } catch (cause) {
@@ -91,7 +127,7 @@ export function EventSection() {
     setNotice(null);
     try {
       setDraft(await api.saveEventConfig(draft));
-      setNotice("Enregistré — le kiosque applique le changement sans redémarrage.");
+      setNotice("Événement mis à jour.");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
     } finally {
@@ -101,173 +137,253 @@ export function EventSection() {
 
   return (
     <Section title="Événement">
-      <div className="grid max-w-4xl gap-4">
-        <Field label="Nom de l'événement">
-          <Input
-            value={draft.event_name}
-            onChange={(e) => patch({ event_name: e.target.value })}
-          />
-        </Field>
-
-        <Field label="Message de l’écran d’accueil">
-          <Input
-            value={draft.launch_message}
-            maxLength={80}
-            onChange={(e) => patch({ launch_message: e.target.value })}
-          />
-          <span className="mt-1 block text-xs text-muted-foreground">
-            Indépendant du nom de l’événement et de l’overlay photo.
-          </span>
-        </Field>
-
-        <Alert className="max-w-[70ch]"><AlertDescription>La couleur, la typographie et le flash écran se règlent sur la borne. Le flash reste aussi disponible dans la Console Jour J pour être testé dans la lumière réelle.</AlertDescription></Alert>
-
-        <fieldset>
-          <legend className="mb-1 text-sm text-muted-foreground">Filtres proposés</legend>
-          <div className="flex gap-4">
-            {ALL_FILTERS.map((name) => (
-              <label key={name} className="flex cursor-pointer items-center gap-2 text-sm">
-                <Checkbox
-                  checked={draft.available_filters.includes(name)}
-                  onCheckedChange={() => toggleFilter(name)}
-                />
-                {FILTER_LABELS[name]}
-              </label>
-            ))}
-          </div>
-        </fieldset>
-
-        <fieldset>
-          <legend className="mb-1 text-sm text-muted-foreground">
-            Format de sortie — fixe le recadrage et le cadre de visée, même sans imprimante
-          </legend>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-            <Field label="Nom" className="sm:col-span-2">
+      <div className="max-w-5xl">
+        <SettingsGroup title="Identité">
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Field label="Nom de l’événement">
               <Input
-                value={draft.print_format.name}
-                onChange={(e) => patchFormat({ name: e.target.value })}
+                value={draft.event_name}
+                onChange={(e) => patch({ event_name: e.target.value })}
               />
             </Field>
-            <Field label="Largeur (mm)">
+            <Field label="Message d’accueil">
               <Input
-                type="number"
-                min={1}
-                value={draft.print_format.width_mm}
-                onChange={(e) => patchFormat({ width_mm: Number(e.target.value) })}
-              />
-            </Field>
-            <Field label="Hauteur (mm)">
-              <Input
-                type="number"
-                min={1}
-                value={draft.print_format.height_mm}
-                onChange={(e) => patchFormat({ height_mm: Number(e.target.value) })}
-              />
-            </Field>
-            <Field label="DPI">
-              <Input
-                type="number"
-                min={1}
-                value={draft.print_format.dpi}
-                onChange={(e) => patchFormat({ dpi: Number(e.target.value) })}
+                value={draft.launch_message}
+                maxLength={80}
+                onChange={(e) => patch({ launch_message: e.target.value })}
               />
             </Field>
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Ratio : {(draft.print_format.width_mm / draft.print_format.height_mm).toFixed(3)}
-          </p>
-        </fieldset>
+        </SettingsGroup>
 
-        <fieldset>
-          <legend className="mb-1 text-sm text-muted-foreground">
-            Overlay — cadre ou logo composé par-dessus la photo. PNG transparent, au ratio
-            du format de sortie
-          </legend>
-          {draft.overlay_file ? (
-            <div className="flex flex-wrap items-start gap-4">
-              <img
-                src={overlayUrl(overlayRevision)}
-                alt="Overlay de l'événement"
-                /* Le damier rend la transparence visible : sur fond uni, un overlay opaque
-                   et un overlay ajouré se ressemblent. */
-                className="h-36 rounded border border-border bg-[repeating-conic-gradient(#333846_0_25%,transparent_0_50%)] bg-[length:16px_16px]"
-              />
-              <Button
-                onClick={() => void runOverlayAction(api.deleteOverlay, "Overlay retiré.")}
-              >
-                Retirer
-              </Button>
+        <SettingsGroup title="Rendu photo">
+          <fieldset>
+            <legend className="mb-3 text-sm font-medium">Filtres disponibles</legend>
+            <div className="flex flex-wrap gap-x-6 gap-y-3">
+              {ALL_FILTERS.map((name) => (
+                <label key={name} className="flex cursor-pointer items-center gap-2.5 text-sm">
+                  <Checkbox
+                    checked={draft.available_filters.includes(name)}
+                    onCheckedChange={() => toggleFilter(name)}
+                  />
+                  {FILTER_LABELS[name]}
+                </label>
+              ))}
             </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">Aucun overlay — les photos sortiront sans cadre.</p>
-          )}
-          <div className="mt-3 flex flex-wrap items-center gap-3">
-            <label className="inline-flex min-h-12 cursor-pointer items-center rounded-lg bg-primary px-5 font-bold text-primary-foreground transition-transform active:scale-[0.98]">
-              {draft.overlay_file ? "Remplacer l’overlay" : "Choisir un overlay PNG"}
-              <Input
-                type="file"
-                accept="image/png"
-                className="sr-only"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  // Réinitialiser permet de retenter le même fichier après un refus.
-                  e.target.value = "";
-                  if (file) {
-                    void runOverlayAction(
+          </fieldset>
+
+          <div className="mt-8">
+            <h3 className="text-sm font-medium">Overlay</h3>
+            {draft.overlay_file ? (
+              <div className="mt-3 flex flex-wrap items-start gap-4">
+                <button
+                  type="button"
+                  onClick={() => setOverlayPreviewOpen(true)}
+                  className="group rounded-lg text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                  aria-label="Agrandir l’overlay"
+                >
+                  <img
+                    src={overlayUrl(overlayRevision)}
+                    alt="Overlay de l'événement"
+                    /* Le damier rend la transparence visible : sur fond uni, un overlay opaque
+                       et un overlay ajouré se ressemblent. */
+                    className="h-32 rounded-lg border border-border bg-[repeating-conic-gradient(#333846_0_25%,transparent_0_50%)] bg-[length:16px_16px] transition-opacity group-hover:opacity-80"
+                  />
+                  <span className="mt-1.5 block text-xs text-muted-foreground">Agrandir</span>
+                </button>
+                <div className="flex flex-wrap gap-2">
+                  <OverlayPicker
+                    label="Remplacer"
+                    onFile={(file) => void runOverlayAction(
                       () => api.uploadOverlay(file),
-                      "Overlay chargé et appliqué au kiosque.",
-                    );
-                  }
-                }}
-              />
-            </label>
-            <span className="max-w-md text-sm text-muted-foreground">
-              PNG transparent, de même orientation et de proportions proches. Définition recommandée : {Math.round((draft.print_format.width_mm / 25.4) * draft.print_format.dpi)}×{Math.round((draft.print_format.height_mm / 25.4) * draft.print_format.dpi)} px. Les fichiers plus grands sont réduits ; les plus petits ne sont pas agrandis.
-            </span>
+                      "Overlay mis à jour.",
+                    )}
+                  />
+                  <Button
+                    tone="secondary"
+                    onClick={() => void runOverlayAction(api.deleteOverlay, "Overlay retiré.")}
+                  >
+                    Retirer
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-3 flex flex-wrap items-center gap-4">
+                <OverlayPicker
+                  label="Choisir un fichier PNG"
+                  onFile={(file) => void runOverlayAction(
+                    () => api.uploadOverlay(file),
+                    "Overlay ajouté.",
+                  )}
+                />
+                <span className="text-sm text-muted-foreground">Aucun overlay</span>
+              </div>
+            )}
+            <p className="mt-3 text-sm text-muted-foreground">
+              PNG transparent recommandé : {Math.round((draft.print_format.width_mm / 25.4) * draft.print_format.dpi)} × {Math.round((draft.print_format.height_mm / 25.4) * draft.print_format.dpi)} px
+            </p>
           </div>
-        </fieldset>
+        </SettingsGroup>
 
-        <Field label="Copies par tirage">
-          <Input
-            type="number"
-            min={1}
-            max={10}
-            value={draft.copies_per_print}
-            onChange={(e) => patch({ copies_per_print: Number(e.target.value) })}
-          />
-        </Field>
+        <SettingsGroup title="Impression" last>
+          <fieldset>
+            <legend className="mb-3 text-sm font-medium">Format d’impression</legend>
+            <div className="grid gap-2 sm:grid-cols-3">
+              {PRINT_PRESETS.map((choice) => {
+                const selected = preset?.id === choice.id;
+                return (
+                  <button
+                    key={choice.id}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => choosePreset(choice)}
+                    className={`min-h-20 rounded-lg border px-4 py-3 text-left outline-none transition-[border-color,background-color] focus-visible:ring-3 focus-visible:ring-ring/50 ${selected ? "border-foreground bg-muted" : "border-border hover:border-foreground/40"}`}
+                  >
+                    <strong className="block text-sm font-semibold">{choice.label}</strong>
+                    <span className="mt-1 block text-sm tabular-nums text-muted-foreground">
+                      {choice.width} × {choice.height} mm
+                    </span>
+                    <span className="mt-1 block text-xs text-muted-foreground">{choice.detail}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
 
-        <fieldset>
-          <legend className="mb-1 text-sm text-muted-foreground">Minuteur photo par défaut</legend>
-          <ToggleGroup
-            type="single"
-            value={String(draft.default_shot_timer_seconds)}
-            onValueChange={(value) => value && patch({ default_shot_timer_seconds: Number(value) as ShotTimerSeconds })}
-            variant="outline"
-            spacing={0}
-          >
-            {SHOT_TIMER_OPTIONS.map((seconds) => (
-              <ToggleGroupItem
-                key={seconds}
-                value={String(seconds)}
-                className="min-h-11 min-w-16 font-bold data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-              >
-                {seconds} s
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
-          <span className="mt-1 block text-xs text-muted-foreground">
-            Présélectionné sur la borne ; chaque visiteur peut encore choisir 3, 5 ou 10 secondes.
-          </span>
-        </fieldset>
+          <fieldset className="mt-5">
+            <legend className="mb-2 text-sm font-medium">Orientation</legend>
+            <div className="inline-grid grid-cols-2 rounded-lg border border-border p-1">
+              {(["landscape", "portrait"] as const).map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={orientation === value}
+                  disabled={!preset}
+                  onClick={() => preset && choosePreset(preset, value)}
+                  className={`min-h-9 rounded-md px-4 text-sm font-medium outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 ${orientation === value && preset ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  {value === "landscape" ? "Paysage" : "Portrait"}
+                </button>
+              ))}
+            </div>
+          </fieldset>
 
-        <div className="flex items-center gap-4">
+          {customFormatAllowed && (
+            <details className="mt-5 rounded-lg border border-border">
+              <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-4 px-4 text-sm font-medium outline-none focus-visible:ring-3 focus-visible:ring-ring/50 [&::-webkit-details-marker]:hidden">
+                <span>Format personnalisé</span>
+                {!preset && (
+                  <span className="font-normal tabular-nums text-muted-foreground">
+                    {draft.print_format.width_mm} × {draft.print_format.height_mm} mm
+                  </span>
+                )}
+              </summary>
+              <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-2 lg:grid-cols-5">
+                <Field label="Nom" className="sm:col-span-2">
+                  <Input
+                    value={draft.print_format.name}
+                    onChange={(e) => patchFormat({ name: e.target.value })}
+                  />
+                </Field>
+                <Field label="Largeur (mm)">
+                  <Input
+                    type="number"
+                    min={1}
+                    value={draft.print_format.width_mm}
+                    onChange={(e) => patchFormat({ width_mm: Number(e.target.value) })}
+                  />
+                </Field>
+                <Field label="Hauteur (mm)">
+                  <Input
+                    type="number"
+                    min={1}
+                    value={draft.print_format.height_mm}
+                    onChange={(e) => patchFormat({ height_mm: Number(e.target.value) })}
+                  />
+                </Field>
+                <Field label="DPI">
+                  <Input
+                    type="number"
+                    min={1}
+                    value={draft.print_format.dpi}
+                    onChange={(e) => patchFormat({ dpi: Number(e.target.value) })}
+                  />
+                </Field>
+              </div>
+            </details>
+          )}
+
+          {!preset && !customFormatAllowed && (
+            <p className="mt-4 text-sm text-destructive">
+              Le format actuel n’est pas pris en charge par la CP1500. Choisissez un format proposé.
+            </p>
+          )}
+        </SettingsGroup>
+
+        <div className="flex flex-wrap items-center gap-4 border-t border-border pt-6">
           <Button onClick={save} disabled={saving}>
-            {saving ? "Enregistrement…" : "Enregistrer"}
+            {saving ? "Enregistrement…" : "Enregistrer les modifications"}
           </Button>
           <Feedback error={error} notice={notice} />
         </div>
       </div>
+
+      <Dialog open={overlayPreviewOpen} onOpenChange={setOverlayPreviewOpen}>
+        <DialogContent className="flex max-h-[calc(100dvh-2rem)] max-w-[calc(100vw-2rem)] flex-col bg-background sm:max-w-5xl">
+          <DialogHeader>
+            <DialogTitle>Overlay de l’événement</DialogTitle>
+            <DialogDescription>Aperçu du fichier PNG actuel.</DialogDescription>
+          </DialogHeader>
+          <div className="grid min-h-0 place-items-center overflow-auto rounded-lg border border-border bg-[repeating-conic-gradient(#333846_0_25%,transparent_0_50%)] bg-[length:20px_20px] p-4">
+            <img
+              src={overlayUrl(overlayRevision)}
+              alt="Overlay de l’événement agrandi"
+              className="max-h-[75dvh] max-w-full object-contain"
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </Section>
+  );
+}
+
+function matchingPreset(format: PrintFormatPayload): PrintPreset | undefined {
+  const shortSide = Math.min(format.width_mm, format.height_mm);
+  const longSide = Math.max(format.width_mm, format.height_mm);
+  return PRINT_PRESETS.find((preset) => preset.width === longSide && preset.height === shortSide);
+}
+
+function SettingsGroup({
+  title,
+  children,
+  last = false,
+}: {
+  title: string;
+  children: ReactNode;
+  last?: boolean;
+}) {
+  return (
+    <section className={`grid gap-4 py-7 md:grid-cols-[10rem_minmax(0,1fr)] md:gap-10 ${last ? "" : "border-b border-border"}`}>
+      <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+      <div className="min-w-0">{children}</div>
+    </section>
+  );
+}
+
+function OverlayPicker({ label, onFile }: { label: string; onFile: (file: File) => void }) {
+  return (
+    <label className="inline-flex min-h-11 cursor-pointer items-center rounded-lg bg-primary px-4 font-bold text-primary-foreground transition-transform active:scale-[0.98]">
+      {label}
+      <Input
+        type="file"
+        accept="image/png"
+        className="sr-only"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.target.value = "";
+          if (file) onFile(file);
+        }}
+      />
+    </label>
   );
 }
