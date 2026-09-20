@@ -25,6 +25,7 @@ from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel, Field
 
 from dropyourmoment.api.kiosk_router import SessionStatus, _status, get_runtime
+from dropyourmoment.core.errors import PrinterError
 from dropyourmoment.core.event_config import OVERLAY_FILENAME, EventConfig
 from dropyourmoment.core.session import SessionState
 from dropyourmoment.hardware.camera.discovery import (
@@ -32,6 +33,8 @@ from dropyourmoment.hardware.camera.discovery import (
     probe_indices,
     system_camera_names,
 )
+from dropyourmoment.hardware.printer.cups_driver import list_cups_printers
+from dropyourmoment.hardware.printer.factory import PrinterDriverName, PrinterSelection
 from dropyourmoment.hardware.system_metrics import read_system_metrics
 from dropyourmoment.imaging.steps import crop_to_aspect
 from dropyourmoment.runtime import Runtime
@@ -112,6 +115,18 @@ class AdminHealth(BaseModel):
     throttled_occurred: bool | None
 
 
+class PrinterConfiguration(BaseModel):
+    driver: PrinterDriverName
+    printer_name: str | None
+    available_printers: list[str]
+    cups_error: str | None = None
+
+
+class PrinterChange(BaseModel):
+    driver: PrinterDriverName
+    printer_name: str | None = None
+
+
 @router.get("/system/health", response_model=AdminHealth)
 def read_health(runtime: Runtime = Depends(get_runtime)) -> AdminHealth:
     """Diagnostic complet, sans effet de bord.
@@ -150,6 +165,44 @@ def read_health(runtime: Runtime = Depends(get_runtime)) -> AdminHealth:
         throttled_now=metrics.throttled_now,
         throttled_occurred=metrics.throttled_occurred,
     )
+
+
+def _printer_configuration(runtime: Runtime) -> PrinterConfiguration:
+    try:
+        printers = list_cups_printers()
+        cups_error = None
+    except PrinterError as exc:
+        printers = []
+        cups_error = str(exc)
+    selection = runtime.printer_selection
+    assert selection is not None
+    return PrinterConfiguration(
+        driver=selection.driver,
+        printer_name=selection.printer_name,
+        available_printers=printers,
+        cups_error=cups_error,
+    )
+
+
+@router.get("/printer", response_model=PrinterConfiguration)
+def read_printer_configuration(runtime: Runtime = Depends(get_runtime)) -> PrinterConfiguration:
+    return _printer_configuration(runtime)
+
+
+@router.put("/printer", response_model=PrinterConfiguration)
+def write_printer_configuration(
+    change: PrinterChange,
+    runtime: Runtime = Depends(get_runtime),
+) -> PrinterConfiguration:
+    if change.driver is PrinterDriverName.CUPS and not change.printer_name:
+        raise HTTPException(status_code=422, detail="choisissez une imprimante CUPS")
+    selection = PrinterSelection(change.driver, change.printer_name)
+    try:
+        runtime.select_printer(selection)
+    except PrinterError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    logger.info("imprimante active modifiée : %s", runtime.printer.name)
+    return _printer_configuration(runtime)
 
 
 @router.post("/counters/paper-stock", response_model=CounterReading)
