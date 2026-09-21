@@ -149,6 +149,7 @@ class Runtime:
         self.camera.start()
 
     def stop(self) -> None:
+        self.system_power.cancel_pending()
         self.camera.stop()
 
     def unlock_maintenance(self, pin: str) -> str | None:

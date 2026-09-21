@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Activity, Camera, Clock3, Database, Printer, Wrench } from "lucide-react";
 
 import { api, type AdminHealth, type CameraScan, type PrinterConfiguration } from "../shared/api";
+import { PowerControls } from "./PowerControls";
 import { Button, Feedback, Row, Section } from "./ui";
 
 /* Tableau de bord : « est-ce que la borne va tenir la soirée ? »
@@ -214,7 +215,7 @@ export function HealthSection() {
           title="Parcours"
           icon="session"
           value={health.maintenance_active ? "Maintenance" : sessionLabel(health.session_state)}
-          tone={health.maintenance_active || health.session_state === "error" ? "attention" : "neutral"}
+          tone={health.maintenance_active || health.session_state === "error" ? "attention" : health.session_state === "printing" ? "warning" : "neutral"}
         >
           <Row label="Imprimante" value={health.printer_driver} />
           <Row label="Événement" value={health.event_name} />
@@ -222,7 +223,7 @@ export function HealthSection() {
             label="Format"
             value={`${health.print_format_name} — ratio ${health.print_aspect_ratio.toFixed(3)}`}
           />
-          {health.session_state !== "idle" && (
+          {health.session_state !== "idle" && health.session_state !== "printing" && (
             <CardAction onClick={() => setReleaseDialogOpen(true)} disabled={releasing} warning>
               {releasing ? "Retour en cours…" : "Libérer la borne"}
             </CardAction>
@@ -263,6 +264,12 @@ export function HealthSection() {
           <Row label="Sous-tension historique" value={flagLabel(health.undervoltage_occurred)} />
           <Row label="Throttling actuel" value={flagLabel(health.throttled_now)} />
           <Row label="Throttling historique" value={flagLabel(health.throttled_occurred)} />
+          <div className="col-span-full border-t pt-3">
+            <PowerControls
+              health={health}
+              onScheduled={(power_transition) => setHealth((current) => current && ({ ...current, power_transition }))}
+            />
+          </div>
         </Group>
 
       </div>

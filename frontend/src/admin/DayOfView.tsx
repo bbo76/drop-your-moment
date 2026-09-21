@@ -20,6 +20,7 @@ import {
   type ShotTimerSeconds,
 } from "../shared/api";
 import { Button, Feedback } from "./ui";
+import { PowerControls } from "./PowerControls";
 
 const POLL_INTERVAL_MS = 2_000;
 const RECENT_PHOTO_COUNT = 3;
@@ -170,7 +171,7 @@ export function DayOfView() {
           value={`${printableNow} possibles`}
           attention={printableNow <= 5}
         />
-        {health.session_state !== "idle" && (
+        {health.session_state !== "idle" && health.session_state !== "printing" && (
           <Button
             tone="warning"
             onClick={() => {
@@ -198,6 +199,25 @@ export function DayOfView() {
               <DiagnosticMeter label="Processeur" value={health.cpu_percent} />
               <DiagnosticMeter label="Mémoire" value={health.memory_percent} />
             </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+
+      <Accordion type="single" collapsible className="rounded-xl border bg-card">
+        <AccordionItem value="power" className="border-0">
+          <AccordionTrigger className="min-h-18 px-4 py-3 hover:no-underline">
+            <span className="grid text-left">
+              <strong className="text-lg">Alimentation</strong>
+              <small className={health.session_state === "printing" ? "font-semibold text-amber-800" : "text-muted-foreground"}>
+                {health.session_state === "printing" ? "Verrouillée pendant l’impression" : "Redémarrer ou éteindre la borne"}
+              </small>
+            </span>
+          </AccordionTrigger>
+          <AccordionContent className="border-t p-4">
+            <PowerControls
+              health={health}
+              onScheduled={(power_transition) => setHealth((current) => current && ({ ...current, power_transition }))}
+            />
           </AccordionContent>
         </AccordionItem>
       </Accordion>
@@ -336,6 +356,13 @@ export function DayOfView() {
 
 function getReadiness(health: AdminHealth, error: string | null): Readiness {
   if (error) return { tone: "attention", title: "Connexion instable", detail: error };
+  if (health.power_transition) {
+    return {
+      tone: "attention",
+      title: health.power_transition.action === "reboot" ? "Redémarrage programmé" : "Arrêt programmé",
+      detail: "Le kiosk affiche un compte à rebours de 30 secondes.",
+    };
+  }
   if (health.maintenance_active) {
     return {
       tone: "attention",
@@ -357,6 +384,9 @@ function getReadiness(health: AdminHealth, error: string | null): Readiness {
   }
   if (health.temperature_c !== null && health.temperature_c >= 80) {
     return { tone: "attention", title: "Borne trop chaude", detail: "Vérifiez que les aérations sont dégagées." };
+  }
+  if (health.session_state === "printing") {
+    return { tone: "busy", title: "Impression en cours", detail: "Les commandes d’alimentation sont verrouillées jusqu’à la fin du tirage." };
   }
   if (health.session_state !== "idle") {
     return { tone: "busy", title: "Une session est en cours", detail: "La borne est utilisée par des invités." };

@@ -24,7 +24,7 @@ from fastapi.responses import FileResponse, Response, StreamingResponse
 from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel, Field
 
-from dropyourmoment.api.kiosk_router import SessionStatus, _status, get_runtime
+from dropyourmoment.api.kiosk_router import PowerTransition, SessionStatus, _status, get_runtime
 from dropyourmoment.core.errors import PrinterError
 from dropyourmoment.core.event_config import OVERLAY_FILENAME, EventConfig
 from dropyourmoment.core.session import SessionState
@@ -51,6 +51,7 @@ router = APIRouter(prefix="/admin")
 # temporaire quand la route s'exécute. Ce qu'on empêche, c'est de faire décoder plusieurs
 # centaines de mégaoctets à Pillow — un overlay de carte postale en pèse moins de deux.
 MAX_OVERLAY_BYTES = 20 * 1024 * 1024
+REMOTE_POWER_DELAY_SECONDS = 30
 
 
 class CounterReading(BaseModel):
@@ -94,6 +95,8 @@ class AdminHealth(BaseModel):
 
     session_state: SessionState
     maintenance_active: bool
+    power_available: bool
+    power_transition: PowerTransition | None
     event_name: str
     print_format_name: str
     print_aspect_ratio: float
@@ -149,6 +152,10 @@ def read_health(runtime: Runtime = Depends(get_runtime)) -> AdminHealth:
         printer_driver=runtime.printer.name,
         session_state=runtime.machine.state,
         maintenance_active=runtime.maintenance_active,
+        power_available=runtime.system_power.available,
+        power_transition=PowerTransition(**vars(pending))
+        if (pending := runtime.system_power.pending)
+        else None,
         event_name=config.event_name,
         print_format_name=config.print_format.name,
         print_aspect_ratio=config.print_format.aspect_ratio,
@@ -228,9 +235,40 @@ def replace_ink_cartridge(
 @router.post("/session/home", response_model=SessionStatus)
 def force_kiosk_home(runtime: Runtime = Depends(get_runtime)) -> SessionStatus:
     """Interrompt à distance une session bloquée et rend le kiosque disponible."""
+    if runtime.machine.state is SessionState.PRINTING:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail="une impression est en cours ; attendez la fin du tirage",
+        )
     runtime.machine.reset()
     logger.info("session du kiosque interrompue depuis le portail d’administration")
     return _status(runtime)
+
+
+@router.post(
+    "/power/{action}",
+    response_model=PowerTransition,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+def schedule_power_action(
+    action: Literal["reboot", "poweroff"], runtime: Runtime = Depends(get_runtime)
+) -> PowerTransition:
+    if runtime.machine.state is SessionState.PRINTING:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail="une impression est en cours ; attendez la fin du tirage",
+        )
+    if not runtime.system_power.available:
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="action disponible uniquement sur Raspberry Pi avec systemd",
+        )
+    try:
+        pending = runtime.system_power.schedule(action, REMOTE_POWER_DELAY_SECONDS)
+    except RuntimeError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    logger.warning("action système demandée depuis le portail d’administration : %s", action)
+    return PowerTransition(**vars(pending))
 
 
 class MaintenancePinChange(BaseModel):

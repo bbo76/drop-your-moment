@@ -154,9 +154,11 @@ const toneRing = { ready: "ring-emerald-600/20", busy: "ring-amber-600/20", atte
 function readiness(health: AdminHealth | null, error: string | null) {
   if (error) return { tone: "attention" as const, title: "Borne injoignable", detail: "Vérifiez que cet ordinateur est toujours connecté au réseau de la borne." };
   if (!health) return { tone: "busy" as const, title: "Connexion à la borne…", detail: "Lecture de son état en cours." };
+  if (health.power_transition) return { tone: "attention" as const, title: health.power_transition.action === "reboot" ? "Redémarrage programmé" : "Arrêt programmé", detail: "Le kiosk affiche le compte à rebours avant l’action." };
   if (health.maintenance_active) return { tone: "attention" as const, title: "Maintenance en cours", detail: "Une personne intervient directement sur la borne." };
   if (!health.camera_ok) return { tone: "attention" as const, title: "Intervention nécessaire", detail: "La caméra n’est pas disponible." };
   if (powerWarning(health)) return { tone: "attention" as const, title: "Alimentation à vérifier", detail: "Une sous-tension ou une limitation des performances a été détectée." };
+  if (health.session_state === "printing") return { tone: "busy" as const, title: "Impression en cours", detail: "L’arrêt et le redémarrage sont verrouillés jusqu’à la fin du tirage." };
   if (health.session_state !== "idle") return { tone: "busy" as const, title: "Une session est en cours", detail: "La borne est utilisée par des invités." };
   return { tone: "ready" as const, title: "La borne est prête", detail: "Tout est disponible pour les invités." };
 }
