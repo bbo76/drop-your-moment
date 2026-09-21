@@ -44,15 +44,21 @@ def get_runtime(request: Request) -> Runtime:
     return request.app.state.runtime
 
 
+class PowerTransition(BaseModel):
+    action: str
+    execute_at: float
+
+
 class SessionStatus(BaseModel):
     state: SessionState
     session_id: str | None = None
     selected_filter: FilterName | None = None
     remaining_seconds: float | None = None
     error: str | None = None
-    # Porte déjà la révision : le frontend n'a pas à fabriquer son propre anti-cache.
+    # Porte déjà la révision : l'URL change à chaque recomposition.
     photo_url: str | None = None
     output_mode: str | None = None
+    power_transition: PowerTransition | None = None
 
 
 class SystemStatus(BaseModel):
@@ -104,6 +110,9 @@ def _status(runtime: Runtime) -> SessionStatus:
         error=machine.last_error,
         photo_url=_photo_url(session),
         output_mode=session.output_mode if session else None,
+        power_transition=PowerTransition(**vars(pending))
+        if (pending := runtime.system_power.pending)
+        else None,
     )
 
 
@@ -211,6 +220,13 @@ def read_event_overlay(runtime: Runtime = Depends(get_runtime)) -> FileResponse:
 @router.post("/session", response_model=SessionStatus)
 def start_session(runtime: Runtime = Depends(get_runtime)) -> SessionStatus:
     """Ouvre une session, en écrasant celle en cours s'il en reste une abandonnée."""
+    if runtime.system_power.pending is not None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail=(
+                "la borne va s’arrêter ou redémarrer ; aucune nouvelle session ne peut commencer"
+            ),
+        )
     session = runtime.machine.start()
     logger.info("session %s démarrée", session.id)
     return _status(runtime)

@@ -11,6 +11,7 @@ import {
 } from "./components/Screen";
 import { useKioskState } from "./useKioskState";
 import { MaintenanceAccess } from "./components/MaintenanceAccess";
+import { RemotePowerNotice } from "./components/RemotePowerNotice";
 import { useEffect, useState } from "react";
 import { Printer, Wrench } from "lucide-react";
 import { applyAccentTheme } from "../shared/theme";
@@ -50,6 +51,10 @@ export function App() {
       root.style.removeProperty("--color-signal-ink");
     };
   }, [event]);
+
+  if (session?.power_transition) {
+    return <RemotePowerNotice transition={session.power_transition} />;
+  }
 
   if (maintenanceOpen) {
     return (

@@ -10,6 +10,13 @@ export type SessionState = "idle" | "preview" | "review" | "printing" | "done" |
 
 export type FilterName = "original" | "bw_studio" | "sepia";
 export type ShotTimerSeconds = 3 | 5 | 10;
+export type PowerAction = "reboot" | "poweroff";
+
+export interface PowerTransition {
+  action: PowerAction;
+  /** Époque UNIX en secondes, partagée entre les écrans. */
+  execute_at: number;
+}
 
 export const FILTER_LABELS: Record<FilterName, string> = {
   original: "Naturel",
@@ -28,6 +35,7 @@ export interface SessionStatus {
   photo_url: string | null;
   /** Sortie choisie à la revue, conservée pour adapter la confirmation. */
   output_mode: "print" | "save" | null;
+  power_transition: PowerTransition | null;
 }
 
 /** Capacités du matériel. Ne changent qu'au rebranchement d'un périphérique. */
@@ -140,6 +148,8 @@ export interface AdminHealth {
   printer_driver: string;
   session_state: SessionState;
   maintenance_active: boolean;
+  power_available: boolean;
+  power_transition: PowerTransition | null;
   event_name: string;
   print_format_name: string;
   print_aspect_ratio: number;
@@ -288,6 +298,8 @@ export const api = {
     if (!response.ok) throw new Error(await errorMessage(response, path));
   },
   health: () => request<AdminHealth>("/admin/system/health"),
+  schedulePowerAction: (action: PowerAction) =>
+    post<PowerTransition>(`/admin/power/${action}`),
   printerConfig: () => request<PrinterConfiguration>("/admin/printer"),
   savePrinterConfig: (driver: "null" | "cups", printerName: string | null) =>
     request<PrinterConfiguration>("/admin/printer", {

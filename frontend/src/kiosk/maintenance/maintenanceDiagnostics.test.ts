@@ -22,6 +22,8 @@ const snapshot = {
     printer_driver: "cp1500",
     session_state: "idle",
     maintenance_active: true,
+    power_available: true,
+    power_transition: null,
     event_name: "Test",
     print_format_name: "postcard",
     print_aspect_ratio: 1.5,

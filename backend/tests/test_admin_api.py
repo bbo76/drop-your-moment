@@ -16,6 +16,7 @@ from dropyourmoment.core.event_config import CONFIG_FILENAME, OVERLAY_FILENAME
 from dropyourmoment.core.print_format import POSTCARD_LANDSCAPE
 from dropyourmoment.core.session import SessionState
 from dropyourmoment.runtime import Runtime
+from dropyourmoment.system_power import SystemPower
 
 # Au ratio de la carte postale paysage (1.48), le format par défaut de l'événement.
 GOOD_SIZE = POSTCARD_LANDSCAPE.pixel_size
@@ -465,6 +466,38 @@ def test_la_sante_distingue_un_apercu_vivant_d_un_apercu_gele(
 
     assert admin.get("/admin/system/health").json()["preview_streams"] == 1
     frames.close()
+
+
+def test_le_portail_programme_une_action_systeme_et_bloque_le_kiosque(
+    admin: TestClient, kiosk: TestClient, runtime: Runtime
+) -> None:
+    calls: list[str] = []
+    runtime.system_power = SystemPower(executor=calls.append, available=True)
+
+    response = admin.post("/admin/power/reboot")
+
+    assert response.status_code == 202
+    assert response.json()["action"] == "reboot"
+    assert calls == [], "l’action doit attendre le délai d’avertissement"
+    assert admin.get("/admin/system/health").json()["power_transition"]["action"] == "reboot"
+    assert kiosk.get("/api/status").json()["power_transition"]["action"] == "reboot"
+    assert kiosk.post("/api/session").status_code == 409
+
+
+def test_le_portail_refuse_une_action_systeme_pendant_un_tirage(
+    admin: TestClient, runtime: Runtime
+) -> None:
+    runtime.system_power = SystemPower(executor=lambda _: None, available=True)
+    runtime.machine.start()
+    runtime.machine.capture()
+    runtime.machine.print()
+
+    response = admin.post("/admin/power/poweroff")
+
+    assert response.status_code == 409
+    assert "impression est en cours" in response.json()["detail"]
+    assert admin.post("/admin/session/home").status_code == 409
+    assert runtime.machine.state is SessionState.PRINTING
 
 
 def test_le_tirage_fait_monter_les_deux_compteurs(admin: TestClient, kiosk: TestClient) -> None:
