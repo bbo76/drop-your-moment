@@ -122,7 +122,6 @@ export interface CounterReading {
 }
 
 export interface MaintenanceSettings {
-  copies_per_print: number;
   default_shot_timer_seconds: ShotTimerSeconds;
   screen_flash_enabled: boolean;
   accent_color: string;

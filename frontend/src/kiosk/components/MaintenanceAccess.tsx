@@ -62,7 +62,7 @@ function MaintenancePanel({ onExpired, onExit, debugFailure }: { onExpired: () =
   const diagnostics = maintenanceDiagnostics(snapshot);
   const back = () => setView("home");
   if (view === "health") return <MaintenanceFrame title="Santé de la borne" status={diagnostics.status} onBack={back}><MaintenanceHealthView snapshot={snapshot} /></MaintenanceFrame>;
-  if (view === "printing") return <MaintenanceFrame title="Impression" status={diagnostics.status} onBack={back}><MaintenancePrintingView snapshot={snapshot} saving={saving} onSaveSettings={saveSettings} onReloadCassette={maintenance.reloadCassette} onReplaceInk={maintenance.replaceInk} onSetPaperStock={maintenance.setPaperStock} /></MaintenanceFrame>;
+  if (view === "printing") return <MaintenanceFrame title="Impression" status={diagnostics.status} onBack={back}><MaintenancePrintingView snapshot={snapshot} saving={saving} onReloadCassette={maintenance.reloadCassette} onReplaceInk={maintenance.replaceInk} onSetPaperStock={maintenance.setPaperStock} /></MaintenanceFrame>;
   if (view === "gallery") return <MaintenanceFrame title="Galerie photo" status={diagnostics.status} onBack={back}><MaintenanceGalleryView onExpired={onExpired} /></MaintenanceFrame>;
   if (view === "settings") return <MaintenanceFrame title="Réglages borne" status={diagnostics.status} onBack={back}><MaintenanceSettingsView snapshot={snapshot} saving={saving} onSaveSettings={saveSettings} onPowerAction={async (action) => { setPowerTransition(action); try { await api.requestPowerAction(action); } catch (cause) { setPowerTransition(null); throw cause; } }} /></MaintenanceFrame>;
   const { settings } = snapshot;

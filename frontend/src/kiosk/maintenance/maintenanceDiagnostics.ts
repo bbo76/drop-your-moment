@@ -10,7 +10,7 @@ export function supplyLevels(counters: CounterReading) {
 }
 
 export function maintenanceDiagnostics(snapshot: MaintenanceSnapshot) {
-  const { health, settings } = snapshot;
+  const { health } = snapshot;
   const supplies = supplyLevels(health.counters);
   const storageLow = health.disk_free_bytes / health.disk_total_bytes <= 0.1;
   const healthNeedsAttention = !health.camera_ok
@@ -42,17 +42,17 @@ export function maintenanceDiagnostics(snapshot: MaintenanceSnapshot) {
     healthDetail: healthDetail(health),
     printingDetail: health.printer_driver === "offline"
       ? "Imprimante hors ligne · vérifier la liaison"
-      : printingDetail(supplies, settings.copies_per_print),
+      : printingDetail(supplies),
   };
 }
 
-function printingDetail(supplies: ReturnType<typeof supplyLevels>, copies: number) {
-  if (supplies.stock < copies) return "Stock papier insuffisant · à mettre à jour";
-  if (supplies.ink < copies) return "Cassette d’encre épuisée · à remplacer";
-  if (supplies.cassette < copies) return "Bac vide · rechargez 18 feuilles";
+function printingDetail(supplies: ReturnType<typeof supplyLevels>) {
+  if (supplies.stock === 0) return "Stock papier insuffisant · à mettre à jour";
+  if (supplies.ink === 0) return "Cassette d’encre épuisée · à remplacer";
+  if (supplies.cassette === 0) return "Bac vide · rechargez 18 feuilles";
   if (supplies.printable <= 2) return `Stock papier critique · ${supplies.printable} tirages restants`;
   if (supplies.printable <= 5) return `Stock papier bientôt faible · ${supplies.printable} tirages restants`;
-  return `${copies} copie${copies > 1 ? "s" : ""} · ${supplies.printable} tirages avant intervention`;
+  return `${supplies.printable} tirages avant intervention`;
 }
 
 function healthDetail(health: AdminHealth) {

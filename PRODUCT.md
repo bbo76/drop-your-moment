@@ -53,7 +53,7 @@ maintenance tactile locale protégée et une administration complète sur le LAN
 - La maintenance locale est protégée par un code PIN et expose seulement les diagnostics
   et réglages utiles pendant l'événement.
 - La maintenance locale inclut au minimum la santé caméra, stockage et impression, les
-  consommables, le nombre de copies, le flash écran et le minuteur photo par défaut.
+  consommables, le flash écran et le minuteur photo par défaut.
 - L’interruption forcée d’une session est une commande distante du portail complet ; elle
   n’est pas présentée sur la borne, dont la fermeture de maintenance suffit à rendre la
   main au parcours invité.
