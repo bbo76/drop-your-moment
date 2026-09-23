@@ -35,6 +35,8 @@ export interface SessionStatus {
   photo_url: string | null;
   /** Sortie choisie à la revue, conservée pour adapter la confirmation. */
   output_mode: "print" | "save" | null;
+  /** Nombre d'exemplaires demandés pour le tirage en cours ou terminé. */
+  output_copies: number;
   power_transition: PowerTransition | null;
 }
 
@@ -44,7 +46,7 @@ export interface SystemStatus {
   printer_ok: boolean;
   /** Signal opérateur discret ; le diagnostic détaillé reste en maintenance. */
   operator_attention: boolean;
-  /** Nombre de photos encore imprimables avec la configuration actuelle. */
+  /** Nombre d'exemplaires physiques encore imprimables. */
   prints_remaining: number;
   preview_size: [number, number];
 }
@@ -261,7 +263,8 @@ export const api = {
   chooseFilter: (sessionId: string, name: FilterName) =>
     post<SessionStatus>(`/api/session/${sessionId}/filter`, { name }),
   retake: (sessionId: string) => post<SessionStatus>(`/api/session/${sessionId}/retake`),
-  printPhoto: (sessionId: string) => post<SessionStatus>(`/api/session/${sessionId}/print`),
+  printPhoto: (sessionId: string, copies: number) =>
+    post<SessionStatus>(`/api/session/${sessionId}/print`, { copies }),
   savePhoto: (sessionId: string) => post<SessionStatus>(`/api/session/${sessionId}/save`),
 
   unlockMaintenance: async (pin: string) => {

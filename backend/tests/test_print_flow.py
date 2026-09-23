@@ -109,6 +109,29 @@ def test_le_tirage_transmet_le_fichier_fige(
     assert printer.printed == [(final_path(runtime.settings.sessions_dir, session_id), 1)]
 
 
+def test_le_visiteur_choisit_le_nombre_d_exemplaires(
+    kiosk: TestClient, runtime: Runtime, printer: FakePrinterDriver
+) -> None:
+    session_id = capture(kiosk)
+
+    body = kiosk.post(f"/api/session/{session_id}/print", json={"copies": 3}).json()
+
+    assert body["output_copies"] == 3
+    assert printer.printed == [(final_path(runtime.settings.sessions_dir, session_id), 3)]
+    assert runtime.counters.read().prints_total == 3
+
+
+def test_le_kiosque_refuse_plus_de_trois_exemplaires(
+    kiosk: TestClient, printer: FakePrinterDriver
+) -> None:
+    session_id = capture(kiosk)
+
+    response = kiosk.post(f"/api/session/{session_id}/print", json={"copies": 4})
+
+    assert response.status_code == 422
+    assert printer.printed == []
+
+
 def test_le_compteur_suit_le_nombre_de_copies(kiosk: TestClient, runtime: Runtime) -> None:
     """Le stock papier déclaré est décrémenté exactement du nombre de copies."""
     runtime.event.config = EventConfig(copies_per_print=3)

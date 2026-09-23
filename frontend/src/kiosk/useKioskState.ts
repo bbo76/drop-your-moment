@@ -10,6 +10,7 @@ import {
 
 const POLL_INTERVAL_MS = 500;
 const EVENT_POLL_INTERVAL_MS = 2000;
+const SYSTEM_POLL_INTERVAL_MS = 2000;
 const SCREEN_FLASH_LEAD_MS = 300;
 const SCREEN_FLASH_HOLD_MS = 150;
 
@@ -25,7 +26,7 @@ export interface KioskState {
   capture: () => Promise<void>;
   chooseFilter: (name: FilterName) => Promise<void>;
   retake: () => Promise<void>;
-  keepPhoto: () => Promise<void>;
+  keepPhoto: (copies: number) => Promise<void>;
   savePhoto: () => Promise<void>;
 }
 
@@ -58,17 +59,21 @@ export function useKioskState(): KioskState {
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let nextEventPollAt = 0;
+    let nextSystemPollAt = 0;
 
     const tick = async () => {
       try {
-        // Les capacités matérielles ne changent qu'au rebranchement. La configuration
-        // événementielle, elle, doit suivre le portail sans F5 : sur la vraie borne il
-        // n'y a ni clavier ni geste navigateur disponible pour rafraîchir la page.
-        if (!systemRef.current) {
+        // Le stock d'impression et la configuration événementielle doivent suivre le
+        // portail sans F5 : sur la vraie borne il n'y a ni clavier ni geste navigateur
+        // disponible pour rafraîchir la page.
+        if (!systemRef.current || Date.now() >= nextSystemPollAt) {
           const fresh = await api.systemStatus();
           if (cancelled) return;
-          systemRef.current = fresh;
-          setSystem(fresh);
+          nextSystemPollAt = Date.now() + SYSTEM_POLL_INTERVAL_MS;
+          if (JSON.stringify(fresh) !== JSON.stringify(systemRef.current)) {
+            systemRef.current = fresh;
+            setSystem(fresh);
+          }
         }
         if (!eventRef.current || Date.now() >= nextEventPollAt) {
           const fresh = await api.event();
@@ -154,7 +159,10 @@ export function useKioskState(): KioskState {
     }
   }, []);
   const retake = useCallback(() => withSession(api.retake), [withSession]);
-  const keepPhoto = useCallback(() => withSession(api.printPhoto), [withSession]);
+  const keepPhoto = useCallback(
+    (copies: number) => withSession((id) => api.printPhoto(id, copies)),
+    [withSession],
+  );
   const savePhoto = useCallback(() => withSession(api.savePhoto), [withSession]);
   const chooseFilter = useCallback(
     (name: FilterName) => withSession((id) => api.chooseFilter(id, name)),

@@ -146,6 +146,7 @@ export function App() {
             onKeep={keepPhoto}
             onSave={savePhoto}
             printingAvailable={printingAvailable}
+            printsRemaining={system.prints_remaining}
           />
       ) : (
         <CenteredScreen>
@@ -164,7 +165,7 @@ export function App() {
 
     case "printing":
     case "done":
-      return <ConfirmationScreen printing={session.state === "printing"} outputMode={session.output_mode} photoUrl={session.photo_url} remainingSeconds={session.remaining_seconds} onContinue={start} />;
+      return <ConfirmationScreen printing={session.state === "printing"} outputMode={session.output_mode} outputCopies={session.output_copies} photoUrl={session.photo_url} remainingSeconds={session.remaining_seconds} onContinue={start} />;
   }
 }
 
