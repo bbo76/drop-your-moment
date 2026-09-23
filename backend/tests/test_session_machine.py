@@ -151,10 +151,10 @@ def test_impression_sans_timeout_d_inactivite(machine: SessionMachine, clock: Fa
     assert machine.state is SessionState.PRINTING
 
 
-def test_confirmation_retourne_au_repos_automatiquement(
+def test_confirmation_demarre_une_nouvelle_session_en_preview(
     machine: SessionMachine, clock: FakeClock, timeouts: StateTimeouts
 ) -> None:
-    machine.start()
+    previous_session = machine.start()
     machine.capture()
     machine.print()
     machine.complete()
@@ -162,7 +162,11 @@ def test_confirmation_retourne_au_repos_automatiquement(
     clock.advance(timeouts.done + 1)
     machine.tick()
 
-    assert machine.state is SessionState.IDLE
+    assert machine.state is SessionState.PREVIEW
+    assert machine.session is not previous_session
+    assert machine.session is not None
+    assert machine.session.final_path is None
+    assert machine.session.selected_filter is None
 
 
 def test_echec_bascule_en_erreur_depuis_n_importe_quel_etat(machine: SessionMachine) -> None:

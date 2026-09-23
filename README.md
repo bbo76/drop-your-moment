@@ -39,7 +39,9 @@ d'événement modifiée depuis l'admin doit être vue immédiatement par le kios
 ## Parcours visiteur
 
 Accueil → décompte 3-2-1 sur l'aperçu live → capture → choix d'un filtre (original, N&B,
-sépia) → « je garde cette photo » → confirmation → retour automatique à l'accueil.
+sépia) → « je garde cette photo » → confirmation de quatre secondes → nouvelle
+prise de vue. Si personne ne poursuit, l'inactivité de l'aperçu ramène automatiquement la
+borne à l'accueil.
 
 Le bouton dira « Imprimer » quand une imprimante sera branchée. Pendant la phase numérique
 il ne promet rien qu'il ne tienne : la photo est enregistrée, rien ne sort du caisson.

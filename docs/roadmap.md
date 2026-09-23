@@ -34,7 +34,8 @@ de review. Outil de génération d'un overlay de démonstration.
 ### ✅ Jalon 4 — Sortie numérique
 
 Le parcours boucle : accueil → capture → filtre → « je garde cette photo » → confirmation
-→ retour automatique à l'accueil, sans intervention.
+→ nouvelle prise de vue, sans intervention. L'inactivité de l'aperçu ramène ensuite la
+borne à l'accueil si les invités s'éloignent.
 
 Interface `PrinterDriver` et pilote neutre, `POST /api/session/{id}/print`, compteur de
 tirages persisté, écran de confirmation, purge des sessions anciennes.
