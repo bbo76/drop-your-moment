@@ -370,9 +370,10 @@ Les choix tactiles conservent `aria-pressed` et combinent remplissage, coche
 ou changement de position. Une aide affichée doit tenir intégralement : elle passe sous son
 titre plutôt que d'être tronquée.
 
-Sur la revue photo, le visiteur choisit de un à trois exemplaires avant d'imprimer. La
-quantité s'affiche dans le libellé du bouton principal et part dans un seul travail
-d'impression ; les choix qui dépassent le papier restant sont indisponibles.
+Sur la revue photo, le visiteur choisit de un à dix exemplaires avant d'imprimer avec un
+contrôle moins / quantité / plus. La quantité s'affiche dans le libellé du bouton principal
+et part dans un seul travail d'impression ; le plus devient indisponible au plafond ou
+lorsque le papier restant est atteint.
 
 La bascule de réglage n'est jamais enfermée dans une seconde bordure. Lorsque le titre de
 la rangée nomme déjà sans ambiguïté le réglage, la piste et le déplacement physique de la

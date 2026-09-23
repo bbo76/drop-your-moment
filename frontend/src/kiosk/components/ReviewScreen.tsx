@@ -1,5 +1,5 @@
 import { Printer, RotateCcw, Save } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { FILTER_LABELS, type FilterName } from "../../shared/api";
 import { PrimaryButton } from "./Screen";
@@ -32,7 +32,8 @@ export function ReviewScreen({
   printsRemaining,
 }: Props) {
   const [copies, setCopies] = useState(1);
-  const maxCopies = Math.min(3, printsRemaining);
+  const maxCopies = Math.max(1, Math.min(10, printsRemaining));
+  useEffect(() => setCopies((value) => Math.min(value, maxCopies)), [maxCopies]);
   const showReturnHint =
     remainingSeconds !== null && remainingSeconds <= RETURN_HINT_THRESHOLD_S;
 
@@ -70,19 +71,27 @@ export function ReviewScreen({
           {printingAvailable && (
             <fieldset>
               <legend className="mb-1.5 text-sm font-medium text-muted">Nombre d'exemplaires</legend>
-              <div className="grid grid-cols-3 gap-2">
-                {[1, 2, 3].map((value) => (
-                  <button
-                    key={value}
-                    type="button"
-                    disabled={value > maxCopies}
-                    aria-pressed={copies === value}
-                    onClick={() => setCopies(value)}
-                    className="min-h-14 rounded-panel border-2 border-edge text-xl font-bold tabular-nums text-body transition-[background-color,border-color,color,transform] duration-150 active:scale-[0.97] aria-pressed:border-signal aria-pressed:bg-signal aria-pressed:text-signal-ink disabled:opacity-35"
-                  >
-                    {value}
-                  </button>
-                ))}
+              <div className="grid grid-cols-[1fr_1.35fr_1fr] gap-2">
+                <CopyStepButton
+                  label="Retirer un exemplaire"
+                  disabled={copies === 1}
+                  onClick={() => setCopies((value) => value - 1)}
+                >
+                  −
+                </CopyStepButton>
+                <output
+                  aria-live="polite"
+                  className="grid min-h-14 place-items-center rounded-panel border-2 border-signal bg-signal text-2xl font-bold tabular-nums text-signal-ink"
+                >
+                  {copies}
+                </output>
+                <CopyStepButton
+                  label="Ajouter un exemplaire"
+                  disabled={copies === maxCopies}
+                  onClick={() => setCopies((value) => value + 1)}
+                >
+                  +
+                </CopyStepButton>
               </div>
             </fieldset>
           )}
@@ -100,6 +109,30 @@ export function ReviewScreen({
         </div>
       </section>
     </main>
+  );
+}
+
+function CopyStepButton({
+  children,
+  label,
+  disabled,
+  onClick,
+}: {
+  children: string;
+  label: string;
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      disabled={disabled}
+      onClick={onClick}
+      className="min-h-14 rounded-panel border-2 border-edge text-3xl font-medium text-body transition-transform duration-150 active:scale-[0.97] disabled:opacity-35"
+    >
+      {children}
+    </button>
   );
 }
 

@@ -43,7 +43,7 @@ sépia) → « je garde cette photo » → confirmation de quatre secondes → n
 prise de vue. Si personne ne poursuit, l'inactivité de l'aperçu ramène automatiquement la
 borne à l'accueil.
 
-Lorsqu'une imprimante est disponible, les invités choisissent un à trois exemplaires sur
+Lorsqu'une imprimante est disponible, les invités choisissent un à dix exemplaires sur
 l'écran de revue. La quantité part dans un seul travail d'impression et ne peut pas
 dépasser le stock de papier restant.
 

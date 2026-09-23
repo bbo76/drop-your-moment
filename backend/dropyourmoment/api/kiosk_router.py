@@ -313,7 +313,7 @@ def retake(session_id: str, runtime: Runtime = Depends(get_runtime)) -> SessionS
 
 
 class PrintRequest(BaseModel):
-    copies: int = Field(ge=1, le=3)
+    copies: int = Field(ge=1, le=10)
 
 
 @router.post("/session/{session_id}/print", response_model=SessionStatus)
