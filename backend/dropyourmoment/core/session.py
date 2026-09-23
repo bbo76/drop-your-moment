@@ -61,7 +61,6 @@ _TRANSITIONS: dict[tuple[SessionState, SessionEvent], SessionState] = {
     (SessionState.REVIEW, SessionEvent.TIMEOUT): SessionState.IDLE,
     (SessionState.REVIEW, SessionEvent.START): SessionState.PREVIEW,
     (SessionState.PRINTING, SessionEvent.COMPLETE): SessionState.DONE,
-    (SessionState.DONE, SessionEvent.TIMEOUT): SessionState.IDLE,
     (SessionState.DONE, SessionEvent.START): SessionState.PREVIEW,
     (SessionState.ERROR, SessionEvent.TIMEOUT): SessionState.IDLE,
     (SessionState.ERROR, SessionEvent.START): SessionState.PREVIEW,
@@ -87,7 +86,7 @@ class StateTimeouts:
 
     preview: float = 60.0
     review: float = 90.0
-    done: float = 8.0
+    done: float = 4.0
     error: float = 15.0
 
     def for_state(self, state: SessionState) -> float | None:
@@ -206,7 +205,10 @@ class SessionMachine:
         limit = self.timeouts.for_state(self._state)
         if limit is None or self._elapsed() < limit:
             return False
-        self._dispatch(SessionEvent.TIMEOUT)
+        if self._state is SessionState.DONE:
+            self.start()
+        else:
+            self._dispatch(SessionEvent.TIMEOUT)
         return True
 
     def remaining_seconds(self) -> float | None:

@@ -44,7 +44,7 @@ class Settings(BaseSettings):
     # minuteur ; la review garde trente secondes de plus pour comparer les rendus.
     preview_timeout_s: float = 60.0
     review_timeout_s: float = 90.0
-    done_timeout_s: float = 8.0
+    done_timeout_s: float = 4.0
     error_timeout_s: float = 15.0
 
     # Donne à l'interface d'attente un vrai état PRINTING pendant le développement.

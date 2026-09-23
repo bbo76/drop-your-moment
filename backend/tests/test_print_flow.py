@@ -1,4 +1,4 @@
-"""Parcours de sortie : review → tirage → confirmation → retour à l'accueil.
+"""Parcours de sortie : review → tirage → confirmation → nouvelle photo.
 
 Le pilote de test peut répondre immédiatement (comme le pilote neutre), garder le job en
 cours (comme le fera CUPS pendant ~40 s), ou refuser la demande. Ce sont les trois formes
@@ -161,13 +161,19 @@ def test_enregistrer_conserve_la_photo_sans_imprimer(
     assert final_path(runtime.settings.sessions_dir, session_id).is_file()
 
 
-def test_le_retour_a_l_accueil_est_automatique(kiosk: TestClient, runtime: Runtime) -> None:
-    """Aucune action du visiteur : le timeout de DONE ramène la borne au repos."""
+def test_la_confirmation_prepare_automatiquement_une_nouvelle_photo(
+    kiosk: TestClient, runtime: Runtime
+) -> None:
+    """La confirmation expire vers une session neuve, prête à photographier."""
     session_id = capture(kiosk)
     kiosk.post(f"/api/session/{session_id}/print")
     runtime.machine.timeouts = StateTimeouts(done=0.0)
 
-    assert kiosk.get("/api/status").json()["state"] == SessionState.IDLE
+    body = kiosk.get("/api/status").json()
+
+    assert body["state"] == SessionState.PREVIEW
+    assert body["session_id"] != session_id
+    assert body["photo_url"] is None
 
 
 def test_tirage_refuse_hors_review(kiosk: TestClient) -> None:
