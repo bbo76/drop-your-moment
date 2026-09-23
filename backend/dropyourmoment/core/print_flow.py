@@ -55,9 +55,7 @@ class PrintFlow:
     def last_error(self) -> str | None:
         return self._last_error
 
-    def submit(
-        self, image_path: Path, copies: int, *, complete_session: bool = True
-    ) -> PrintJob:
+    def submit(self, image_path: Path, copies: int, *, complete_session: bool = True) -> PrintJob:
         """Soumet le tirage. Lève `PrinterError` si l'imprimante refuse la demande."""
         if self._job is not None:
             raise PrinterError("une impression est déjà en cours")

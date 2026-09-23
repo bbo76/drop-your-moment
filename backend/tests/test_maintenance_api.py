@@ -105,17 +105,13 @@ def test_la_galerie_locale_est_protegee_et_liste_les_photos(kiosk: TestClient) -
     assert response.json() == {"total": 0, "entries": []}
 
 
-def test_la_galerie_locale_peut_reimprimer_une_photo(
-    kiosk: TestClient, runtime: Runtime
-) -> None:
+def test_la_galerie_locale_peut_reimprimer_une_photo(kiosk: TestClient, runtime: Runtime) -> None:
     path = final_path(runtime.settings.sessions_dir, "photo-test")
     path.parent.mkdir(parents=True)
     Image.new("RGB", (20, 20)).save(path)
     _unlock(kiosk)
 
-    response = kiosk.post(
-        "/api/maintenance/gallery/photo-test/print", json={"copies": 2}
-    )
+    response = kiosk.post("/api/maintenance/gallery/photo-test/print", json={"copies": 2})
 
     assert response.status_code == 202
     assert kiosk.get("/api/maintenance/status").json()["print_busy"] is True

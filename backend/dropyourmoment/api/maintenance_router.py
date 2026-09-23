@@ -193,9 +193,7 @@ def print_gallery_photo(
 
 
 @router.delete("/gallery/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_gallery_photo(
-    session_id: str, runtime: Runtime = Depends(_authorized)
-) -> Response:
+def delete_gallery_photo(session_id: str, runtime: Runtime = Depends(_authorized)) -> Response:
     path = _photo_path(runtime, session_id)
     if runtime.print_flow.source_path == path:
         raise HTTPException(
