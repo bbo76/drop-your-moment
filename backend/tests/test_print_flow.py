@@ -148,6 +148,22 @@ def test_le_compteur_ne_bouge_pas_sans_tirage(kiosk: TestClient, runtime: Runtim
     assert runtime.counters.read().prints_total == 0
 
 
+def test_un_retirage_de_maintenance_ne_change_pas_la_session(
+    runtime: Runtime, printer: FakePrinterDriver
+) -> None:
+    printer.mode = "spooling"
+    path = runtime.settings.sessions_dir / "archive" / "final.jpg"
+    path.parent.mkdir(parents=True)
+    path.touch()
+
+    runtime.print_flow.submit(path, 2, complete_session=False)
+    printer.settle(JobState.COMPLETED)
+    runtime.print_flow.poll()
+
+    assert runtime.machine.state is SessionState.IDLE
+    assert runtime.counters.read().prints_total == 2
+
+
 def test_le_bac_cp1500_refuse_un_dix_neuvieme_tirage(
     kiosk: TestClient, runtime: Runtime, printer: FakePrinterDriver
 ) -> None:

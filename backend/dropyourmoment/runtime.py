@@ -94,7 +94,7 @@ class Runtime:
         )
 
     def select_printer(self, selection: PrinterSelection) -> None:
-        if self.machine.state is SessionState.PRINTING:
+        if self.machine.state is SessionState.PRINTING or self.print_flow.job is not None:
             raise PrinterError("attendez la fin du tirage avant de changer d’imprimante")
         printer = build_printer_driver(
             selection.driver,

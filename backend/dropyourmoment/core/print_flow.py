@@ -38,14 +38,29 @@ class PrintFlow:
         self._counters = counters
         self._on_completed = on_completed
         self._job: PrintJob | None = None
+        self._complete_session = True
+        self._source_path: Path | None = None
+        self._last_error: str | None = None
 
     @property
     def job(self) -> PrintJob | None:
         """Job en cours, ou None. Alimentera la page de santé de l'administration."""
         return self._job
 
-    def submit(self, image_path: Path, copies: int) -> PrintJob:
+    @property
+    def source_path(self) -> Path | None:
+        return self._source_path
+
+    @property
+    def last_error(self) -> str | None:
+        return self._last_error
+
+    def submit(
+        self, image_path: Path, copies: int, *, complete_session: bool = True
+    ) -> PrintJob:
         """Soumet le tirage. Lève `PrinterError` si l'imprimante refuse la demande."""
+        if self._job is not None:
+            raise PrinterError("une impression est déjà en cours")
         counters = self._counters.read()
         if copies > counters.paper_remaining:
             raise InsufficientPaperError(
@@ -53,16 +68,20 @@ class PrintFlow:
             )
         job = self._printer.print_image(image_path, copies)
         self._job = job
+        self._complete_session = complete_session
+        self._source_path = image_path
+        self._last_error = None
         logger.info("tirage %s soumis (%d copie(s))", job.id, job.copies)
         return job
 
     def poll(self) -> None:
         """Constate l'avancement du job et fait avancer la machine à états."""
-        if self._machine.state is not SessionState.PRINTING:
+        if self._complete_session and self._machine.state is not SessionState.PRINTING:
             # Annulation, panne, ou simple absence de tirage : le job n'a plus de
             # destinataire. Le jalon 7 ajoutera ici l'annulation côté CUPS — un point,
             # pas une refonte.
             self._job = None
+            self._source_path = None
             return
 
         job = self._job
@@ -82,12 +101,17 @@ class PrintFlow:
             return
 
         self._job = None
+        self._source_path = None
         self._counters.record_prints(job.copies)
-        self._machine.complete()
+        if self._complete_session:
+            self._machine.complete()
         if self._on_completed is not None:
             self._on_completed()
 
     def _fail(self, reason: str) -> None:
         logger.error("tirage échoué : %s", reason)
         self._job = None
-        self._machine.fail(reason)
+        self._source_path = None
+        self._last_error = reason
+        if self._complete_session:
+            self._machine.fail(reason)

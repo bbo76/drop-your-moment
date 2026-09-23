@@ -195,6 +195,11 @@ Santé, Impression, Galerie et Réglages borne — puis chaque tuile conduit à 
 spécialisé avec un retour permanent. Les détails restent en deux zones lorsque cela
 facilite le balayage visuel. À 600 px de hauteur, les marges et blocs adoptent directement
 leur densité d'exploitation sans changer la hiérarchie ni introduire de défilement.
+La galerie est la seule exception à l'absence de défilement : ses miniatures sont chargées
+progressivement dans une zone dédiée. Une photo s'ouvre dans un détail plein cadre avec
+le choix du nombre d'exemplaires, le retirage et une suppression confirmée. L'écran
+Impression montre uniquement le bac et l'encre manipulables sur place ; la réserve totale
+de l'événement appartient au portail d'administration.
 
 **The One Decision Rule.** Une composition peut exposer plusieurs informations, mais une seule action doit dominer visuellement chaque étape du parcours invité.
 

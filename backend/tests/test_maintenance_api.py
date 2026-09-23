@@ -2,14 +2,24 @@
 
 from __future__ import annotations
 
+import pytest
 from fastapi.testclient import TestClient
+from PIL import Image
 
+from dropyourmoment.hardware.printer.base import PrinterDriver
+from dropyourmoment.hardware.printer.null_driver import NullPrinterDriver
 from dropyourmoment.runtime import Runtime
+from dropyourmoment.storage.paths import final_path
 from dropyourmoment.system_power import SystemPower
 
 
 def _unlock(kiosk: TestClient, pin: str = "2580") -> None:
     assert kiosk.post("/api/maintenance/unlock", json={"pin": pin}).status_code == 204
+
+
+@pytest.fixture
+def printer() -> PrinterDriver:
+    return NullPrinterDriver(completion_delay_s=60)
 
 
 def test_le_statut_est_protege_par_pin(kiosk: TestClient) -> None:
@@ -57,23 +67,6 @@ def test_les_reglages_utiles_s_appliquent_au_kiosque(kiosk: TestClient) -> None:
     assert kiosk.get("/api/event").json()["launch_font"] == "prestigious"
 
 
-def test_le_stock_papier_libre_est_memorise(kiosk: TestClient) -> None:
-    _unlock(kiosk)
-
-    response = kiosk.post("/api/maintenance/paper-stock", json={"capacity": 137})
-
-    assert response.status_code == 200
-    assert response.json()["paper_stock_capacity"] == 137
-    assert response.json()["prints_since_stock_set"] == 0
-
-
-def test_un_stock_hors_limites_est_refuse(kiosk: TestClient) -> None:
-    _unlock(kiosk)
-
-    assert kiosk.post("/api/maintenance/paper-stock", json={"capacity": 0}).status_code == 422
-    assert kiosk.post("/api/maintenance/paper-stock", json={"capacity": 10_000}).status_code == 422
-
-
 def test_le_remplacement_de_cassette_d_encre_est_memorise(kiosk: TestClient) -> None:
     _unlock(kiosk)
 
@@ -110,6 +103,42 @@ def test_la_galerie_locale_est_protegee_et_liste_les_photos(kiosk: TestClient) -
 
     assert response.status_code == 200
     assert response.json() == {"total": 0, "entries": []}
+
+
+def test_la_galerie_locale_peut_reimprimer_une_photo(
+    kiosk: TestClient, runtime: Runtime
+) -> None:
+    path = final_path(runtime.settings.sessions_dir, "photo-test")
+    path.parent.mkdir(parents=True)
+    Image.new("RGB", (20, 20)).save(path)
+    _unlock(kiosk)
+
+    response = kiosk.post(
+        "/api/maintenance/gallery/photo-test/print", json={"copies": 2}
+    )
+
+    assert response.status_code == 202
+    assert kiosk.get("/api/maintenance/status").json()["print_busy"] is True
+    assert kiosk.delete("/api/maintenance/gallery/photo-test").status_code == 409
+    assert kiosk.post("/api/maintenance/power/poweroff").status_code == 409
+
+
+def test_la_galerie_locale_supprime_une_photo(kiosk: TestClient, runtime: Runtime) -> None:
+    path = final_path(runtime.settings.sessions_dir, "photo-test")
+    path.parent.mkdir(parents=True)
+    Image.new("RGB", (20, 20)).save(path)
+    _unlock(kiosk)
+
+    response = kiosk.delete("/api/maintenance/gallery/photo-test")
+
+    assert response.status_code == 204
+    assert not path.parent.exists()
+
+
+def test_le_stock_total_ne_se_regle_plus_dans_la_maintenance(kiosk: TestClient) -> None:
+    _unlock(kiosk)
+
+    assert kiosk.post("/api/maintenance/paper-stock", json={"capacity": 100}).status_code == 404
 
 
 def test_les_routes_de_maintenance_ne_sont_pas_sur_le_portail_lan(

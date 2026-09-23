@@ -132,6 +132,8 @@ export interface MaintenanceSnapshot {
   health: AdminHealth;
   settings: MaintenanceSettings;
   power_available: boolean;
+  print_busy: boolean;
+  print_error: string | null;
 }
 
 /** Diagnostic servi par le portail d'administration, sur l'autre socket.
@@ -283,14 +285,27 @@ export const api = {
   maintenanceStatus: () => request<MaintenanceSnapshot>("/api/maintenance/status"),
   maintenanceGallery: (offset = 0, limit = 8) =>
     request<GalleryPage>(`/api/maintenance/gallery?offset=${offset}&limit=${limit}`),
+  printMaintenanceGalleryEntry: async (sessionId: string, copies: number) => {
+    const path = `/api/maintenance/gallery/${sessionId}/print`;
+    const response = await fetch(path, {
+      method: "POST",
+      cache: "no-store",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ copies }),
+    });
+    if (!response.ok) throw new Error(await errorMessage(response, path));
+  },
+  deleteMaintenanceGalleryEntry: async (sessionId: string) => {
+    const path = `/api/maintenance/gallery/${sessionId}`;
+    const response = await fetch(path, { method: "DELETE", cache: "no-store" });
+    if (!response.ok) throw new Error(await errorMessage(response, path));
+  },
   saveMaintenanceSettings: (settings: MaintenanceSettings) =>
     request<MaintenanceSettings>("/api/maintenance/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(settings),
     }),
-  setMaintenancePaperStock: (capacity: number) =>
-    post<CounterReading>("/api/maintenance/paper-stock", { capacity }),
   replaceMaintenanceInk: (capacity: 36 | 54) =>
     post<CounterReading>("/api/maintenance/ink/replace", { capacity }),
   reloadCassette: () => post<CounterReading>("/api/maintenance/cassette/reload"),

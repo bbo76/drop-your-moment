@@ -235,7 +235,7 @@ def replace_ink_cartridge(
 @router.post("/session/home", response_model=SessionStatus)
 def force_kiosk_home(runtime: Runtime = Depends(get_runtime)) -> SessionStatus:
     """Interrompt à distance une session bloquée et rend le kiosque disponible."""
-    if runtime.machine.state is SessionState.PRINTING:
+    if runtime.machine.state is SessionState.PRINTING or runtime.print_flow.job is not None:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
             detail="une impression est en cours ; attendez la fin du tirage",
@@ -253,7 +253,7 @@ def force_kiosk_home(runtime: Runtime = Depends(get_runtime)) -> SessionStatus:
 def schedule_power_action(
     action: Literal["reboot", "poweroff"], runtime: Runtime = Depends(get_runtime)
 ) -> PowerTransition:
-    if runtime.machine.state is SessionState.PRINTING:
+    if runtime.machine.state is SessionState.PRINTING or runtime.print_flow.job is not None:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
             detail="une impression est en cours ; attendez la fin du tirage",
@@ -592,7 +592,7 @@ def _photo_path(runtime: Runtime, session_id: str) -> Path:
     Frontière de confiance, et le seul endroit où elle est franchie : les trois routes de
     la galerie passent par ici. `session_id` vient de l'URL, donc « .. », un chemin absolu
     ou un lien symbolique doivent tous mener au même refus. `resolve()` avant la
-    comparaison est ce qui couvre les trois d'un coup.
+    comparaison est ce qui couvre toutes les routes d'un coup.
     """
     root = runtime.settings.sessions_dir.resolve()
     path = (root / session_id / FINAL_NAME).resolve()

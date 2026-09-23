@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 import subprocess
 from typing import Literal
 
@@ -18,6 +19,7 @@ from dropyourmoment.api.admin_router import (
     read_health,
 )
 from dropyourmoment.api.kiosk_router import get_runtime
+from dropyourmoment.core.errors import PrinterError
 from dropyourmoment.core.event_config import LaunchFont
 from dropyourmoment.core.session import SessionState
 from dropyourmoment.runtime import Runtime
@@ -43,6 +45,8 @@ class MaintenanceSnapshot(BaseModel):
     health: AdminHealth
     settings: MaintenanceSettings
     power_available: bool
+    print_busy: bool
+    print_error: str | None
 
 
 def _authorized(
@@ -80,6 +84,7 @@ def lock(response: Response, runtime: Runtime = Depends(_authorized)) -> None:
 
 @router.get("/status", response_model=MaintenanceSnapshot)
 def maintenance_status(runtime: Runtime = Depends(_authorized)) -> MaintenanceSnapshot:
+    runtime.print_flow.poll()
     config = runtime.event.config
     return MaintenanceSnapshot(
         health=read_health(runtime),
@@ -90,15 +95,17 @@ def maintenance_status(runtime: Runtime = Depends(_authorized)) -> MaintenanceSn
             launch_font=config.launch_font,
         ),
         power_available=runtime.system_power.available,
+        print_busy=runtime.print_flow.job is not None,
+        print_error=runtime.print_flow.last_error,
     )
 
 
 @router.post("/power/{action}", status_code=status.HTTP_202_ACCEPTED)
 def request_power_action(action: PowerAction, runtime: Runtime = Depends(_authorized)) -> None:
-    if runtime.machine.state is not SessionState.IDLE:
+    if runtime.machine.state is not SessionState.IDLE or runtime.print_flow.job is not None:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
-            detail="une session photo est en cours ; attendez son retour à l’accueil",
+            detail="une session photo ou une impression est en cours",
         )
     try:
         runtime.system_power.request(action)
@@ -121,19 +128,8 @@ def update_settings(
     return settings
 
 
-class PaperStockChange(BaseModel):
-    capacity: int = Field(ge=1, le=9_999)
-
-
 class InkCartridgeChange(BaseModel):
     capacity: Literal[36, 54]
-
-
-@router.post("/paper-stock", response_model=CounterReading)
-def set_paper_stock(
-    change: PaperStockChange, runtime: Runtime = Depends(_authorized)
-) -> CounterReading:
-    return _reading(runtime.counters.set_paper_stock(change.capacity))
 
 
 @router.post("/cassette/reload", response_model=CounterReading)
@@ -174,3 +170,37 @@ def read_gallery_photo(session_id: str, runtime: Runtime = Depends(_authorized))
         media_type="image/jpeg",
         headers={"Cache-Control": "no-store"},
     )
+
+
+class GalleryPrintRequest(BaseModel):
+    copies: int = Field(ge=1, le=10)
+
+
+@router.post("/gallery/{session_id}/print", status_code=status.HTTP_202_ACCEPTED)
+def print_gallery_photo(
+    session_id: str,
+    request: GalleryPrintRequest,
+    runtime: Runtime = Depends(_authorized),
+) -> None:
+    if runtime.machine.state is not SessionState.IDLE:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail="une session photo est en cours")
+    try:
+        runtime.print_flow.submit(
+            _photo_path(runtime, session_id), request.copies, complete_session=False
+        )
+    except PrinterError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+
+@router.delete("/gallery/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_gallery_photo(
+    session_id: str, runtime: Runtime = Depends(_authorized)
+) -> Response:
+    path = _photo_path(runtime, session_id)
+    if runtime.print_flow.source_path == path:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail="attendez la fin de l'impression avant de supprimer cette photo",
+        )
+    shutil.rmtree(path.parent)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
