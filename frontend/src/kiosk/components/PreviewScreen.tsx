@@ -185,12 +185,6 @@ export function PreviewScreen({
         </>
       )}
 
-      {phase.kind !== "waiting" && (
-        <span className="capture-cue pointer-events-none absolute bottom-5 left-1/2 z-20 -translate-x-1/2 rounded-panel bg-ink px-5 py-2 text-3xl leading-[1.08] font-bold tracking-[-0.02em] text-signal">
-          Souriez…
-        </span>
-      )}
-
       {/* Le flash couvre désormais toute la dalle, pas seulement le futur tirage. */}
       {phase.kind === "capturing" && screenFlashEnabled && (
         <div className="pointer-events-none absolute inset-0 z-30 bg-white" />
