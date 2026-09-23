@@ -62,8 +62,8 @@ function MaintenancePanel({ onExpired, onExit, debugFailure }: { onExpired: () =
   const diagnostics = maintenanceDiagnostics(snapshot);
   const back = () => setView("home");
   if (view === "health") return <MaintenanceFrame title="Santé de la borne" status={diagnostics.status} onBack={back}><MaintenanceHealthView snapshot={snapshot} /></MaintenanceFrame>;
-  if (view === "printing") return <MaintenanceFrame title="Impression" status={diagnostics.status} onBack={back}><MaintenancePrintingView snapshot={snapshot} saving={saving} onReloadCassette={maintenance.reloadCassette} onReplaceInk={maintenance.replaceInk} onSetPaperStock={maintenance.setPaperStock} /></MaintenanceFrame>;
-  if (view === "gallery") return <MaintenanceFrame title="Galerie photo" status={diagnostics.status} onBack={back}><MaintenanceGalleryView onExpired={onExpired} /></MaintenanceFrame>;
+  if (view === "printing") return <MaintenanceFrame title="Impression" status={diagnostics.status} onBack={back}><MaintenancePrintingView snapshot={snapshot} saving={saving} onReloadCassette={maintenance.reloadCassette} onReplaceInk={maintenance.replaceInk} /></MaintenanceFrame>;
+  if (view === "gallery") return <MaintenanceFrame title="Galerie photo" status={diagnostics.status} onBack={back}><MaintenanceGalleryView onExpired={onExpired} printBusy={snapshot.print_busy} printError={snapshot.print_error} printsRemaining={diagnostics.supplies.printable} /></MaintenanceFrame>;
   if (view === "settings") return <MaintenanceFrame title="Réglages borne" status={diagnostics.status} onBack={back}><MaintenanceSettingsView snapshot={snapshot} saving={saving} onSaveSettings={saveSettings} onPowerAction={async (action) => { setPowerTransition(action); try { await api.requestPowerAction(action); } catch (cause) { setPowerTransition(null); throw cause; } }} /></MaintenanceFrame>;
   const { settings } = snapshot;
   return (
@@ -72,7 +72,7 @@ function MaintenancePanel({ onExpired, onExit, debugFailure }: { onExpired: () =
       <div className="grid min-h-0 auto-rows-fr grid-cols-2 gap-3">
         <MaintenanceTile icon="health" title="Santé" detail={diagnostics.healthDetail} attention={diagnostics.healthNeedsAttention} onClick={() => setView("health")} />
         <MaintenanceTile icon="print" title="Impression" detail={diagnostics.printingDetail} attention={diagnostics.printingNeedsAttention} onClick={() => setView("printing")} />
-        <MaintenanceTile icon="gallery" title="Galerie" detail="Voir les dernières photos" onClick={() => setView("gallery")} />
+        <MaintenanceTile icon="gallery" title="Galerie" detail="Voir toutes les photos" onClick={() => setView("gallery")} />
         <MaintenanceTile icon="settings" title="Réglages borne" detail={`${KIOSK_FONTS.find((font) => font.value === settings.launch_font)?.label ?? "Apparence"} · flash ${settings.screen_flash_enabled ? "activé" : "coupé"}`} onClick={() => setView("settings")} />
       </div>
       {error && <p className="fixed bottom-3 left-4 rounded-panel bg-warn-bg px-4 py-2 text-lg font-medium text-warn" role="status">{error}</p>}

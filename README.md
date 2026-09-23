@@ -77,9 +77,10 @@ et sans interrompre une prise de vue.
 
 Le bouton outil, présent dans le coin supérieur droit du kiosque, ouvre une maintenance
 tactile protégée par un PIN à quatre chiffres. Quatre grandes tuiles donnent accès à la
-santé (caméra, stockage, CPU, RAM), à l'impression (connexion CP1500, stock total, bac
-de 18 feuilles et cassette d'encre 36/54), aux dernières photos et aux réglages de
-la borne (flash écran et minuteur par défaut). La borne permet aussi de choisir rapidement son ambiance parmi
+santé (caméra, stockage, CPU, RAM), à l'impression (connexion CP1500, bac de 18 feuilles
+et cassette d'encre 36/54), à la galerie locale et aux réglages de la borne (flash écran
+et minuteur par défaut). La galerie charge progressivement toutes les photos et permet
+d'en agrandir, réimprimer ou supprimer une. La borne permet aussi de choisir rapidement son ambiance parmi
 dix couleurs événementielles présélectionnées et les dix typographies du launch screen ;
 le portail PC conserve, lui, un sélecteur de couleur totalement libre. La maintenance se
 referme automatiquement après cinq minutes.

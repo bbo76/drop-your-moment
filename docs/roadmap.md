@@ -89,8 +89,9 @@ information normale sur un poste de développement, pas une panne du portail.
 
 La borne elle-même donne maintenant accès, derrière un PIN, aux seuls gestes utiles sous
 la pression d'un événement. Quatre tuiles séparent le diagnostic caméra / stockage / CPU /
-RAM, l'impression (connexion CP1500, stock total, bac de 18 feuilles, encre et copies), la
-galerie récente et les réglages de la borne. Overlay et format restent sur le portail complet. Le
+RAM, l'impression (connexion CP1500, bac de 18 feuilles et encre), la galerie complète avec
+retirage et suppression, et les réglages de la borne. La réserve totale de papier, l'overlay
+et le format restent sur le portail complet. Le
 PIN initial vient de l'environnement puis peut être remplacé, sans être exposé, depuis la
 section Sécurité du portail complet.
 

@@ -73,6 +73,5 @@ export function useMaintenance(debugFailure: DebugFailure, onExpired: () => void
     saveSettings,
     reloadCassette: () => run(api.reloadCassette, "Le rechargement du bac n’a pas été enregistré."),
     replaceInk: (capacity: 36 | 54) => run(() => api.replaceMaintenanceInk(capacity), "Le remplacement de la cassette d’encre n’a pas été enregistré."),
-    setPaperStock: (capacity: number) => run(() => api.setMaintenancePaperStock(capacity), "Le stock papier n’a pas été enregistré."),
   };
 }

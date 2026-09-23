@@ -6,6 +6,8 @@ import { maintenanceDiagnostics } from "./maintenanceDiagnostics.ts";
 
 const snapshot = {
   power_available: true,
+  print_busy: false,
+  print_error: null,
   settings: {
     default_shot_timer_seconds: 3,
     screen_flash_enabled: true,
