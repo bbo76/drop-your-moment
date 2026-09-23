@@ -8,12 +8,13 @@ const ESTIMATED_PRINT_DURATION_MS = 8000;
 interface Props {
   printing: boolean;
   outputMode: "print" | "save" | null;
+  outputCopies: number;
   photoUrl: string | null;
   remainingSeconds: number | null;
   onContinue: () => Promise<void>;
 }
 
-export function ConfirmationScreen({ printing, outputMode, photoUrl, remainingSeconds, onContinue }: Props) {
+export function ConfirmationScreen({ printing, outputMode, outputCopies, photoUrl, remainingSeconds, onContinue }: Props) {
   const [progress, setProgress] = useState(printing ? 8 : 100);
 
   useEffect(() => {
@@ -30,6 +31,7 @@ export function ConfirmationScreen({ printing, outputMode, photoUrl, remainingSe
   }, [printing]);
 
   const printed = outputMode === "print";
+  const multipleCopies = printed && outputCopies > 1;
 
   return (
     <main className="relative grid h-full grid-cols-[1.16fr_1fr] gap-5 p-5">
@@ -41,8 +43,8 @@ export function ConfirmationScreen({ printing, outputMode, photoUrl, remainingSe
         <section className="flex min-h-0 flex-col justify-between rounded-panel bg-surface p-8">
           <Printer className="size-14 text-signal" strokeWidth={1.8} aria-hidden="true" />
           <div className="grid gap-3">
-            <h1 className="max-w-[9ch] text-5xl leading-none font-bold tracking-[-0.02em]">Votre photo prend forme</h1>
-            <Lede>Encore un instant, elle arrive.</Lede>
+            <h1 className="max-w-[9ch] text-5xl leading-none font-bold tracking-[-0.02em]">{multipleCopies ? "Vos exemplaires prennent forme" : "Votre photo prend forme"}</h1>
+            <Lede>{multipleCopies ? "Encore un instant, ils arrivent." : "Encore un instant, elle arrive."}</Lede>
           </div>
           <div className="grid gap-3">
             <div className="flex items-end justify-between">
@@ -62,7 +64,6 @@ export function ConfirmationScreen({ printing, outputMode, photoUrl, remainingSe
                 style={{ width: `${progress}%` }}
               />
             </div>
-            <p className="text-sm text-muted">Elle peut encore prendre quelques instants.</p>
           </div>
         </section>
       ) : (
@@ -71,9 +72,9 @@ export function ConfirmationScreen({ printing, outputMode, photoUrl, remainingSe
             <Check className="size-8" strokeWidth={3} />
           </span>
           <h1 className="max-w-[10ch] text-5xl leading-none font-bold tracking-[-0.02em]">
-            {printed ? "Votre photo est prête !" : "C'est enregistré !"}
+            {multipleCopies ? `Vos ${outputCopies} exemplaires sont prêts !` : printed ? "Votre photo est prête !" : "C'est enregistré !"}
           </h1>
-          <Lede>{printed ? "Vous pouvez la récupérer." : "Votre photo reste dans la galerie."}</Lede>
+          <Lede>{multipleCopies ? "Vous pouvez les récupérer." : printed ? "Vous pouvez la récupérer." : "Votre photo reste dans la galerie."}</Lede>
           <p className="text-lg text-signal-ink/70">
             Touchez pour continuer{remainingSeconds !== null ? ` · Sinon, nouvelle photo dans ${Math.ceil(remainingSeconds)} s` : ""}
           </p>

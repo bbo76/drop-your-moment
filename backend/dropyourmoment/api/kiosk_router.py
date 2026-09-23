@@ -17,7 +17,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import FileResponse, StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from dropyourmoment.core.errors import CameraError, InvalidTransitionError, PrinterError
 from dropyourmoment.core.event_config import LaunchFont
@@ -58,6 +58,7 @@ class SessionStatus(BaseModel):
     # Porte déjà la révision : l'URL change à chaque recomposition.
     photo_url: str | None = None
     output_mode: str | None = None
+    output_copies: int = 0
     power_transition: PowerTransition | None = None
 
 
@@ -110,6 +111,7 @@ def _status(runtime: Runtime) -> SessionStatus:
         error=machine.last_error,
         photo_url=_photo_url(session),
         output_mode=session.output_mode if session else None,
+        output_copies=session.output_copies if session else 0,
         power_transition=PowerTransition(**vars(pending))
         if (pending := runtime.system_power.pending)
         else None,
@@ -147,8 +149,7 @@ def read_system_status(runtime: Runtime = Depends(get_runtime)) -> SystemStatus:
     caps = runtime.camera.get_capabilities()
     disk = shutil.disk_usage(runtime.settings.data_dir)
     camera_ok = runtime.camera.is_available()
-    copies = runtime.event.config.copies_per_print
-    prints_remaining = runtime.counters.read().paper_remaining // copies
+    prints_remaining = runtime.counters.read().paper_remaining
     power = read_system_metrics()
     return SystemStatus(
         camera_ok=camera_ok,
@@ -311,8 +312,16 @@ def retake(session_id: str, runtime: Runtime = Depends(get_runtime)) -> SessionS
     return _status(runtime)
 
 
+class PrintRequest(BaseModel):
+    copies: int = Field(ge=1, le=3)
+
+
 @router.post("/session/{session_id}/print", response_model=SessionStatus)
-def print_photo(session_id: str, runtime: Runtime = Depends(get_runtime)) -> SessionStatus:
+def print_photo(
+    session_id: str,
+    request: PrintRequest | None = None,
+    runtime: Runtime = Depends(get_runtime),
+) -> SessionStatus:
     """Fige la photo et lance le tirage. `REVIEW → PRINTING`, puis `DONE` à la fin du job.
 
     Figer ne demande aucune recomposition : `_compose` a déjà écrit `final.jpg` à la
@@ -327,13 +336,15 @@ def print_photo(session_id: str, runtime: Runtime = Depends(get_runtime)) -> Ses
     if session.final_path is None or not session.final_path.is_file():
         raise HTTPException(status.HTTP_409_CONFLICT, detail="aucune photo à enregistrer")
 
+    copies = request.copies if request else runtime.event.config.copies_per_print
+
     try:
-        runtime.machine.print()
+        runtime.machine.print(copies)
     except InvalidTransitionError as exc:
         raise HTTPException(status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
     try:
-        runtime.print_flow.submit(session.final_path, runtime.event.config.copies_per_print)
+        runtime.print_flow.submit(session.final_path, copies)
     except PrinterError as exc:
         # Un écran d'erreur, jamais une exception : le visiteur n'a pas à voir un code
         # d'imprimante, et le timeout d'ERROR le ramènera à l'accueil.

@@ -1,5 +1,5 @@
 import { Printer, RotateCcw, Save } from "lucide-react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { FILTER_LABELS, type FilterName } from "../../shared/api";
 import { PrimaryButton } from "./Screen";
@@ -13,9 +13,10 @@ interface Props {
   remainingSeconds: number | null;
   onChooseFilter: (name: FilterName) => void;
   onRetake: () => void;
-  onKeep: () => void;
+  onKeep: (copies: number) => void;
   onSave: () => void;
   printingAvailable: boolean;
+  printsRemaining: number;
 }
 
 export function ReviewScreen({
@@ -28,7 +29,10 @@ export function ReviewScreen({
   onKeep,
   onSave,
   printingAvailable,
+  printsRemaining,
 }: Props) {
+  const [copies, setCopies] = useState(1);
+  const maxCopies = Math.min(3, printsRemaining);
   const showReturnHint =
     remainingSeconds !== null && remainingSeconds <= RETURN_HINT_THRESHOLD_S;
 
@@ -63,9 +67,30 @@ export function ReviewScreen({
           <span className="text-sm text-muted">
             {showReturnHint && `Retour à l'accueil dans ${Math.ceil(remainingSeconds)} s`}
           </span>
-          <PrimaryButton onClick={onKeep} disabled={!printingAvailable}>
+          {printingAvailable && (
+            <fieldset>
+              <legend className="mb-1.5 text-sm font-medium text-muted">Nombre d'exemplaires</legend>
+              <div className="grid grid-cols-3 gap-2">
+                {[1, 2, 3].map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    disabled={value > maxCopies}
+                    aria-pressed={copies === value}
+                    onClick={() => setCopies(value)}
+                    className="min-h-14 rounded-panel border-2 border-edge text-xl font-bold tabular-nums text-body transition-[background-color,border-color,color,transform] duration-150 active:scale-[0.97] aria-pressed:border-signal aria-pressed:bg-signal aria-pressed:text-signal-ink disabled:opacity-35"
+                  >
+                    {value}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+          )}
+          <PrimaryButton onClick={() => onKeep(copies)} disabled={!printingAvailable}>
             <Printer className="size-6" aria-hidden="true" />
-            {printingAvailable ? "Imprimer" : "Impression indisponible"}
+            {printingAvailable
+              ? `Imprimer ${copies} exemplaire${copies > 1 ? "s" : ""}`
+              : "Impression indisponible"}
           </PrimaryButton>
           {!printingAvailable && <p className="text-center text-sm text-warn">Vous pouvez toujours enregistrer la photo.</p>}
           <div className="grid grid-cols-2 gap-2">

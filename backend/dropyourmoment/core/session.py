@@ -108,6 +108,7 @@ class Session:
     final_path: Path | None = None
     selected_filter: str | None = None
     output_mode: str | None = None
+    output_copies: int = 0
 
     # Incrémenté à chaque recomposition. Le frontend s'en sert comme paramètre
     # anti-cache : sans lui, changer de filtre laisserait le navigateur réafficher
@@ -169,15 +170,17 @@ class SessionMachine:
         self._session.final_path = None
         self._session.selected_filter = None
         self._session.output_mode = None
+        self._session.output_copies = 0
         # La révision continue de croître au lieu de repartir de zéro : le navigateur ne
         # doit pas pouvoir retomber sur une URL qu'il a déjà en cache.
         self._session.photo_revision += 1
         return self._session
 
-    def print(self) -> Session:
+    def print(self, copies: int = 1) -> Session:
         self._dispatch(SessionEvent.PRINT)
         assert self._session is not None
         self._session.output_mode = "print"
+        self._session.output_copies = copies
         return self._session
 
     def save(self) -> Session:
