@@ -6,17 +6,16 @@ import { PaperStockDialog } from "../../shared/PaperStockDialog";
 import { supplyLevels } from "./maintenanceDiagnostics";
 import { MaintenanceChoice, MaintenanceIcon, ProgressMeter, WarningMark } from "./MaintenanceUi";
 
-export function MaintenancePrintingView({ snapshot, saving, onSaveSettings, onReloadCassette, onReplaceInk, onSetPaperStock }: {
+export function MaintenancePrintingView({ snapshot, saving, onReloadCassette, onReplaceInk, onSetPaperStock }: {
   snapshot: MaintenanceSnapshot;
   saving: boolean;
-  onSaveSettings: (changes: Partial<MaintenanceSnapshot["settings"]>) => Promise<void>;
   onReloadCassette: () => Promise<boolean>;
   onReplaceInk: (capacity: 36 | 54) => Promise<boolean>;
   onSetPaperStock: (capacity: number) => Promise<boolean>;
 }) {
   const [stockDialogOpen, setStockDialogOpen] = useState(false);
   const [inkDialogOpen, setInkDialogOpen] = useState(false);
-  const { health, settings } = snapshot;
+  const { health } = snapshot;
   const { printable, cassette, ink, stock } = supplyLevels(health.counters);
   const printerLabel = health.printer_driver === "null" ? "Mode numérique" : health.printer_driver === "offline" ? "CP1500 déconnectée" : "CP1500 connectée";
   return (
@@ -33,9 +32,10 @@ export function MaintenancePrintingView({ snapshot, saving, onSaveSettings, onRe
           <PrintSupply label="Réserve" remaining={stock} capacity={health.counters.paper_stock_capacity} unit=" feuilles" />
         </div>
       </div>
-      <div className="grid min-h-0 grid-rows-[0.85fr_1.15fr] overflow-hidden rounded-[0.65rem] bg-surface">
-        <div className="grid content-center gap-3.5 px-5 py-[1.1rem]"><div><h2 className="text-xl font-semibold">Copies par photo</h2><p className="text-base text-muted">Appliqué dès la prochaine photo</p></div><div className="grid grid-cols-3 gap-2">{[1, 2, 3].map((copies) => <MaintenanceChoice key={copies} disabled={saving} pressed={settings.copies_per_print === copies} onClick={() => void onSaveSettings({ copies_per_print: copies })}>{copies}</MaintenanceChoice>)}</div></div>
-        <div className="grid content-center gap-3.5 border-t-2 border-edge px-5 py-[1.1rem]"><h2 className="text-xl font-semibold">Après une intervention</h2><MaintenanceChoice accentBorder disabled={saving} onClick={() => void onReloadCassette()}>Bac rechargé · 18 feuilles</MaintenanceChoice><div className="grid grid-cols-2 gap-3"><MaintenanceChoice disabled={saving} onClick={() => setInkDialogOpen(true)}>Cassette d’encre remplacée</MaintenanceChoice><MaintenanceChoice disabled={saving} onClick={() => setStockDialogOpen(true)}>Mettre à jour la réserve</MaintenanceChoice></div></div>
+      <div className="grid min-h-0 content-center gap-4 overflow-hidden rounded-[0.65rem] bg-surface px-5 py-6">
+        <div><h2 className="text-2xl font-semibold">Après une intervention</h2><p className="mt-1 text-base text-muted">Mettez les consommables à jour après chaque remplacement.</p></div>
+        <MaintenanceChoice accentBorder disabled={saving} onClick={() => void onReloadCassette()}>Bac rechargé · 18 feuilles</MaintenanceChoice>
+        <div className="grid grid-cols-2 gap-3"><MaintenanceChoice disabled={saving} onClick={() => setInkDialogOpen(true)}>Cassette d’encre remplacée</MaintenanceChoice><MaintenanceChoice disabled={saving} onClick={() => setStockDialogOpen(true)}>Mettre à jour la réserve</MaintenanceChoice></div>
         <PaperStockDialog open={stockDialogOpen} initialValue={Math.max(1, stock)} saving={saving} onClose={() => setStockDialogOpen(false)} onConfirm={async (total) => { if (await onSetPaperStock(total)) setStockDialogOpen(false); }} />
         <InkCartridgeDialog open={inkDialogOpen} saving={saving} onClose={() => setInkDialogOpen(false)} onConfirm={async (capacity) => { if (await onReplaceInk(capacity)) setInkDialogOpen(false); }} />
       </div>

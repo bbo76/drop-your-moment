@@ -43,7 +43,6 @@ def test_les_reglages_utiles_s_appliquent_au_kiosque(kiosk: TestClient) -> None:
     response = kiosk.put(
         "/api/maintenance/settings",
         json={
-            "copies_per_print": 2,
             "default_shot_timer_seconds": 10,
             "screen_flash_enabled": False,
             "accent_color": "#8b5cf6",
