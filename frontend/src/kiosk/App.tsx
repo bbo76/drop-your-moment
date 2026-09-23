@@ -12,7 +12,7 @@ import {
 import { useKioskState } from "./useKioskState";
 import { MaintenanceAccess } from "./components/MaintenanceAccess";
 import { RemotePowerNotice } from "./components/RemotePowerNotice";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Printer, Wrench } from "lucide-react";
 import { applyAccentTheme } from "../shared/theme";
 import {
@@ -25,6 +25,7 @@ import {
 export function App() {
   const [maintenanceOpen, setMaintenanceOpen] = useState(false);
   const [debugFailure, setDebugFailure] = useState<DebugFailure>("none");
+  const closeMaintenance = useCallback(() => setMaintenanceOpen(false), []);
   const debugEnabled = debugFailuresEnabled();
   const {
     session,
@@ -61,7 +62,7 @@ export function App() {
       <>
         <MaintenanceAccess
           debugFailure={debugFailure}
-          onExit={() => setMaintenanceOpen(false)}
+          onExit={closeMaintenance}
         />
         {debugEnabled && <DebugFailureBar value={debugFailure} onChange={setDebugFailure} />}
       </>
