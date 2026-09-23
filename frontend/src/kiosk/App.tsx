@@ -164,7 +164,7 @@ export function App() {
 
     case "printing":
     case "done":
-      return <ConfirmationScreen printing={session.state === "printing"} outputMode={session.output_mode} photoUrl={session.photo_url} remainingSeconds={session.remaining_seconds} />;
+      return <ConfirmationScreen printing={session.state === "printing"} outputMode={session.output_mode} photoUrl={session.photo_url} remainingSeconds={session.remaining_seconds} onContinue={start} />;
   }
 }
 

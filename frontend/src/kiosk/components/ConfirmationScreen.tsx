@@ -10,9 +10,10 @@ interface Props {
   outputMode: "print" | "save" | null;
   photoUrl: string | null;
   remainingSeconds: number | null;
+  onContinue: () => Promise<void>;
 }
 
-export function ConfirmationScreen({ printing, outputMode, photoUrl, remainingSeconds }: Props) {
+export function ConfirmationScreen({ printing, outputMode, photoUrl, remainingSeconds, onContinue }: Props) {
   const [progress, setProgress] = useState(printing ? 8 : 100);
 
   useEffect(() => {
@@ -31,7 +32,7 @@ export function ConfirmationScreen({ printing, outputMode, photoUrl, remainingSe
   const printed = outputMode === "print";
 
   return (
-    <main className="grid h-full grid-cols-[1.16fr_1fr] gap-5 p-5">
+    <main className="relative grid h-full grid-cols-[1.16fr_1fr] gap-5 p-5">
       <div className="relative grid min-h-0 place-content-center overflow-hidden rounded-panel bg-black">
         {photoUrl && <img src={photoUrl} alt="Votre photo" className="max-h-full max-w-full object-contain" />}
       </div>
@@ -74,9 +75,17 @@ export function ConfirmationScreen({ printing, outputMode, photoUrl, remainingSe
           </h1>
           <Lede>{printed ? "Vous pouvez la récupérer." : "Votre photo reste dans la galerie."}</Lede>
           <p className="text-lg text-signal-ink/70">
-            {remainingSeconds !== null ? `Nouvelle photo dans ${Math.ceil(remainingSeconds)} s` : "Retour à l'accueil…"}
+            Touchez pour continuer{remainingSeconds !== null ? ` · Sinon, nouvelle photo dans ${Math.ceil(remainingSeconds)} s` : ""}
           </p>
         </section>
+      )}
+      {!printing && (
+        <button
+          type="button"
+          onClick={() => void onContinue()}
+          aria-label="Prendre une nouvelle photo maintenant"
+          className="absolute inset-0 z-10 cursor-pointer rounded-panel focus-visible:outline-4 focus-visible:outline-offset-[-8px] focus-visible:outline-signal-ink"
+        />
       )}
     </main>
   );
