@@ -120,12 +120,12 @@ export function MaintenanceGalleryView({ onExpired, printBusy, printError, print
   if (entries.length === 0) return <div className="grid min-h-0 place-content-center rounded-[0.65rem] bg-surface p-3.5 text-center"><MaintenanceIcon name="gallery" className="mx-auto mb-5 size-18 rounded-panel border-2 border-edge p-3.5 text-signal" /><p className="text-3xl font-bold">Aucune photo</p><p className="text-lg text-muted">Les photos conservées apparaîtront ici.</p></div>;
 
   return (
-    <section className="grid min-h-0 grid-rows-[auto_1fr] gap-3 rounded-[0.65rem] bg-surface p-3.5">
+    <section className="grid min-h-0 grid-rows-[auto_1fr_auto] gap-3 rounded-[0.65rem] bg-surface p-3.5">
       <p className="text-lg text-muted">{total} photo{total > 1 ? "s" : ""} · de la plus récente à la plus ancienne</p>
       <div onScroll={onScroll} className="grid min-h-0 grid-cols-4 auto-rows-[8.5rem] gap-3 overflow-y-auto p-0.5">
         {entries.map((entry) => <button type="button" key={entry.session_id} onClick={() => { setSelected(entry); setCopies(1); setFeedback(null); setError(null); }} className="overflow-hidden rounded-panel border-[3px] border-transparent bg-ink [content-visibility:auto] focus-visible:border-signal"><img src={maintenanceThumbnailUrl(entry.session_id)} alt="Ouvrir cette photo" loading="lazy" decoding="async" className="size-full object-cover" /></button>)}
-        {entries.length < total && <button type="button" disabled={loadingMore} onClick={() => void loadMore()} className="col-span-4 min-h-14 rounded-panel border-2 border-edge text-lg font-semibold disabled:opacity-45">{loadingMore ? "Chargement…" : "Afficher plus de photos"}</button>}
       </div>
+      {entries.length < total && <button type="button" disabled={loadingMore} onClick={() => void loadMore()} className="min-h-14 rounded-panel border-2 border-edge text-lg font-semibold disabled:opacity-45">{loadingMore ? "Chargement…" : `Afficher les photos suivantes · ${total - entries.length} restantes`}</button>}
     </section>
   );
 }

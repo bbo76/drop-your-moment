@@ -45,6 +45,9 @@ type Orientation = "landscape" | "portrait";
 export function EventSection() {
   const [draft, setDraft] = useState<EventConfigPayload | null>(null);
   const [printerConfig, setPrinterConfig] = useState<PrinterConfiguration | null>(null);
+  const [paperStock, setPaperStock] = useState("");
+  const [stockSaving, setStockSaving] = useState(false);
+  const [stockFeedback, setStockFeedback] = useState<{ error?: string; notice?: string }>({});
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -56,6 +59,10 @@ export function EventSection() {
   useEffect(() => {
     api.eventConfig().then(setDraft, (cause) => setError(String(cause)));
     api.printerConfig().then(setPrinterConfig, () => setPrinterConfig(null));
+    api.health().then(
+      ({ counters }) => setPaperStock(String(counters.paper_stock_capacity - counters.prints_since_stock_set)),
+      (cause) => setStockFeedback({ error: String(cause) }),
+    );
   }, []);
 
   if (!draft) {
@@ -132,6 +139,22 @@ export function EventSection() {
       setError(cause instanceof Error ? cause.message : String(cause));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const savePaperStock = async () => {
+    const total = Number(paperStock);
+    if (!Number.isInteger(total) || total < 1 || total > 9_999) return;
+    setStockSaving(true);
+    setStockFeedback({});
+    try {
+      const counters = await api.setPaperStock(total);
+      setPaperStock(String(counters.paper_stock_capacity));
+      setStockFeedback({ notice: "Réserve mise à jour." });
+    } catch (cause) {
+      setStockFeedback({ error: cause instanceof Error ? cause.message : String(cause) });
+    } finally {
+      setStockSaving(false);
     }
   };
 
@@ -318,6 +341,35 @@ export function EventSection() {
               Le format actuel n’est pas pris en charge par la CP1500. Choisissez un format proposé.
             </p>
           )}
+
+          <div className="mt-7 border-t border-border pt-5">
+            <Field label="Réserve papier disponible">
+              <div className="flex max-w-md flex-col gap-2 sm:flex-row">
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={9_999}
+                  step={1}
+                  value={paperStock}
+                  disabled={stockSaving}
+                  onChange={(event) => { setPaperStock(event.target.value); setStockFeedback({}); }}
+                  aria-describedby="paper-stock-help"
+                />
+                <Button
+                  tone="secondary"
+                  disabled={stockSaving || !Number.isInteger(Number(paperStock)) || Number(paperStock) < 1 || Number(paperStock) > 9_999}
+                  onClick={() => void savePaperStock()}
+                >
+                  {stockSaving ? "Mise à jour…" : "Mettre à jour"}
+                </Button>
+              </div>
+            </Field>
+            <p id="paper-stock-help" className="mt-2 max-w-2xl text-sm text-muted-foreground">
+              Nombre de feuilles encore disponibles pour l’événement, y compris celles déjà chargées dans le bac.
+            </p>
+            <Feedback error={stockFeedback.error} notice={stockFeedback.notice} />
+          </div>
         </SettingsGroup>
 
         <div className="flex flex-wrap items-center gap-4 border-t border-border pt-6">
