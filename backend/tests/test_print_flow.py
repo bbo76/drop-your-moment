@@ -121,12 +121,12 @@ def test_le_visiteur_choisit_le_nombre_d_exemplaires(
     assert runtime.counters.read().prints_total == 3
 
 
-def test_le_kiosque_refuse_plus_de_trois_exemplaires(
+def test_le_kiosque_refuse_plus_de_dix_exemplaires(
     kiosk: TestClient, printer: FakePrinterDriver
 ) -> None:
     session_id = capture(kiosk)
 
-    response = kiosk.post(f"/api/session/{session_id}/print", json={"copies": 4})
+    response = kiosk.post(f"/api/session/{session_id}/print", json={"copies": 11})
 
     assert response.status_code == 422
     assert printer.printed == []
