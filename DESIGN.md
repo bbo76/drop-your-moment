@@ -200,6 +200,10 @@ progressivement dans une zone dédiée. Une photo s'ouvre dans un détail plein 
 le choix du nombre d'exemplaires, le retirage et une suppression confirmée. L'écran
 Impression montre uniquement le bac et l'encre manipulables sur place ; la réserve totale
 de l'événement appartient au portail d'administration.
+Un retirage lancé depuis la galerie reste visible dans l'en-tête de toute la maintenance :
+une micro-animation de sortie papier accompagne le nombre d'exemplaires en cours, puis le
+même emplacement confirme brièvement la fin. Un échec y reste affiché jusqu'au prochain
+essai afin de ne jamais perdre un incident lors d'un changement d'écran.
 
 **The One Decision Rule.** Une composition peut exposer plusieurs informations, mais une seule action doit dominer visuellement chaque étape du parcours invité.
 

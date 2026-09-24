@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 
 import type { MaintenanceSnapshot, SystemStatus } from "../../shared/api";
 import { mockMaintenanceSnapshot, mockSystemStatus } from "../debugFailures.ts";
-import { maintenanceDiagnostics } from "./maintenanceDiagnostics.ts";
+import { maintenanceDiagnostics, resolveMaintenancePrint } from "./maintenanceDiagnostics.ts";
 
 const snapshot = {
   power_available: true,
@@ -54,6 +54,19 @@ const snapshot = {
 } satisfies MaintenanceSnapshot;
 
 assert.equal(maintenanceDiagnostics(snapshot).status, "ready");
+const printing = { state: "printing", copies: 2, targetPrintsTotal: 2 } as const;
+assert.equal(resolveMaintenancePrint(printing, snapshot)?.state, "printing");
+assert.equal(
+  resolveMaintenancePrint(printing, {
+    ...snapshot,
+    health: { ...snapshot.health, counters: { ...snapshot.health.counters, prints_total: 2 } },
+  })?.state,
+  "complete",
+);
+assert.equal(
+  resolveMaintenancePrint(printing, { ...snapshot, print_error: "papier bloqué" })?.state,
+  "error",
+);
 assert.equal(
   maintenanceDiagnostics({ ...snapshot, health: { ...snapshot.health, undervoltage_now: true } }).healthDetail,
   "Sous-tension active · vérifier l’alimentation et le câble",

@@ -8,6 +8,7 @@ import {
 } from "../../shared/api";
 import { applyAccentTheme } from "../../shared/theme";
 import { mockMaintenanceSnapshot, type DebugFailure } from "../debugFailures";
+import { resolveMaintenancePrint, type MaintenancePrintNotice } from "./maintenanceDiagnostics";
 
 const POLL_INTERVAL_MS = 2000;
 
@@ -15,6 +16,7 @@ export function useMaintenance(debugFailure: DebugFailure, onExpired: () => void
   const [snapshot, setSnapshot] = useState<MaintenanceSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [printNotice, setPrintNotice] = useState<MaintenancePrintNotice | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -31,6 +33,16 @@ export function useMaintenance(debugFailure: DebugFailure, onExpired: () => void
     const timer = setInterval(() => void load(), POLL_INTERVAL_MS);
     return () => clearInterval(timer);
   }, [load]);
+
+  useEffect(() => {
+    if (snapshot) setPrintNotice((current) => resolveMaintenancePrint(current, snapshot));
+  }, [snapshot]);
+
+  useEffect(() => {
+    if (printNotice?.state !== "complete") return;
+    const timer = setTimeout(() => setPrintNotice(null), 5000);
+    return () => clearTimeout(timer);
+  }, [printNotice?.state]);
 
   const run = async (
     action: () => Promise<CounterReading>,
@@ -70,6 +82,15 @@ export function useMaintenance(debugFailure: DebugFailure, onExpired: () => void
     snapshot,
     error,
     saving: saving || debugFailure !== "none",
+    printNotice,
+    markPrintStarted: (copies: number) => {
+      setPrintNotice({
+        state: "printing",
+        copies,
+        targetPrintsTotal: (snapshot?.health.counters.prints_total ?? 0) + copies,
+      });
+      setSnapshot((current) => current && ({ ...current, print_busy: true, print_error: null }));
+    },
     saveSettings,
     reloadCassette: () => run(api.reloadCassette, "Le rechargement du bac n’a pas été enregistré."),
     replaceInk: (capacity: 36 | 54) => run(() => api.replaceMaintenanceInk(capacity), "Le remplacement de la cassette d’encre n’a pas été enregistré."),

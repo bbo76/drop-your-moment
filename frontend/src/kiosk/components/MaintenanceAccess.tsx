@@ -8,7 +8,7 @@ import { MaintenanceHealthView } from "../maintenance/MaintenanceHealthView";
 import { MaintenancePrintingView } from "../maintenance/MaintenancePrintingView";
 import { MaintenanceSettingsView } from "../maintenance/MaintenanceSettingsView";
 import { maintenanceDiagnostics } from "../maintenance/maintenanceDiagnostics";
-import { MaintenanceFrame, MaintenanceIcon, MaintenanceStatusBanner } from "../maintenance/MaintenanceUi";
+import { MaintenanceFrame, MaintenanceIcon, MaintenancePrintStatus, MaintenanceStatusBanner } from "../maintenance/MaintenanceUi";
 import { useMaintenance } from "../maintenance/useMaintenance";
 import { GhostButton } from "./Screen";
 
@@ -61,14 +61,14 @@ function MaintenancePanel({ onExpired, onExit, debugFailure }: { onExpired: () =
   if (powerTransition) return <PowerTransition action={powerTransition} />;
   const diagnostics = maintenanceDiagnostics(snapshot);
   const back = () => setView("home");
-  if (view === "health") return <MaintenanceFrame title="Santé de la borne" status={diagnostics.status} onBack={back}><MaintenanceHealthView snapshot={snapshot} /></MaintenanceFrame>;
-  if (view === "printing") return <MaintenanceFrame title="Impression" status={diagnostics.status} onBack={back}><MaintenancePrintingView snapshot={snapshot} saving={saving} onReloadCassette={maintenance.reloadCassette} onReplaceInk={maintenance.replaceInk} /></MaintenanceFrame>;
-  if (view === "gallery") return <MaintenanceFrame title="Galerie photo" status={diagnostics.status} onBack={back}><MaintenanceGalleryView onExpired={onExpired} printBusy={snapshot.print_busy} printError={snapshot.print_error} printsRemaining={diagnostics.supplies.printable} /></MaintenanceFrame>;
-  if (view === "settings") return <MaintenanceFrame title="Réglages borne" status={diagnostics.status} onBack={back}><MaintenanceSettingsView snapshot={snapshot} saving={saving} onSaveSettings={saveSettings} onPowerAction={async (action) => { setPowerTransition(action); try { await api.requestPowerAction(action); } catch (cause) { setPowerTransition(null); throw cause; } }} /></MaintenanceFrame>;
+  if (view === "health") return <MaintenanceFrame title="Santé de la borne" status={diagnostics.status} printNotice={maintenance.printNotice} onBack={back}><MaintenanceHealthView snapshot={snapshot} /></MaintenanceFrame>;
+  if (view === "printing") return <MaintenanceFrame title="Impression" status={diagnostics.status} printNotice={maintenance.printNotice} onBack={back}><MaintenancePrintingView snapshot={snapshot} saving={saving} onReloadCassette={maintenance.reloadCassette} onReplaceInk={maintenance.replaceInk} /></MaintenanceFrame>;
+  if (view === "gallery") return <MaintenanceFrame title="Galerie photo" status={diagnostics.status} printNotice={maintenance.printNotice} onBack={back}><MaintenanceGalleryView onExpired={onExpired} printBusy={snapshot.print_busy} printError={snapshot.print_error} printsRemaining={diagnostics.supplies.printable} onPrintStarted={maintenance.markPrintStarted} /></MaintenanceFrame>;
+  if (view === "settings") return <MaintenanceFrame title="Réglages borne" status={diagnostics.status} printNotice={maintenance.printNotice} onBack={back}><MaintenanceSettingsView snapshot={snapshot} saving={saving} onSaveSettings={saveSettings} onPowerAction={async (action) => { setPowerTransition(action); try { await api.requestPowerAction(action); } catch (cause) { setPowerTransition(null); throw cause; } }} /></MaintenanceFrame>;
   const { settings } = snapshot;
   return (
     <main className="grid h-full grid-rows-[auto_1fr] gap-4 bg-ink p-4 text-body [--color-signal:#d8dee4] [--color-signal-ink:#101418] max-h-[600px]:gap-3 max-h-[600px]:p-3">
-      <header className="flex items-center justify-between"><h1 className="text-3xl font-bold">Maintenance</h1><div className="flex items-center gap-3"><MaintenanceStatusBanner status={diagnostics.status} /><GhostButton onClick={onExit}>Fermer</GhostButton></div></header>
+      <header className="flex items-center justify-between"><h1 className="text-3xl font-bold">Maintenance</h1><div className="flex items-center gap-3"><MaintenancePrintStatus notice={maintenance.printNotice} /><MaintenanceStatusBanner status={diagnostics.status} /><GhostButton onClick={onExit}>Fermer</GhostButton></div></header>
       <div className="grid min-h-0 auto-rows-fr grid-cols-2 gap-3">
         <MaintenanceTile icon="health" title="Santé" detail={diagnostics.healthDetail} attention={diagnostics.healthNeedsAttention} onClick={() => setView("health")} />
         <MaintenanceTile icon="print" title="Impression" detail={diagnostics.printingDetail} attention={diagnostics.printingNeedsAttention} onClick={() => setView("printing")} />

@@ -12,10 +12,12 @@ import {
 
 import { GhostButton } from "../components/Screen";
 import type { MaintenanceStatus } from "./maintenanceDiagnostics";
+import type { MaintenancePrintNotice } from "./maintenanceDiagnostics";
 
-export function MaintenanceFrame({ title, status, onBack, children }: {
+export function MaintenanceFrame({ title, status, printNotice, onBack, children }: {
   title: string;
   status: MaintenanceStatus;
+  printNotice: MaintenancePrintNotice | null;
   onBack: () => void;
   children: ReactNode;
 }) {
@@ -26,10 +28,36 @@ export function MaintenanceFrame({ title, status, onBack, children }: {
           <GhostButton onClick={onBack}>Retour</GhostButton>
           <h1 className="text-3xl leading-[1.08] font-bold tracking-[-0.02em]">{title}</h1>
         </div>
-        <MaintenanceStatusBanner status={status} />
+        <div className="flex items-center gap-3">
+          <MaintenancePrintStatus notice={printNotice} />
+          <MaintenanceStatusBanner status={status} />
+        </div>
       </header>
       {children}
     </main>
+  );
+}
+
+export function MaintenancePrintStatus({ notice }: { notice: MaintenancePrintNotice | null }) {
+  if (!notice) return null;
+  const plural = notice.copies > 1;
+  const label = notice.state === "printing"
+    ? "Impression en cours"
+    : notice.state === "complete"
+      ? `${notice.copies} exemplaire${plural ? "s" : ""} imprimé${plural ? "s" : ""}`
+      : "Échec de l’impression";
+  return (
+    <div className={`flex min-h-14 items-center gap-3 rounded-panel border-2 px-3 ${notice.state === "error" ? "border-warn text-warn" : "border-edge text-signal"}`} role="status" aria-live="polite">
+      <span className="relative grid size-8 place-items-center" aria-hidden="true">
+        <Printer className="size-7" strokeWidth={1.8} />
+        {notice.state === "printing" && <span className="absolute -bottom-0.5 h-1.5 w-4 motion-safe:animate-pulse bg-signal" />}
+      </span>
+      <span className="leading-tight">
+        <strong className="block text-base font-semibold">{label}</strong>
+        {notice.state === "printing" && <span className="block text-sm text-muted">{notice.copies} exemplaire{plural ? "s" : ""}</span>}
+        {notice.state === "error" && <span className="block max-w-56 truncate text-sm">{notice.error}</span>}
+      </span>
+    </div>
   );
 }
 
