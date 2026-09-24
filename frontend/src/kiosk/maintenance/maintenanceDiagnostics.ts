@@ -1,6 +1,24 @@
 import type { AdminHealth, CounterReading, MaintenanceSnapshot } from "../../shared/api";
 
 export type MaintenanceStatus = "ready" | "paper" | "camera" | "disk" | "printer";
+export type MaintenancePrintNotice = {
+  state: "printing" | "complete" | "error";
+  copies: number;
+  targetPrintsTotal: number;
+  error?: string;
+};
+
+export function resolveMaintenancePrint(
+  notice: MaintenancePrintNotice | null,
+  snapshot: MaintenanceSnapshot,
+): MaintenancePrintNotice | null {
+  if (!notice || notice.state !== "printing") return notice;
+  if (snapshot.print_error) return { ...notice, state: "error", error: snapshot.print_error };
+  if (!snapshot.print_busy && snapshot.health.counters.prints_total >= notice.targetPrintsTotal) {
+    return { ...notice, state: "complete" };
+  }
+  return notice;
+}
 
 export function supplyLevels(counters: CounterReading) {
   const cassette = Math.max(0, counters.cassette_capacity - counters.prints_since_cassette_reload);

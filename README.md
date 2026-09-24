@@ -80,7 +80,8 @@ tactile protégée par un PIN à quatre chiffres. Quatre grandes tuiles donnent 
 santé (caméra, stockage, CPU, RAM), à l'impression (connexion CP1500, bac de 18 feuilles
 et cassette d'encre 36/54), à la galerie locale et aux réglages de la borne (flash écran
 et minuteur par défaut). La galerie charge progressivement toutes les photos et permet
-d'en agrandir, réimprimer ou supprimer une. La borne permet aussi de choisir rapidement son ambiance parmi
+d'en agrandir, réimprimer ou supprimer une. Un retirage reste signalé dans toute la
+maintenance jusqu'à sa réussite ou son échec. La borne permet aussi de choisir rapidement son ambiance parmi
 dix couleurs événementielles présélectionnées et les dix typographies du launch screen ;
 le portail PC conserve, lui, un sélecteur de couleur totalement libre. La maintenance se
 referme automatiquement après cinq minutes.

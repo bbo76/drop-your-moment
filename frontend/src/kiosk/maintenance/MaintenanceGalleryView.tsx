@@ -11,9 +11,10 @@ interface Props {
   printBusy: boolean;
   printError: string | null;
   printsRemaining: number;
+  onPrintStarted: (copies: number) => void;
 }
 
-export function MaintenanceGalleryView({ onExpired, printBusy, printError, printsRemaining }: Props) {
+export function MaintenanceGalleryView({ onExpired, printBusy, printError, printsRemaining, onPrintStarted }: Props) {
   const [entries, setEntries] = useState<GalleryEntry[]>([]);
   const [total, setTotal] = useState(0);
   const [selected, setSelected] = useState<GalleryEntry | null>(null);
@@ -64,6 +65,7 @@ export function MaintenanceGalleryView({ onExpired, printBusy, printError, print
     setFeedback(null);
     try {
       await api.printMaintenanceGalleryEntry(selected.session_id, copies);
+      onPrintStarted(copies);
       setFeedback(`${copies} exemplaire${copies > 1 ? "s" : ""} envoyé${copies > 1 ? "s" : ""} à l'impression.`);
     } catch (cause) {
       handleError(cause, "Impossible de relancer l'impression.");
