@@ -76,9 +76,7 @@ class EventConfig(BaseModel):
     # Pause opérationnelle : une session déjà ouverte se termine, mais l'accueil refuse
     # les suivantes jusqu'à la reprise. Le message reste celui de l'événement.
     capture_paused: bool = False
-    pause_message: str = Field(
-        default="Je recharge les sourires…", min_length=1, max_length=120
-    )
+    pause_message: str = Field(default="Je recharge les sourires…", min_length=1, max_length=120)
 
     @model_validator(mode="before")
     @classmethod
