@@ -73,6 +73,12 @@ class EventConfig(BaseModel):
     # Éclairage d'appoint produit par l'écran. À désactiver si la borne utilise un flash
     # physique ou si la lumière blanche gêne la scénographie.
     screen_flash_enabled: bool = True
+    # Pause opérationnelle : une session déjà ouverte se termine, mais l'accueil refuse
+    # les suivantes jusqu'à la reprise. Le message reste celui de l'événement.
+    capture_paused: bool = False
+    pause_message: str = Field(
+        default="Je recharge les sourires…", min_length=1, max_length=120
+    )
 
     @model_validator(mode="before")
     @classmethod
@@ -84,6 +90,11 @@ class EventConfig(BaseModel):
         migrated = {**value}
         if "launch_message" not in migrated and "event_name" in migrated:
             migrated["launch_message"] = migrated["event_name"]
+        if migrated.get("pause_message") in {
+            "Je fais une petite pause.",
+            "Petite pause, je recharge les sourires.",
+        }:
+            migrated["pause_message"] = "Je recharge les sourires…"
         if isinstance(filters := migrated.get("available_filters"), list):
             migrated["available_filters"] = list(
                 dict.fromkeys("bw_studio" if name == "bw" else name for name in filters)

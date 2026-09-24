@@ -30,7 +30,21 @@ def test_config_absente_cree_les_valeurs_par_defaut(tmp_path: Path) -> None:
     assert event.config.accent_color == "#ffd400"
     assert event.config.default_shot_timer_seconds == 3
     assert event.config.screen_flash_enabled is True
+    assert event.config.capture_paused is False
+    assert event.config.pause_message == "Je recharge les sourires…"
     assert store.config_path.is_file()
+
+
+def test_ancien_message_de_pause_par_defaut_est_actualise(tmp_path: Path) -> None:
+    store = EventStore(tmp_path)
+    store.config_path.write_text(
+        '{"event_name":"Soirée","pause_message":"Je fais une petite pause."}',
+        encoding="utf-8",
+    )
+
+    event = store.load()
+
+    assert event.config.pause_message == "Je recharge les sourires…"
 
 
 def test_config_relue_a_l_identique(tmp_path: Path) -> None:
@@ -45,6 +59,8 @@ def test_config_relue_a_l_identique(tmp_path: Path) -> None:
             copies_per_print=2,
             default_shot_timer_seconds=10,
             screen_flash_enabled=False,
+            capture_paused=True,
+            pause_message="Le gâteau arrive, on reprend juste après.",
         )
     )
 
@@ -58,6 +74,8 @@ def test_config_relue_a_l_identique(tmp_path: Path) -> None:
     assert event.config.copies_per_print == 2
     assert event.config.default_shot_timer_seconds == 10
     assert event.config.screen_flash_enabled is False
+    assert event.config.capture_paused is True
+    assert event.config.pause_message == "Le gâteau arrive, on reprend juste après."
 
 
 @pytest.mark.parametrize("seconds", [3, 5, 10])

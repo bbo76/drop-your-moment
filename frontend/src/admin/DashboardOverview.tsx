@@ -156,6 +156,7 @@ function readiness(health: AdminHealth | null, error: string | null) {
   if (!health) return { tone: "busy" as const, title: "Connexion à la borne…", detail: "Lecture de son état en cours." };
   if (health.power_transition) return { tone: "attention" as const, title: health.power_transition.action === "reboot" ? "Redémarrage programmé" : "Arrêt programmé", detail: "Le kiosk affiche le compte à rebours avant l’action." };
   if (health.maintenance_active) return { tone: "attention" as const, title: "Maintenance en cours", detail: "Une personne intervient directement sur la borne." };
+  if (health.capture_paused) return { tone: "busy" as const, title: "Prises en pause", detail: "La borne attend la reprise depuis l’administration." };
   if (!health.camera_ok) return { tone: "attention" as const, title: "Intervention nécessaire", detail: "La caméra n’est pas disponible." };
   if (powerWarning(health)) return { tone: "attention" as const, title: "Alimentation à vérifier", detail: "Une sous-tension ou une limitation des performances a été détectée." };
   if (health.session_state === "printing") return { tone: "busy" as const, title: "Impression en cours", detail: "L’arrêt et le redémarrage sont verrouillés jusqu’à la fin du tirage." };
@@ -169,7 +170,7 @@ function printableCount(health: AdminHealth) {
 }
 
 const SESSION_LABELS: Record<AdminHealth["session_state"], string> = { idle: "Accueil", preview: "Cadrage", review: "Choix photo", printing: "Impression", done: "Fin de session", error: "Erreur" };
-const sessionLabel = (health: AdminHealth | null) => health ? (health.maintenance_active ? "Maintenance" : SESSION_LABELS[health.session_state]) : "—";
+const sessionLabel = (health: AdminHealth | null) => health ? (health.maintenance_active ? "Maintenance" : health.capture_paused && health.session_state === "idle" ? "En pause" : SESSION_LABELS[health.session_state]) : "—";
 const gigabytes = (bytes: number) => `${(bytes / 1024 ** 3).toFixed(1).replace(".", ",")} Go`;
 const time = (date: Date) => date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 const photoTime = (epoch: number) => time(new Date(epoch * 1000));

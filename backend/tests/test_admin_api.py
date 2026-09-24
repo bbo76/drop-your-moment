@@ -33,6 +33,8 @@ def test_lecture_de_la_configuration_active(admin: TestClient) -> None:
     assert body["copies_per_print"] == 1
     assert body["default_shot_timer_seconds"] == 3
     assert body["screen_flash_enabled"] is True
+    assert body["capture_paused"] is False
+    assert body["pause_message"] == "Je recharge les sourires…"
 
 
 def test_aller_retour_de_la_configuration(admin: TestClient) -> None:
@@ -45,6 +47,8 @@ def test_aller_retour_de_la_configuration(admin: TestClient) -> None:
     config["copies_per_print"] = 2
     config["default_shot_timer_seconds"] = 10
     config["screen_flash_enabled"] = False
+    config["capture_paused"] = True
+    config["pause_message"] = "On recharge les sourires."
 
     assert admin.put("/admin/event-config", json=config).status_code == 200
 
@@ -57,6 +61,8 @@ def test_aller_retour_de_la_configuration(admin: TestClient) -> None:
     assert relu["copies_per_print"] == 2
     assert relu["default_shot_timer_seconds"] == 10
     assert relu["screen_flash_enabled"] is False
+    assert relu["capture_paused"] is True
+    assert relu["pause_message"] == "On recharge les sourires."
 
 
 def test_une_couleur_dominante_invalide_est_refusee(admin: TestClient) -> None:
@@ -90,6 +96,8 @@ def test_le_kiosque_voit_le_changement_sans_redemarrage(
     config["available_filters"] = ["bw"]
     config["default_shot_timer_seconds"] = 5
     config["screen_flash_enabled"] = False
+    config["capture_paused"] = True
+    config["pause_message"] = "Quelques minutes de pause."
     admin.put("/admin/event-config", json=config)
 
     vu_par_le_kiosque = kiosk.get("/api/event").json()
@@ -101,6 +109,8 @@ def test_le_kiosque_voit_le_changement_sans_redemarrage(
     assert vu_par_le_kiosque["available_filters"] == ["bw_studio"]
     assert vu_par_le_kiosque["default_shot_timer_seconds"] == 5
     assert vu_par_le_kiosque["screen_flash_enabled"] is False
+    assert vu_par_le_kiosque["capture_paused"] is True
+    assert vu_par_le_kiosque["pause_message"] == "Quelques minutes de pause."
 
 
 def test_une_duree_de_minuteur_non_proposee_est_refusee(admin: TestClient) -> None:

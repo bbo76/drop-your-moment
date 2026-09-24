@@ -13,7 +13,7 @@ import { useKioskState } from "./useKioskState";
 import { MaintenanceAccess } from "./components/MaintenanceAccess";
 import { RemotePowerNotice } from "./components/RemotePowerNotice";
 import { useCallback, useEffect, useState } from "react";
-import { Printer, Wrench } from "lucide-react";
+import { Pause, Printer, Wrench } from "lucide-react";
 import { applyAccentTheme } from "../shared/theme";
 import {
   DEBUG_FAILURES,
@@ -102,6 +102,24 @@ export function App() {
 
   switch (session.state) {
     case "idle":
+      if (event.capture_paused) {
+        return (
+          <CenteredScreen>
+            {maintenanceButton}
+            <div className="grid size-24 place-items-center rounded-full border-2 border-edge text-signal" aria-hidden="true">
+              <Pause className="size-11" fill="currentColor" strokeWidth={1.5} />
+            </div>
+            <div className="grid justify-items-center gap-3 font-modern">
+              <h1 className="max-w-[15ch] text-balance text-6xl leading-[0.95] font-bold tracking-[-0.025em] sm:text-[4.75rem]">
+                Je fais une petite pause
+              </h1>
+              <p className="max-w-[28ch] text-balance text-2xl leading-tight font-medium text-muted sm:text-3xl">
+                {event.pause_message}
+              </p>
+            </div>
+          </CenteredScreen>
+        );
+      }
       return (
         <CenteredScreen>
           {maintenanceButton}

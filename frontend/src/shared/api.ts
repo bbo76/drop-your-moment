@@ -76,6 +76,8 @@ export interface EventConfigPayload {
   copies_per_print: number;
   default_shot_timer_seconds: ShotTimerSeconds;
   screen_flash_enabled: boolean;
+  capture_paused: boolean;
+  pause_message: string;
 }
 
 /** Réglages de l'événement. Modifiables depuis le portail d'administration. */
@@ -91,6 +93,8 @@ export interface EventInfo {
   overlay_url: string | null;
   default_shot_timer_seconds: ShotTimerSeconds;
   screen_flash_enabled: boolean;
+  capture_paused: boolean;
+  pause_message: string;
 }
 
 export type LaunchFont =
@@ -154,6 +158,7 @@ export interface AdminHealth {
   power_available: boolean;
   power_transition: PowerTransition | null;
   event_name: string;
+  capture_paused: boolean;
   print_format_name: string;
   print_aspect_ratio: number;
   counters: CounterReading;

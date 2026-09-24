@@ -1,12 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { Activity, Camera, Check, Database, PlugZap, Printer, Thermometer, TriangleAlert, Wifi } from "lucide-react";
+import { Activity, Camera, Check, Database, Pause, PlugZap, Printer, Thermometer, TriangleAlert, Wifi } from "lucide-react";
 
 import { Button as ShadButton } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -17,15 +14,12 @@ import {
   type AdminHealth,
   type EventConfigPayload,
   type GalleryEntry,
-  type ShotTimerSeconds,
 } from "../shared/api";
 import { Button, Feedback } from "./ui";
 import { PowerControls } from "./PowerControls";
 
 const POLL_INTERVAL_MS = 2_000;
 const RECENT_PHOTO_COUNT = 3;
-const TIMER_OPTIONS: ShotTimerSeconds[] = [3, 5, 10];
-
 type Readiness = {
   tone: "ready" | "busy" | "attention";
   title: string;
@@ -243,70 +237,25 @@ export function DayOfView() {
         </AccordionItem>
       </Accordion>
 
-      <Accordion type="single" collapsible className="rounded-xl border bg-card">
-        <AccordionItem value="settings" className="border-0">
-          <AccordionTrigger className="min-h-18 px-4 py-3 hover:no-underline">
-            <span className="grid"><strong className="text-lg">Réglages rapides</strong><small className="text-muted-foreground">Minuteur, flash et copies</small></span>
-          </AccordionTrigger>
-          <AccordionContent className="border-t p-4">
-        {config ? (
-          <div className="grid items-end gap-4 sm:grid-cols-3" aria-busy={working === "settings"}>
-            <fieldset>
-              <legend>Minuteur par défaut</legend>
-              <ToggleGroup
-                type="single"
-                value={String(config.default_shot_timer_seconds)}
-                onValueChange={(value) => value && saveQuickSetting({ default_shot_timer_seconds: Number(value) as ShotTimerSeconds })}
-                variant="outline"
-                spacing={0}
-                className="grid w-full grid-cols-3"
-              >
-                {TIMER_OPTIONS.map((seconds) => (
-                  <ToggleGroupItem
-                    key={seconds}
-                    value={String(seconds)}
-                    disabled={working === "settings"}
-                    className="min-h-11 font-bold data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-                  >
-                    {seconds} s
-                  </ToggleGroupItem>
-                ))}
-              </ToggleGroup>
-            </fieldset>
-            <div className="flex min-h-14 items-center justify-between gap-4 rounded-lg border px-3 py-2 [&_small]:block [&_small]:text-muted-foreground">
-              <span>
-                <strong>Flash écran</strong>
-                <small>{config.screen_flash_enabled ? "Activé" : "Désactivé"}</small>
-              </span>
-              <Switch
-                aria-label="Flash écran"
-                checked={config.screen_flash_enabled}
-                disabled={working === "settings"}
-                onCheckedChange={(checked) => saveQuickSetting({ screen_flash_enabled: checked })}
-              />
-            </div>
-            <label className="grid gap-2 text-sm text-muted-foreground">
-              <span>Copies par tirage</span>
-              <Select
-                value={String(config.copies_per_print)}
-                disabled={working === "settings"}
-                onValueChange={(value) => saveQuickSetting({ copies_per_print: Number(value) })}
-              >
-                <SelectTrigger className="min-h-14"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {[1, 2, 3, 4].map((copies) => (
-                    <SelectItem key={copies} value={String(copies)}>{copies}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </label>
-          </div>
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-3"><Skeleton className="h-14" /><Skeleton className="h-14" /><Skeleton className="h-14" /></div>
-        )}
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
+      {config ? (
+        <button
+          type="button"
+          aria-pressed={config.capture_paused}
+          disabled={working === "settings"}
+          onClick={() => saveQuickSetting({ capture_paused: !config.capture_paused })}
+          className="flex min-h-18 w-full items-center gap-3 rounded-xl border bg-card px-4 py-3 text-left transition-colors disabled:opacity-50 aria-pressed:border-amber-600 aria-pressed:bg-amber-50 aria-pressed:text-amber-950"
+        >
+          <Pause className="size-6 flex-none" fill={config.capture_paused ? "currentColor" : "none"} aria-hidden="true" />
+          <span className="grid">
+            <strong className="text-lg">Mode pause</strong>
+            <small className={config.capture_paused ? "text-amber-800" : "text-muted-foreground"}>
+              {config.capture_paused ? "Activé — les nouvelles prises sont bloquées" : "Désactivé — la borne est disponible"}
+            </small>
+          </span>
+        </button>
+      ) : (
+        <Skeleton className="h-18 rounded-xl" />
+      )}
 
       <section className="rounded-xl border bg-card p-4" aria-labelledby="day-photos-title">
         <div className="mb-4 flex items-start justify-between gap-4 [&_h2]:text-2xl [&_h2]:font-semibold [&_p]:mt-1 [&_p]:text-muted-foreground">
@@ -369,6 +318,9 @@ function getReadiness(health: AdminHealth, error: string | null): Readiness {
       title: "Maintenance en cours",
       detail: "Une personne intervient directement sur la borne.",
     };
+  }
+  if (health.capture_paused) {
+    return { tone: "busy", title: "Prises en pause", detail: "La borne reste disponible, mais aucune nouvelle session ne peut commencer." };
   }
   if (!health.camera_ok) {
     return { tone: "attention", title: "Intervention nécessaire", detail: "La caméra n’est pas disponible." };

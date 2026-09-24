@@ -90,6 +90,8 @@ class EventInfo(BaseModel):
     overlay_url: str | None
     default_shot_timer_seconds: int
     screen_flash_enabled: bool
+    capture_paused: bool
+    pause_message: str
 
 
 def _status(runtime: Runtime) -> SessionStatus:
@@ -188,6 +190,8 @@ def read_event(runtime: Runtime = Depends(get_runtime)) -> EventInfo:
         overlay_url=_overlay_url(runtime),
         default_shot_timer_seconds=config.default_shot_timer_seconds,
         screen_flash_enabled=config.screen_flash_enabled,
+        capture_paused=config.capture_paused,
+        pause_message=config.pause_message,
     )
 
 
@@ -227,6 +231,11 @@ def start_session(runtime: Runtime = Depends(get_runtime)) -> SessionStatus:
             detail=(
                 "la borne va s’arrêter ou redémarrer ; aucune nouvelle session ne peut commencer"
             ),
+        )
+    if runtime.event.config.capture_paused:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail="les prises de photo sont temporairement en pause",
         )
     session = runtime.machine.start()
     logger.info("session %s démarrée", session.id)

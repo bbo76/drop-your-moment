@@ -98,6 +98,7 @@ class AdminHealth(BaseModel):
     power_available: bool
     power_transition: PowerTransition | None
     event_name: str
+    capture_paused: bool
     print_format_name: str
     print_aspect_ratio: float
 
@@ -157,6 +158,7 @@ def read_health(runtime: Runtime = Depends(get_runtime)) -> AdminHealth:
         if (pending := runtime.system_power.pending)
         else None,
         event_name=config.event_name,
+        capture_paused=config.capture_paused,
         print_format_name=config.print_format.name,
         print_aspect_ratio=config.print_format.aspect_ratio,
         counters=_reading(runtime.counters.read()),
