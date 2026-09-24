@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 
 import {
   api,
@@ -176,6 +177,42 @@ export function EventSection() {
                 onChange={(e) => patch({ launch_message: e.target.value })}
               />
             </Field>
+          </div>
+        </SettingsGroup>
+
+        <SettingsGroup title="Accueil et pause">
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,.72fr)]">
+            <div className="grid content-start gap-5">
+              <div className="flex min-h-16 items-center justify-between gap-5 rounded-xl border bg-card px-4 py-3">
+                <div>
+                  <p className="font-semibold">Prise de photo</p>
+                  <p className="mt-0.5 text-sm text-muted-foreground">
+                    Une session en cours se termine avant la pause.
+                  </p>
+                </div>
+                <Switch
+                  aria-label="Autoriser les prises de photo"
+                  checked={!draft.capture_paused}
+                  onCheckedChange={(checked) => patch({ capture_paused: !checked })}
+                />
+              </div>
+              <Field label="Message secondaire affiché pendant la pause">
+                <Input
+                  value={draft.pause_message}
+                  maxLength={120}
+                  onChange={(event) => patch({ pause_message: event.target.value })}
+                />
+              </Field>
+            </div>
+            <div className="grid min-h-44 place-content-center justify-items-center rounded-xl bg-[#101418] px-6 py-7 text-center text-[#f6f4ed]">
+              <PausePreview />
+              <p className="mt-4 max-w-[18ch] text-balance text-3xl font-bold leading-none tracking-[-0.025em]">
+                Je fais une petite pause
+              </p>
+              <p className="mt-2 max-w-[24ch] text-balance text-lg font-medium text-[#aab2b9]">
+                {draft.pause_message || "Votre message secondaire"}
+              </p>
+            </div>
           </div>
         </SettingsGroup>
 
@@ -396,6 +433,14 @@ export function EventSection() {
         </DialogContent>
       </Dialog>
     </Section>
+  );
+}
+
+function PausePreview() {
+  return (
+    <span className="grid size-12 place-items-center rounded-full border-2 border-[#46515c] text-[#ffd400]" aria-hidden="true">
+      <span className="flex gap-1"><i className="h-5 w-1.5 rounded-sm bg-current" /><i className="h-5 w-1.5 rounded-sm bg-current" /></span>
+    </span>
   );
 }
 

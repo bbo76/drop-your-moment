@@ -32,6 +32,25 @@ def test_demarrer_une_session_passe_en_preview(kiosk: TestClient) -> None:
     assert body["remaining_seconds"] is not None, "le frontend doit pouvoir afficher l'abandon"
 
 
+def test_la_pause_refuse_une_nouvelle_session(kiosk: TestClient, runtime: Runtime) -> None:
+    runtime.event.config = runtime.event.config.model_copy(update={"capture_paused": True})
+
+    response = kiosk.post("/api/session")
+
+    assert response.status_code == 409
+    assert "en pause" in response.json()["detail"]
+
+
+def test_la_pause_n_interrompt_pas_une_session_en_cours(
+    kiosk: TestClient, runtime: Runtime
+) -> None:
+    session = kiosk.post("/api/session").json()
+    runtime.event.config = runtime.event.config.model_copy(update={"capture_paused": True})
+
+    assert kiosk.get("/api/status").json()["session_id"] == session["session_id"]
+    assert kiosk.get("/api/status").json()["state"] == SessionState.PREVIEW
+
+
 def test_annuler_ramene_au_repos(kiosk: TestClient) -> None:
     kiosk.post("/api/session")
 
@@ -91,6 +110,8 @@ def test_info_evenement_separee_du_materiel(kiosk: TestClient) -> None:
     assert body["default_shot_timer_seconds"] == 3
     assert body["overlay_url"] is None
     assert body["event_name"]
+    assert body["capture_paused"] is False
+    assert body["pause_message"] == "Je recharge les sourires…"
 
 
 def test_overlay_evenement_disponible_sur_api_kiosque(kiosk: TestClient, runtime: Runtime) -> None:

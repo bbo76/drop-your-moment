@@ -26,6 +26,7 @@ const snapshot = {
     power_available: true,
     power_transition: null,
     event_name: "Test",
+    capture_paused: false,
     print_format_name: "postcard",
     print_aspect_ratio: 1.5,
     counters: {
