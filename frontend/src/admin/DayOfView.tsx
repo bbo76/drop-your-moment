@@ -18,6 +18,7 @@ import {
 } from "../shared/api";
 import { Button, Feedback } from "./ui";
 import { PowerControls } from "./PowerControls";
+import { canReleaseKiosk, releaseKioskCopy } from "./kioskRelease";
 
 const POLL_INTERVAL_MS = 2_000;
 const RECENT_PHOTO_COUNT = 3;
@@ -93,10 +94,8 @@ export function DayOfView() {
     void run(
       "release",
       async () => {
-        const session = await api.releaseKiosk();
-        setHealth((current) =>
-          current ? { ...current, session_state: session.state } : current,
-        );
+        await api.releaseKiosk();
+        setHealth(await api.health());
       },
       "La borne est revenue à l’accueil.",
     );
@@ -144,6 +143,7 @@ export function DayOfView() {
   );
   const printableNow = Math.min(cassetteRemaining, stockRemaining, inkRemaining);
   const nextAction = printingNextAction(cassetteRemaining, stockRemaining, inkRemaining);
+  const releaseCopy = releaseKioskCopy(health);
 
   return (
     <div className="grid gap-4">
@@ -177,7 +177,7 @@ export function DayOfView() {
           value={`${printableNow} possibles`}
           attention={printableNow <= 5}
         />
-        {health.session_state !== "idle" && health.session_state !== "printing" && (
+        {canReleaseKiosk(health) && (
           <div className="col-span-full border-t p-3 [&>button]:w-full">
             <Button
               tone="warning"
@@ -186,7 +186,7 @@ export function DayOfView() {
               }}
               disabled={working === "release"}
             >
-              {working === "release" ? "Retour en cours…" : "Ramener la borne à l’accueil"}
+              {working === "release" ? "Retour en cours…" : releaseCopy.button}
             </Button>
           </div>
         )}
@@ -341,12 +341,12 @@ export function DayOfView() {
       <AlertDialog open={releaseDialogOpen} onOpenChange={setReleaseDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Ramener la borne à l’accueil ?</AlertDialogTitle>
-            <AlertDialogDescription>La session en cours sera interrompue. Les invités devront recommencer leur parcours.</AlertDialogDescription>
+            <AlertDialogTitle>{releaseCopy.title}</AlertDialogTitle>
+            <AlertDialogDescription>{releaseCopy.description}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onClick={releaseKiosk}>Ramener à l’accueil</AlertDialogAction>
+            <AlertDialogAction variant="destructive" onClick={releaseKiosk}>{releaseCopy.confirm}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -11,8 +11,11 @@ import {
 import { Feedback } from "./ui";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Check, CircleAlert } from "lucide-react";
+import { Check, CircleAlert, House } from "lucide-react";
+import { canReleaseKiosk, releaseKioskCopy } from "./kioskRelease";
 
 const POLL_INTERVAL_MS = 2_000;
 
@@ -22,6 +25,8 @@ export function DashboardOverview() {
   const [gallery, setGallery] = useState<GalleryPage | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
+  const [releasing, setReleasing] = useState(false);
+  const [releaseDialogOpen, setReleaseDialogOpen] = useState(false);
 
   const loadSupportingData = useCallback(async () => {
     setConfig(await api.eventConfig());
@@ -62,6 +67,22 @@ export function DashboardOverview() {
 
   const status = readiness(health, error);
   const printable = health ? printableCount(health) : null;
+  const releaseCopy = health ? releaseKioskCopy(health) : null;
+
+  const releaseKiosk = async () => {
+    setReleaseDialogOpen(false);
+    setReleasing(true);
+    try {
+      await api.releaseKiosk();
+      setHealth(await api.health());
+      setUpdatedAt(new Date());
+      setError(null);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setReleasing(false);
+    }
+  };
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -82,6 +103,14 @@ export function DashboardOverview() {
           <StatusFact label="Écran" value={sessionLabel(health)} />
           <StatusFact label="Caméra" value={health?.camera_ok ? "Prête" : "À vérifier"} />
           <StatusFact label="Tirages disponibles" value={printable === null ? "—" : `${printable}`} />
+          {health && canReleaseKiosk(health) && releaseCopy && (
+            <div className="col-span-full flex justify-end border-t p-4">
+              <Button type="button" variant="destructive" className="min-h-11 w-full sm:w-auto" onClick={() => setReleaseDialogOpen(true)} disabled={releasing}>
+                <House aria-hidden="true" />
+                {releasing ? "Retour en cours…" : releaseCopy.button}
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -126,6 +155,21 @@ export function DashboardOverview() {
           ) : <p className="grid min-h-48 place-items-center p-8 text-center text-muted-foreground">Lecture de l’état de la borne…</p>}
         </OverviewPanel>
       </div>
+
+      {releaseCopy && (
+        <AlertDialog open={releaseDialogOpen} onOpenChange={setReleaseDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{releaseCopy.title}</AlertDialogTitle>
+              <AlertDialogDescription>{releaseCopy.description}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Annuler</AlertDialogCancel>
+              <AlertDialogAction variant="destructive" onClick={() => void releaseKiosk()}>{releaseCopy.confirm}</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   );
 }

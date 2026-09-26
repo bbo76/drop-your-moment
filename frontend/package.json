@@ -8,6 +8,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "check:maintenance": "node --experimental-strip-types src/kiosk/maintenance/maintenanceDiagnostics.test.ts",
+    "check:release": "node --experimental-strip-types src/admin/kioskRelease.test.ts",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview"
   },

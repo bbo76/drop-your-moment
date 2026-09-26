@@ -131,6 +131,19 @@ def test_l_operateur_distant_peut_liberer_la_borne(
     assert runtime.machine.session is None
 
 
+def test_l_operateur_distant_peut_fermer_la_maintenance(
+    admin: TestClient, kiosk: TestClient, runtime: Runtime
+) -> None:
+    assert kiosk.post("/api/maintenance/unlock", json={"pin": "2580"}).status_code == 204
+    assert runtime.maintenance_active is True
+
+    response = admin.post("/admin/session/home")
+
+    assert response.json()["state"] == "idle"
+    assert runtime.maintenance_active is False
+    assert kiosk.get("/api/maintenance/status").status_code == 401
+
+
 def test_un_filtre_retire_est_refuse_au_kiosque(admin: TestClient, kiosk: TestClient) -> None:
     """Retirer un filtre doit fermer la porte, pas seulement masquer un bouton.
 

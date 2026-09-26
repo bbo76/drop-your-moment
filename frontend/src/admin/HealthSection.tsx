@@ -13,6 +13,7 @@ import { Activity, Camera, Clock3, Database, Printer, Wrench } from "lucide-reac
 import { api, type AdminHealth, type CameraScan, type PrinterConfiguration } from "../shared/api";
 import { PowerControls } from "./PowerControls";
 import { Button, Feedback, Row, Section } from "./ui";
+import { canReleaseKiosk, releaseKioskCopy } from "./kioskRelease";
 
 /* Tableau de bord : « est-ce que la borne va tenir la soirée ? »
  *
@@ -80,8 +81,8 @@ export function HealthSection() {
     setReleaseDialogOpen(false);
     setReleasing(true);
     try {
-      const session = await api.releaseKiosk();
-      setHealth((current) => (current ? { ...current, session_state: session.state } : current));
+      await api.releaseKiosk();
+      setHealth(await api.health());
       setError(null);
     } catch (cause) {
       setError(String(cause));
@@ -133,6 +134,7 @@ export function HealthSection() {
   const trayRemaining = Math.max(0, counters.cassette_capacity - counters.prints_since_cassette_reload);
   const inkRemaining = Math.max(0, counters.cartridge_capacity - counters.prints_since_reset);
   const printableNow = Math.min(paperRemaining, trayRemaining, inkRemaining);
+  const releaseCopy = releaseKioskCopy(health);
 
   return (
     <Section title="État du système">
@@ -223,9 +225,9 @@ export function HealthSection() {
             label="Format"
             value={`${health.print_format_name} — ratio ${health.print_aspect_ratio.toFixed(3)}`}
           />
-          {health.session_state !== "idle" && health.session_state !== "printing" && (
+          {canReleaseKiosk(health) && (
             <CardAction onClick={() => setReleaseDialogOpen(true)} disabled={releasing} warning>
-              {releasing ? "Retour en cours…" : "Libérer la borne"}
+              {releasing ? "Retour en cours…" : releaseCopy.button}
             </CardAction>
           )}
         </Group>
@@ -292,12 +294,12 @@ export function HealthSection() {
       <AlertDialog open={releaseDialogOpen} onOpenChange={setReleaseDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Libérer la borne ?</AlertDialogTitle>
-            <AlertDialogDescription>La session en cours sera interrompue et la borne reviendra à l’accueil.</AlertDialogDescription>
+            <AlertDialogTitle>{releaseCopy.title}</AlertDialogTitle>
+            <AlertDialogDescription>{releaseCopy.description}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onClick={() => void releaseKiosk()}>Libérer la borne</AlertDialogAction>
+            <AlertDialogAction variant="destructive" onClick={() => void releaseKiosk()}>{releaseCopy.confirm}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
