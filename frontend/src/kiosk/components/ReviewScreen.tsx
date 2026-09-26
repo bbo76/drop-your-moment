@@ -103,7 +103,7 @@ export function ReviewScreen({
           </PrimaryButton>
           {!printingAvailable && <p className="text-center text-sm text-warn">Vous pouvez toujours enregistrer la photo.</p>}
           <div className="grid grid-cols-2 gap-2">
-            <ReviewAction icon={<Save />} onClick={onSave}>Enregistrer seulement</ReviewAction>
+            <ReviewAction icon={<Save />} onClick={onSave}>Enregistrer sans imprimer</ReviewAction>
             <ReviewAction icon={<RotateCcw />} onClick={onRetake}>Refaire la photo</ReviewAction>
           </div>
         </div>

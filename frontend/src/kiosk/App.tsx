@@ -85,9 +85,10 @@ export function App() {
   if (connection === "offline") {
     return (
       <CenteredScreen>
+        {maintenanceButton}
         <Title>Hors service</Title>
-        <Lede>Le backend ne répond pas.</Lede>
-        <Muted>Prévenez l'organisateur.</Muted>
+        <Lede>La borne ne parvient pas à démarrer.</Lede>
+        <Muted>Prévenez l’organisateur ou ouvrez la maintenance.</Muted>
       </CenteredScreen>
     );
   }
@@ -184,7 +185,7 @@ export function App() {
 
     case "printing":
     case "done":
-      return <ConfirmationScreen printing={session.state === "printing"} outputMode={session.output_mode} outputCopies={session.output_copies} photoUrl={session.photo_url} remainingSeconds={session.remaining_seconds} onContinue={start} />;
+      return <ConfirmationScreen printing={session.state === "printing"} outputMode={session.output_mode} outputCopies={session.output_copies} photoUrl={session.photo_url} onContinue={start} />;
   }
 }
 

@@ -9,6 +9,7 @@ import {
 } from "../shared/api";
 
 const POLL_INTERVAL_MS = 500;
+const MAX_OFFLINE_POLL_INTERVAL_MS = 8_000;
 const EVENT_POLL_INTERVAL_MS = 2000;
 const SYSTEM_POLL_INTERVAL_MS = 2000;
 const SCREEN_FLASH_LEAD_MS = 300;
@@ -60,6 +61,7 @@ export function useKioskState(): KioskState {
     let timer: ReturnType<typeof setTimeout> | undefined;
     let nextEventPollAt = 0;
     let nextSystemPollAt = 0;
+    let consecutiveFailures = 0;
 
     const tick = async () => {
       try {
@@ -87,15 +89,22 @@ export function useKioskState(): KioskState {
         const status = await api.status();
         if (cancelled) return;
         if (!captureInFlightRef.current) setSession(status);
+        consecutiveFailures = 0;
         setConnection("online");
       } catch (error) {
         if (cancelled) return;
-        console.error(error);
+        if (consecutiveFailures === 0) console.error(error);
+        consecutiveFailures += 1;
         systemRef.current = null;
         eventRef.current = null;
         setConnection("offline");
       } finally {
-        if (!cancelled) timer = setTimeout(tick, POLL_INTERVAL_MS);
+        if (!cancelled) {
+          const delay = consecutiveFailures
+            ? Math.min(MAX_OFFLINE_POLL_INTERVAL_MS, POLL_INTERVAL_MS * 2 ** consecutiveFailures)
+            : POLL_INTERVAL_MS;
+          timer = setTimeout(tick, delay);
+        }
       }
     };
 

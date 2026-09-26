@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import "../index.css";
+import "../event-fonts.css";
 import { AdminApp } from "./AdminApp";
 import { TooltipProvider } from "@/components/ui/tooltip";
 

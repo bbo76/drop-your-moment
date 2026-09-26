@@ -3,17 +3,6 @@
 @import "@fontsource/barlow-semi-condensed/latin-600.css";
 @import "@fontsource/barlow-semi-condensed/latin-700.css";
 @import "@fontsource/barlow-semi-condensed/latin-900.css";
-@import "@fontsource/playfair-display/latin-700.css";
-@import "@fontsource/caveat/latin-700.css";
-@import "@fontsource/montserrat/latin-700.css";
-@import "@fontsource/cormorant-garamond/latin-700.css";
-@import "@fontsource/bodoni-moda/latin-700.css";
-@import "@fontsource/dancing-script/latin-700.css";
-@import "@fontsource/lobster/latin-400.css";
-@import "@fontsource/fredoka/latin-600.css";
-@import "@fontsource/creepster/latin-400.css";
-@import "@fontsource/cinzel/latin-700.css";
-@import "@fontsource/abril-fatface/latin-400.css";
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -59,6 +48,10 @@ body {
   background-color: var(--color-ink);
   color: var(--color-body);
   font-family: "Barlow Semi Condensed", sans-serif;
+}
+
+body:not(.admin-theme) {
+  color-scheme: dark;
 }
 
 ::selection {
