@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Activity, Camera, Check, Database, Pause, PlugZap, Printer, Thermometer, TriangleAlert, Wifi } from "lucide-react";
+import { Activity, Camera, Check, Database, Pause, PlugZap, Printer, RotateCcw, SlidersHorizontal, Thermometer, TriangleAlert, Wifi, Zap } from "lucide-react";
 
 import { Button as ShadButton } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -14,12 +14,14 @@ import {
   type AdminHealth,
   type EventConfigPayload,
   type GalleryEntry,
+  type ShotTimerSeconds,
 } from "../shared/api";
 import { Button, Feedback } from "./ui";
 import { PowerControls } from "./PowerControls";
 
 const POLL_INTERVAL_MS = 2_000;
 const RECENT_PHOTO_COUNT = 3;
+const SHOT_TIMER_OPTIONS: ShotTimerSeconds[] = [3, 5, 10];
 type Readiness = {
   tone: "ready" | "busy" | "attention";
   title: string;
@@ -34,6 +36,7 @@ export function DayOfView() {
   const [notice, setNotice] = useState<string | null>(null);
   const [working, setWorking] = useState<string | null>(null);
   const [releaseDialogOpen, setReleaseDialogOpen] = useState(false);
+  const [refreshNonce, setRefreshNonce] = useState(0);
 
   const loadPhotos = useCallback(async () => {
     const page = await api.gallery(0, RECENT_PHOTO_COUNT);
@@ -45,6 +48,10 @@ export function DayOfView() {
     let timer: ReturnType<typeof setTimeout> | undefined;
 
     const tick = async () => {
+      if (document.visibilityState === "hidden") {
+        timer = setTimeout(tick, POLL_INTERVAL_MS);
+        return;
+      }
       try {
         const fresh = await api.health();
         if (!cancelled) {
@@ -65,7 +72,7 @@ export function DayOfView() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [loadPhotos]);
+  }, [loadPhotos, refreshNonce]);
 
   const run = async (name: string, action: () => Promise<void>, success: string) => {
     setWorking(name);
@@ -107,11 +114,16 @@ export function DayOfView() {
 
   if (!health) {
     return (
-      <div className="grid min-h-28 grid-cols-[3rem_minmax(0,1fr)] items-center gap-4 rounded-xl border border-destructive/40 bg-card p-5 text-destructive [&_svg]:size-12 [&_h2]:text-3xl [&_h2]:font-bold [&_h2]:leading-none [&_p]:mt-2" role="status">
+      <div className="grid min-h-28 grid-cols-[3rem_minmax(0,1fr)] items-center gap-4 rounded-xl border border-destructive/40 bg-card p-5 text-destructive [&_svg]:size-12 [&_h1]:text-3xl [&_h1]:font-bold [&_h1]:leading-none [&_p]:mt-2" role="status">
         <StatusIcon name={error ? "wifi" : "pulse"} />
         <div>
-          <h2>{error ? "Borne injoignable" : "Connexion à la borne…"}</h2>
+          <h1>{error ? "Borne injoignable" : "Connexion à la borne…"}</h1>
           <p>{error ?? "Lecture de l’état en cours."}</p>
+          {error && (
+            <ShadButton className="mt-4 min-h-11" variant="outline" onClick={() => setRefreshNonce((value) => value + 1)}>
+              <RotateCcw aria-hidden="true" /> Réessayer
+            </ShadButton>
+          )}
         </div>
       </div>
     );
@@ -135,16 +147,16 @@ export function DayOfView() {
 
   return (
     <div className="grid gap-4">
-      <section className={`grid min-h-28 grid-cols-[3rem_minmax(0,1fr)] items-center gap-4 rounded-xl border bg-card p-5 [&_svg]:size-12 [&_h2]:text-[clamp(2rem,8vw,3rem)] [&_h2]:font-bold [&_h2]:leading-none [&_h2]:tracking-[-0.035em] [&_p]:mt-2 [&_p]:leading-tight ${statusTone[readiness.tone]}`} aria-live="polite">
+      <section className={`grid min-h-28 grid-cols-[3rem_minmax(0,1fr)] items-center gap-4 rounded-xl border bg-card p-5 [&_svg]:size-12 [&_h1]:text-[clamp(2rem,8vw,3rem)] [&_h1]:font-bold [&_h1]:leading-none [&_h1]:tracking-[-0.035em] [&_p]:mt-2 [&_p]:leading-tight ${statusTone[readiness.tone]}`} aria-live="polite">
         <StatusIcon name={readiness.tone === "ready" ? "check" : "attention"} />
         <div className="min-w-0">
-          <h2>{readiness.title}</h2>
+          <h1>{readiness.title}</h1>
           <p>{readiness.detail}</p>
           <p className="mt-3 border-t pt-3 font-semibold text-foreground">{health.event_name}</p>
         </div>
       </section>
 
-      {(error || notice) && <Feedback error={error} notice={notice} />}
+      {(error || notice) && <div className="grid gap-2"><Feedback error={error} notice={notice} />{error && <ShadButton className="min-h-11 justify-self-start" variant="outline" onClick={() => setRefreshNonce((value) => value + 1)}><RotateCcw aria-hidden="true" /> Réessayer</ShadButton>}</div>}
 
       <section className="grid grid-cols-3 overflow-hidden rounded-xl border bg-card divide-x" aria-label="État essentiel de la borne">
         <Fact
@@ -166,15 +178,17 @@ export function DayOfView() {
           attention={printableNow <= 5}
         />
         {health.session_state !== "idle" && health.session_state !== "printing" && (
-          <Button
-            tone="warning"
-            onClick={() => {
-              setReleaseDialogOpen(true);
-            }}
-            disabled={working === "release"}
-          >
-            {working === "release" ? "Retour en cours…" : "Ramener la borne à l’accueil"}
-          </Button>
+          <div className="col-span-full border-t p-3 [&>button]:w-full">
+            <Button
+              tone="warning"
+              onClick={() => {
+                setReleaseDialogOpen(true);
+              }}
+              disabled={working === "release"}
+            >
+              {working === "release" ? "Retour en cours…" : "Ramener la borne à l’accueil"}
+            </Button>
+          </div>
         )}
       </section>
 
@@ -193,6 +207,43 @@ export function DayOfView() {
               <DiagnosticMeter label="Processeur" value={health.cpu_percent} />
               <DiagnosticMeter label="Mémoire" value={health.memory_percent} />
             </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+
+      <Accordion type="single" collapsible className="rounded-xl border bg-card">
+        <AccordionItem value="quick-settings" className="border-0">
+          <AccordionTrigger className="min-h-18 px-4 py-3 hover:no-underline">
+            <span className="grid text-left">
+              <strong className="flex items-center gap-2 text-lg"><SlidersHorizontal className="size-5" aria-hidden="true" />Réglages rapides</strong>
+              <small className="text-muted-foreground">Minuteur, flash et copies</small>
+            </span>
+          </AccordionTrigger>
+          <AccordionContent className="grid gap-4 border-t p-4">
+            {config ? (
+              <>
+                <fieldset disabled={working === "settings"}>
+                  <legend className="mb-2 font-medium">Minuteur</legend>
+                  <div className="grid grid-cols-3 gap-2">
+                    {SHOT_TIMER_OPTIONS.map((seconds) => (
+                      <ShadButton key={seconds} type="button" variant={config.default_shot_timer_seconds === seconds ? "default" : "outline"} className="min-h-11" aria-pressed={config.default_shot_timer_seconds === seconds} onClick={() => saveQuickSetting({ default_shot_timer_seconds: seconds })}>
+                        {seconds} s
+                      </ShadButton>
+                    ))}
+                  </div>
+                </fieldset>
+                <button type="button" disabled={working === "settings"} aria-pressed={config.screen_flash_enabled} onClick={() => saveQuickSetting({ screen_flash_enabled: !config.screen_flash_enabled })} className="flex min-h-14 items-center gap-3 rounded-lg border px-4 text-left disabled:opacity-50 aria-pressed:bg-muted">
+                  <Zap className="size-5" fill={config.screen_flash_enabled ? "currentColor" : "none"} aria-hidden="true" />
+                  <span className="grid"><strong>Flash d’appoint</strong><small className="text-muted-foreground">{config.screen_flash_enabled ? "Activé" : "Désactivé"}</small></span>
+                </button>
+                <label className="grid gap-2 font-medium">
+                  Copies par défaut
+                  <select disabled={working === "settings"} value={config.copies_per_print} onChange={(event) => saveQuickSetting({ copies_per_print: Number(event.target.value) })} className="min-h-11 rounded-md border bg-background px-3 font-normal">
+                    {Array.from({ length: 10 }, (_, index) => index + 1).map((copies) => <option key={copies} value={copies}>{copies}</option>)}
+                  </select>
+                </label>
+              </>
+            ) : <Skeleton className="h-40 rounded-lg" />}
           </AccordionContent>
         </AccordionItem>
       </Accordion>

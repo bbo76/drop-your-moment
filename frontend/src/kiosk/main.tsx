@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import "../index.css";
+import "../event-fonts.css";
 import { App } from "./App";
 
 /* Le menu contextuel n'est bloqué que sur un écran tactile : un appui long sur une borne

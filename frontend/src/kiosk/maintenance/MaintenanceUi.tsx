@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import {
   Activity,
   Camera,
@@ -114,4 +114,13 @@ export function MaintenanceChoice({ children, disabled, pressed, accentBorder = 
   onClick: () => void;
 }) {
   return <button type="button" disabled={disabled} aria-pressed={pressed} onClick={onClick} className={`min-h-[3.4rem] rounded-panel border-2 bg-transparent text-xl font-semibold text-body transition-[transform,background-color,color] duration-150 active:scale-[0.97] aria-pressed:border-signal aria-pressed:bg-signal aria-pressed:text-signal-ink disabled:cursor-wait ${accentBorder ? "border-signal" : "border-edge"}`}>{children}</button>;
+}
+
+export function MaintenanceDialog({ label, onCancel, children }: { label: string; onCancel: () => void; children: ReactNode }) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    ref.current?.showModal();
+    return () => ref.current?.close();
+  }, []);
+  return <dialog ref={ref} aria-label={label} onCancel={(event) => { event.preventDefault(); onCancel(); }} className="m-auto max-h-none max-w-none border-0 bg-transparent p-6 text-body backdrop:bg-black/75">{children}</dialog>;
 }

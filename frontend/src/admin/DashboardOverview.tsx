@@ -28,7 +28,7 @@ export function DashboardOverview() {
   }, []);
 
   useEffect(() => {
-    void loadSupportingData().catch((cause) => setError(String(cause)));
+    void loadSupportingData().catch(() => setError("La configuration de l’événement n’est pas disponible."));
   }, [loadSupportingData]);
 
   useEffect(() => {
@@ -47,8 +47,8 @@ export function DashboardOverview() {
           setUpdatedAt(new Date());
           setError(null);
         }
-      } catch (cause) {
-        if (!cancelled) setError(`Connexion à la borne perdue : ${String(cause)}`);
+      } catch {
+        if (!cancelled) setError("Connexion à la borne perdue. Vérifiez le réseau local, puis réessayez.");
       } finally {
         if (!cancelled) timer = setTimeout(tick, POLL_INTERVAL_MS);
       }
@@ -70,7 +70,7 @@ export function DashboardOverview() {
           <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">Vue d’ensemble</h1>
           <p className="mt-1 text-sm text-muted-foreground md:text-base">Surveillez la borne, l’événement actif et les dernières prises.</p>
         </div>
-        <Badge variant="secondary" className="hidden tabular-nums sm:inline-flex">Mise à jour {updatedAt ? time(updatedAt) : "en cours"}</Badge>
+        <Badge variant="secondary" className="hidden tabular-nums sm:inline-flex">{error ? "Reconnexion automatique" : `Mise à jour ${updatedAt ? time(updatedAt) : "en cours"}`}</Badge>
       </header>
 
       <Card className={`gap-0 overflow-hidden py-0 ring-1 ${toneRing[status.tone]}`} aria-live="polite">
@@ -154,7 +154,7 @@ const toneRing = { ready: "ring-emerald-600/20", busy: "ring-amber-600/20", atte
 function readiness(health: AdminHealth | null, error: string | null) {
   if (error) return { tone: "attention" as const, title: "Borne injoignable", detail: "Vérifiez que cet ordinateur est toujours connecté au réseau de la borne." };
   if (!health) return { tone: "busy" as const, title: "Connexion à la borne…", detail: "Lecture de son état en cours." };
-  if (health.power_transition) return { tone: "attention" as const, title: health.power_transition.action === "reboot" ? "Redémarrage programmé" : "Arrêt programmé", detail: "Le kiosk affiche le compte à rebours avant l’action." };
+  if (health.power_transition) return { tone: "attention" as const, title: health.power_transition.action === "reboot" ? "Redémarrage programmé" : "Arrêt programmé", detail: "La borne affiche le compte à rebours avant l’action." };
   if (health.maintenance_active) return { tone: "attention" as const, title: "Maintenance en cours", detail: "Une personne intervient directement sur la borne." };
   if (health.capture_paused) return { tone: "busy" as const, title: "Prises en pause", detail: "La borne attend la reprise depuis l’administration." };
   if (!health.camera_ok) return { tone: "attention" as const, title: "Intervention nécessaire", detail: "La caméra n’est pas disponible." };

@@ -10,11 +10,10 @@ interface Props {
   outputMode: "print" | "save" | null;
   outputCopies: number;
   photoUrl: string | null;
-  remainingSeconds: number | null;
   onContinue: () => Promise<void>;
 }
 
-export function ConfirmationScreen({ printing, outputMode, outputCopies, photoUrl, remainingSeconds, onContinue }: Props) {
+export function ConfirmationScreen({ printing, outputMode, outputCopies, photoUrl, onContinue }: Props) {
   const [progress, setProgress] = useState(printing ? 8 : 100);
 
   useEffect(() => {
@@ -75,9 +74,7 @@ export function ConfirmationScreen({ printing, outputMode, outputCopies, photoUr
             {multipleCopies ? `Vos ${outputCopies} exemplaires sont prêts !` : printed ? "Votre photo est prête !" : "C'est enregistré !"}
           </h1>
           <Lede>{multipleCopies ? "Vous pouvez les récupérer." : printed ? "Vous pouvez la récupérer." : "Votre photo reste dans la galerie."}</Lede>
-          <p className="text-lg text-signal-ink/70">
-            Touchez pour continuer{remainingSeconds !== null ? ` · Sinon, nouvelle photo dans ${Math.ceil(remainingSeconds)} s` : ""}
-          </p>
+          <p className="whitespace-nowrap text-lg text-signal-ink/70">Touchez pour prendre une nouvelle photo</p>
         </section>
       )}
       {!printing && (

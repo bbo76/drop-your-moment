@@ -3,7 +3,7 @@ import { Check, Power, RefreshCcw, Timer, Zap } from "lucide-react";
 
 import type { LaunchFont, MaintenanceSnapshot, ShotTimerSeconds } from "../../shared/api";
 import { LAUNCH_FONT_CLASSES } from "../../shared/theme";
-import { MaintenanceChoice } from "./MaintenanceUi";
+import { MaintenanceChoice, MaintenanceDialog } from "./MaintenanceUi";
 
 const SHOT_TIMER_OPTIONS: ShotTimerSeconds[] = [3, 5, 10];
 const EVENT_PALETTE = [
@@ -64,7 +64,7 @@ function RestartIcon() {
 
 function PowerConfirmation({ action, onCancel, onConfirm }: { action: "reboot" | "poweroff"; onCancel: () => void; onConfirm: () => Promise<void> }) {
   const reboot = action === "reboot";
-  return <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-6" role="alertdialog" aria-modal="true" aria-labelledby="power-title"><div className={`w-full max-w-xl rounded-panel border-2 bg-ink p-8 ${reboot ? "border-signal" : "border-warn"}`}><h2 id="power-title" className="text-3xl font-bold">{reboot ? "Redémarrer la borne ?" : "Éteindre la borne ?"}</h2><p className="mt-4 text-xl text-muted">{reboot ? "Le kiosque reviendra automatiquement après le redémarrage." : "La borne restera éteinte. Il faudra appuyer physiquement sur son alimentation pour la rallumer."}</p><div className="mt-8 grid grid-cols-2 gap-3"><button type="button" className="min-h-16 rounded-panel border-2 border-edge text-xl font-semibold" onClick={onCancel}>Annuler</button><button type="button" className={`min-h-16 rounded-panel text-xl font-bold text-ink ${reboot ? "bg-signal" : "bg-warn"}`} onClick={() => void onConfirm()}>{reboot ? "Confirmer le redémarrage" : "Confirmer l’arrêt"}</button></div></div></div>;
+  return <MaintenanceDialog label={reboot ? "Confirmer le redémarrage" : "Confirmer l’arrêt"} onCancel={onCancel}><div className={`w-full max-w-xl rounded-panel border-2 bg-ink p-8 ${reboot ? "border-signal" : "border-warn"}`}><h2 className="text-3xl font-bold">{reboot ? "Redémarrer la borne ?" : "Éteindre la borne ?"}</h2><p className="mt-4 text-xl text-muted">{reboot ? "Le kiosque reviendra automatiquement après le redémarrage." : "La borne restera éteinte. Il faudra appuyer physiquement sur son alimentation pour la rallumer."}</p><div className="mt-8 grid grid-cols-2 gap-3"><button type="button" autoFocus className="min-h-16 rounded-panel border-2 border-edge text-xl font-semibold" onClick={onCancel}>Annuler</button><button type="button" className={`min-h-16 rounded-panel text-xl font-bold text-ink ${reboot ? "bg-signal" : "bg-warn"}`} onClick={() => void onConfirm()}>{reboot ? "Confirmer le redémarrage" : "Confirmer l’arrêt"}</button></div></div></MaintenanceDialog>;
 }
 
 function SystemSettingIcon({ name }: { name: "flash" | "timer" }) {

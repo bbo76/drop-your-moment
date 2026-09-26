@@ -2,7 +2,7 @@ import { ArrowLeft, Minus, Plus, Printer, Trash2 } from "lucide-react";
 import { useEffect, useState, type ReactNode, type UIEvent } from "react";
 
 import { api, maintenancePhotoUrl, maintenanceThumbnailUrl, type GalleryEntry } from "../../shared/api";
-import { MaintenanceIcon } from "./MaintenanceUi";
+import { MaintenanceDialog, MaintenanceIcon } from "./MaintenanceUi";
 
 const PAGE_SIZE = 12;
 
@@ -137,5 +137,5 @@ function QuantityButton({ children, label, disabled, onClick }: { children: Reac
 }
 
 function DeleteConfirmation({ deleting, onCancel, onConfirm }: { deleting: boolean; onCancel: () => void; onConfirm: () => void }) {
-  return <div className="fixed inset-0 z-50 grid place-items-center bg-black/75 p-6" role="alertdialog" aria-modal="true" aria-labelledby="delete-photo-title"><div className="w-full max-w-xl rounded-panel border-2 border-warn bg-ink p-8 text-body"><h2 id="delete-photo-title" className="text-3xl font-bold">Supprimer cette photo ?</h2><p className="mt-4 text-xl text-muted">Elle disparaîtra définitivement de la galerie.</p><div className="mt-8 grid grid-cols-2 gap-3"><button type="button" disabled={deleting} onClick={onCancel} className="min-h-16 rounded-panel border-2 border-edge text-xl font-semibold">Annuler</button><button type="button" disabled={deleting} onClick={onConfirm} className="min-h-16 rounded-panel bg-warn text-xl font-bold text-ink disabled:opacity-40">{deleting ? "Suppression…" : "Supprimer"}</button></div></div></div>;
+  return <MaintenanceDialog label="Confirmer la suppression" onCancel={() => { if (!deleting) onCancel(); }}><div className="w-full max-w-xl rounded-panel border-2 border-warn bg-ink p-8 text-body"><h2 className="text-3xl font-bold">Supprimer cette photo ?</h2><p className="mt-4 text-xl text-muted">Elle disparaîtra définitivement de la galerie.</p><div className="mt-8 grid grid-cols-2 gap-3"><button type="button" autoFocus disabled={deleting} onClick={onCancel} className="min-h-16 rounded-panel border-2 border-edge text-xl font-semibold">Annuler</button><button type="button" disabled={deleting} onClick={onConfirm} className="min-h-16 rounded-panel bg-warn text-xl font-bold text-ink disabled:opacity-40">{deleting ? "Suppression…" : "Supprimer"}</button></div></div></MaintenanceDialog>;
 }

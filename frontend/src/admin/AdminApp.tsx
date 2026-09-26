@@ -63,7 +63,7 @@ export function AdminApp() {
               <SidebarMenu>
                 {NAV_ITEMS.map((item) => (
                   <SidebarMenuItem key={item.id}>
-                    <SidebarMenuButton tooltip={item.label} isActive={view === item.id} onClick={() => navigate(item.id)}>
+                    <SidebarMenuButton className="min-h-11" tooltip={item.label} isActive={view === item.id} onClick={() => navigate(item.id)}>
                       <AdminIcon name={item.icon} />
                       <span>{item.label}</span>
                     </SidebarMenuButton>
@@ -75,15 +75,15 @@ export function AdminApp() {
         </SidebarContent>
         <SidebarFooter className="p-3">
           <div className="flex items-center gap-3 rounded-lg border bg-background p-3 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:border-0 group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:p-0">
-            <span className="relative flex size-2.5 shrink-0"><span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500 opacity-40 motion-reduce:animate-none" /><span className="relative inline-flex size-2.5 rounded-full bg-emerald-600" /></span>
-            <span className="min-w-0 group-data-[collapsible=icon]:hidden"><strong className="block truncate text-sm font-medium">Borne connectée</strong><span className="block truncate text-xs text-muted-foreground">Réseau local</span></span>
+            <Radio className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <span className="min-w-0 group-data-[collapsible=icon]:hidden"><strong className="block truncate text-sm font-medium">Connexion locale</strong><span className="block truncate text-xs text-muted-foreground">État affiché dans la page</span></span>
           </div>
         </SidebarFooter>
       </Sidebar>
 
       <SidebarInset className="min-w-0 overflow-hidden">
         <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:px-6">
-          <SidebarTrigger aria-label="Ouvrir la navigation" />
+          <SidebarTrigger className="size-11" aria-label="Ouvrir la navigation" />
           <Separator orientation="vertical" className="h-4" />
           <Breadcrumb>
             <BreadcrumbList>
@@ -92,7 +92,7 @@ export function AdminApp() {
               <BreadcrumbItem><BreadcrumbPage>{NAV_ITEMS.find(({ id }) => id === view)?.label}</BreadcrumbPage></BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
-          <Badge variant="outline" className="ml-auto hidden gap-1.5 font-normal sm:flex"><Radio className="size-3 text-emerald-600" />Actualisation en direct</Badge>
+          <Badge variant="outline" className="ml-auto hidden gap-1.5 font-normal sm:flex"><Radio className="size-3" />Actualisation automatique</Badge>
         </header>
         <main className="min-w-0 flex-1 bg-muted/30 p-4 md:p-6 lg:p-8">
         {view === "overview" && <DashboardOverview />}
