@@ -242,6 +242,7 @@ def force_kiosk_home(runtime: Runtime = Depends(get_runtime)) -> SessionStatus:
             status.HTTP_409_CONFLICT,
             detail="une impression est en cours ; attendez la fin du tirage",
         )
+    runtime.lock_maintenance()
     runtime.machine.reset()
     logger.info("session du kiosque interrompue depuis le portail d’administration")
     return _status(runtime)
