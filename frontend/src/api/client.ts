@@ -1,0 +1,413 @@
+/* Client HTTP transversal et types de réponse.
+ *
+ * Ces types sont écrits à la main en miroir des modèles Pydantic du backend. C'est
+ * tenable tant que la surface est petite ; si elle grossit, la génération depuis le
+ * schéma OpenAPI que FastAPI expose déjà supprimerait le risque de dérive.
+ */
+
+/** États de la machine à états de session, côté serveur. */
+export type SessionState = "idle" | "preview" | "review" | "printing" | "done" | "error";
+
+export type FilterName = "original" | "bw_studio" | "sepia";
+export type ShotTimerSeconds = 3 | 5 | 10;
+export type PowerAction = "reboot" | "poweroff";
+
+export interface PowerTransition {
+  action: PowerAction;
+  /** Époque UNIX en secondes, partagée entre les écrans. */
+  execute_at: number;
+}
+
+export const FILTER_LABELS: Record<FilterName, string> = {
+  original: "Naturel",
+  bw_studio: "Noir & blanc",
+  sepia: "Sépia",
+};
+
+export interface SessionStatus {
+  state: SessionState;
+  session_id: string | null;
+  selected_filter: FilterName | null;
+  /** Secondes avant retour automatique à l'accueil, ou null si l'état n'expire pas. */
+  remaining_seconds: number | null;
+  error: string | null;
+  /** Porte déjà une révision anti-cache : à utiliser tel quel, sans y ajouter de suffixe. */
+  photo_url: string | null;
+  /** Sortie choisie à la revue, conservée pour adapter la confirmation. */
+  output_mode: "print" | "save" | null;
+  /** Nombre d'exemplaires demandés pour le tirage en cours ou terminé. */
+  output_copies: number;
+  power_transition: PowerTransition | null;
+}
+
+/** Capacités du matériel. Ne changent qu'au rebranchement d'un périphérique. */
+export interface SystemStatus {
+  camera_ok: boolean;
+  printer_ok: boolean;
+  /** Signal opérateur discret ; le diagnostic détaillé reste en maintenance. */
+  operator_attention: boolean;
+  /** Nombre d'exemplaires physiques encore imprimables. */
+  prints_remaining: number;
+  preview_size: [number, number];
+}
+
+/** Format de sortie, en miroir du modèle `PrintFormat`. Quatre nombres, pas davantage. */
+export interface PrintFormatPayload {
+  name: string;
+  width_mm: number;
+  height_mm: number;
+  dpi: number;
+}
+
+/** Configuration d'événement complète, en miroir de `EventConfig`.
+ *
+ * `EventInfo` en est la projection que le kiosque consomme ; celle-ci est l'objet que
+ * l'administration lit et réécrit tel quel. Le `PUT` remplace tout : d'où l'importance de
+ * renvoyer l'objet reçu, `overlay_file` compris, plutôt qu'un sous-ensemble.
+ */
+export interface EventConfigPayload {
+  event_name: string;
+  launch_message: string;
+  launch_font: LaunchFont;
+  accent_color: string;
+  overlay_file: string | null;
+  available_filters: FilterName[];
+  print_format: PrintFormatPayload;
+  copies_per_print: number;
+  default_shot_timer_seconds: ShotTimerSeconds;
+  screen_flash_enabled: boolean;
+  capture_paused: boolean;
+  pause_message: string;
+}
+
+/** Réglages de l'événement. Modifiables depuis le portail d'administration. */
+export interface EventInfo {
+  event_name: string;
+  launch_message: string;
+  launch_font: LaunchFont;
+  accent_color: string;
+  available_filters: FilterName[];
+  print_format_name: string;
+  print_aspect_ratio: number;
+  /** PNG composé sur la zone conservée du retour live, déjà versionné par le backend. */
+  overlay_url: string | null;
+  default_shot_timer_seconds: ShotTimerSeconds;
+  screen_flash_enabled: boolean;
+  capture_paused: boolean;
+  pause_message: string;
+}
+
+export type LaunchFont =
+  | "modern"
+  | "geometric"
+  | "prestigious"
+  | "editorial"
+  | "couture"
+  | "handwritten"
+  | "elegant_script"
+  | "festive"
+  | "playful"
+  | "spooky"
+  | "ceremonial"
+  | "cinematic";
+
+/** Les trois limites physiques de l'impression, plus le cumul de l'événement. */
+export interface CounterReading {
+  prints_total: number;
+  prints_since_reset: number;
+  /** ISO 8601, ou null si la cassette d'encre n'a jamais été remplacée. */
+  reset_at: string | null;
+  cartridge_capacity: number;
+  prints_since_cassette_reload: number;
+  cassette_capacity: number;
+  paper_stock_capacity: number;
+  prints_since_stock_set: number;
+  stock_set_at: string | null;
+}
+
+export interface MaintenanceSettings {
+  default_shot_timer_seconds: ShotTimerSeconds;
+  screen_flash_enabled: boolean;
+  accent_color: string;
+  launch_font: LaunchFont;
+}
+
+export interface MaintenanceSnapshot {
+  health: AdminHealth;
+  settings: MaintenanceSettings;
+  power_available: boolean;
+  print_busy: boolean;
+  print_error: string | null;
+}
+
+/** Diagnostic servi par le portail d'administration, sur l'autre socket.
+ *
+ * Une seule requête porte tout : l'opérateur veut un état cohérent à un instant donné,
+ * pas cinq lectures décalées.
+ */
+export interface AdminHealth {
+  camera_ok: boolean;
+  camera_driver: string;
+  /** 0 signifie aperçu gelé : la caméra peut être ouverte sans que personne ne la lise. */
+  preview_streams: number;
+  preview_size: [number, number];
+  still_size: [number, number];
+  printer_driver: string;
+  session_state: SessionState;
+  maintenance_active: boolean;
+  power_available: boolean;
+  power_transition: PowerTransition | null;
+  event_name: string;
+  capture_paused: boolean;
+  print_format_name: string;
+  print_aspect_ratio: number;
+  counters: CounterReading;
+  disk_free_bytes: number;
+  disk_total_bytes: number;
+  cpu_percent: number;
+  memory_used_bytes: number;
+  memory_total_bytes: number;
+  memory_percent: number;
+  temperature_c: number | null;
+  undervoltage_now: boolean | null;
+  undervoltage_occurred: boolean | null;
+  throttled_now: boolean | null;
+  throttled_occurred: boolean | null;
+}
+
+export interface PrinterConfiguration {
+  driver: "null" | "cups";
+  printer_name: string | null;
+  available_printers: string[];
+  cups_error: string | null;
+}
+
+/** Un index de caméra qui s'ouvre, et la taille que le pilote y annonce. */
+export interface ProbedCamera {
+  index: number;
+  size: [number, number];
+}
+
+/** Résultat d'un sondage de caméras.
+ *
+ * Les deux listes ne sont **pas** appariées, et l'interface ne doit pas le suggérer :
+ * aucune API ne garantit que le troisième nom rendu par le système corresponde à l'index 2
+ * d'OpenCV. L'ordre coïncide souvent — et « souvent » ferait débrancher la mauvaise caméra.
+ */
+export interface CameraScan {
+  probed: ProbedCamera[];
+  system_names: string[];
+  /** Index détenu par le kiosque, donc non sondé. */
+  skipped_index: number | null;
+}
+
+/** Une session terminée, telle que la galerie la liste. */
+export interface GalleryEntry {
+  session_id: string;
+  /** Époque UNIX en secondes — `mtime` de la photo composée. */
+  captured_at: number;
+  size_bytes: number;
+}
+
+/** Le total accompagne la tranche : sans lui, impossible de paginer. */
+export interface GalleryPage {
+  total: number;
+  entries: GalleryEntry[];
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(path, { cache: "no-store", ...init });
+  if (!response.ok) throw new Error(await errorMessage(response, path));
+  return (await response.json()) as T;
+}
+
+interface ValidationIssue {
+  loc?: unknown[];
+  msg?: string;
+}
+
+/** Le `detail` de FastAPI plutôt qu'un code HTTP nu.
+ *
+ * Un opérateur qui téléverse un overlay au mauvais ratio doit lire les deux ratios, pas
+ * « HTTP 422 » : le backend prend soin de composer ce message, autant l'afficher. Sur un
+ * 422 de validation, `detail` est une liste d'objets par champ fautif — d'où les deux
+ * formes traitées ici.
+ */
+async function errorMessage(response: Response, path: string): Promise<string> {
+  try {
+    const { detail } = (await response.json()) as { detail?: string | ValidationIssue[] };
+    if (typeof detail === "string") return detail;
+    if (Array.isArray(detail)) {
+      // `loc` commence par « body » : sans intérêt pour l'opérateur, on le retire.
+      return detail
+        .map((issue) => `${issue.loc?.slice(1).join(".") ?? "?"} : ${issue.msg ?? "invalide"}`)
+        .join(" ; ");
+    }
+  } catch {
+    /* Réponse sans corps JSON : le code HTTP est tout ce qu'on a. */
+  }
+  return `${path} → HTTP ${response.status}`;
+}
+
+const post = <T>(path: string, body?: unknown) =>
+  request<T>(path, {
+    method: "POST",
+    ...(body === undefined
+      ? {}
+      : { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
+  });
+
+export const api = {
+  status: () => request<SessionStatus>("/api/status"),
+  systemStatus: () => request<SystemStatus>("/api/system/status"),
+  event: () => request<EventInfo>("/api/event"),
+
+  startSession: () => post<SessionStatus>("/api/session"),
+  cancelSession: () => post<SessionStatus>("/api/session/cancel"),
+
+  capture: (sessionId: string) => post<SessionStatus>(`/api/session/${sessionId}/capture`),
+  chooseFilter: (sessionId: string, name: FilterName) =>
+    post<SessionStatus>(`/api/session/${sessionId}/filter`, { name }),
+  retake: (sessionId: string) => post<SessionStatus>(`/api/session/${sessionId}/retake`),
+  printPhoto: (sessionId: string, copies: number) =>
+    post<SessionStatus>(`/api/session/${sessionId}/print`, { copies }),
+  savePhoto: (sessionId: string) => post<SessionStatus>(`/api/session/${sessionId}/save`),
+
+  unlockMaintenance: async (pin: string) => {
+    const path = "/api/maintenance/unlock";
+    const response = await fetch(path, {
+      method: "POST",
+      cache: "no-store",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pin }),
+    });
+    if (!response.ok) throw new Error(await errorMessage(response, path));
+  },
+  lockMaintenance: async () => {
+    const response = await fetch("/api/maintenance/lock", { method: "POST", cache: "no-store" });
+    if (!response.ok) throw new Error(await errorMessage(response, "/api/maintenance/lock"));
+  },
+  maintenanceStatus: () => request<MaintenanceSnapshot>("/api/maintenance/status"),
+  maintenanceGallery: (offset = 0, limit = 8) =>
+    request<GalleryPage>(`/api/maintenance/gallery?offset=${offset}&limit=${limit}`),
+  printMaintenanceGalleryEntry: async (sessionId: string, copies: number) => {
+    const path = `/api/maintenance/gallery/${sessionId}/print`;
+    const response = await fetch(path, {
+      method: "POST",
+      cache: "no-store",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ copies }),
+    });
+    if (!response.ok) throw new Error(await errorMessage(response, path));
+  },
+  deleteMaintenanceGalleryEntry: async (sessionId: string) => {
+    const path = `/api/maintenance/gallery/${sessionId}`;
+    const response = await fetch(path, { method: "DELETE", cache: "no-store" });
+    if (!response.ok) throw new Error(await errorMessage(response, path));
+  },
+  saveMaintenanceSettings: (settings: MaintenanceSettings) =>
+    request<MaintenanceSettings>("/api/maintenance/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(settings),
+    }),
+  replaceMaintenanceInk: (capacity: 36 | 54) =>
+    post<CounterReading>("/api/maintenance/ink/replace", { capacity }),
+  reloadCassette: () => post<CounterReading>("/api/maintenance/cassette/reload"),
+  requestPowerAction: async (action: "reboot" | "poweroff") => {
+    const path = `/api/maintenance/power/${action}`;
+    const response = await fetch(path, { method: "POST", cache: "no-store" });
+    if (!response.ok) throw new Error(await errorMessage(response, path));
+  },
+  health: () => request<AdminHealth>("/admin/system/health"),
+  schedulePowerAction: (action: PowerAction) =>
+    post<PowerTransition>(`/admin/power/${action}`),
+  printerConfig: () => request<PrinterConfiguration>("/admin/printer"),
+  savePrinterConfig: (driver: "null" | "cups", printerName: string | null) =>
+    request<PrinterConfiguration>("/admin/printer", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ driver, printer_name: printerName }),
+    }),
+  releaseKiosk: () => post<SessionStatus>("/admin/session/home"),
+  setPaperStock: (capacity: number) =>
+    post<CounterReading>("/admin/counters/paper-stock", { capacity }),
+  replaceInk: (capacity: 36 | 54) =>
+    post<CounterReading>("/admin/counters/ink/replace", { capacity }),
+  reloadAdminCassette: () => post<CounterReading>("/admin/counters/cassette/reload"),
+  replaceMaintenancePin: async (pin: string) => {
+    const path = "/admin/maintenance-pin";
+    const response = await fetch(path, {
+      method: "PUT",
+      cache: "no-store",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pin }),
+    });
+    if (!response.ok) throw new Error(await errorMessage(response, path));
+  },
+  // POST : le sondage ouvre chaque périphérique tour à tour. Jamais déclenché
+  // automatiquement — un GET finirait préchargé par le navigateur.
+  scanCameras: () => post<CameraScan>("/admin/cameras/scan"),
+  gallery: (offset: number, limit: number) =>
+    request<GalleryPage>(`/admin/gallery?offset=${offset}&limit=${limit}`),
+  deleteGalleryEntry: async (sessionId: string) => {
+    const path = `/admin/gallery/${sessionId}`;
+    const response = await fetch(path, { method: "DELETE", cache: "no-store" });
+    if (!response.ok) throw new Error(await errorMessage(response, path));
+  },
+  eventConfig: () => request<EventConfigPayload>("/admin/event-config"),
+  uploadOverlay: (file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    // Pas d'en-tête Content-Type : c'est au navigateur de composer la frontière multipart,
+    // et la fixer à la main produit un corps que le backend ne sait pas découper.
+    return request<EventConfigPayload>("/admin/overlay", { method: "POST", body: form });
+  },
+  deleteOverlay: () => request<EventConfigPayload>("/admin/overlay", { method: "DELETE" }),
+  saveEventConfig: (config: EventConfigPayload) =>
+    request<EventConfigPayload>("/admin/event-config", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(config),
+    }),
+};
+
+/** URL du flux MJPEG.
+ *
+ * Le paramètre anti-cache est indispensable : sans lui, Chromium peut resservir une
+ * frame mise en cache en revenant sur l'écran d'aperçu, ce qui se voit à l'écran comme
+ * une image gelée.
+ */
+export const previewStreamUrl = () => `/api/preview/stream?t=${Date.now()}`;
+
+/** Ce qu'il faut affecter à `src` pour **arrêter** un flux MJPEG.
+ *
+ * Retirer l'`<img>` du DOM ne suffit pas : Chromium garde la connexion
+ * `multipart/x-mixed-replace` ouverte, le backend continue d'encoder des frames pour
+ * personne, et la webcam reste retenue. Réassigner `src` annule le chargement en cours,
+ * ce qui ferme réellement la connexion.
+ *
+ * Un GIF transparent d'un pixel plutôt que la chaîne vide : `src=""` se résout en l'URL du
+ * document et déclencherait une requête parasite sur la page elle-même.
+ */
+export const BLANK_PIXEL =
+  "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+
+/** URL de l'overlay courant.
+ *
+ * La révision est indispensable même si le backend répond `no-store` : un `<img>` dont le
+ * `src` ne change pas ne redemande rien, et l'opérateur croirait son téléversement perdu.
+ */
+export const overlayUrl = (revision: number) => `/admin/overlay?v=${revision}`;
+
+/* URLs de la galerie. Pas de `fetch` derrière : ce sont des `<img src>` et des `<a href>`,
+   qui laissent le navigateur gérer le cache court des vignettes et le téléchargement — le
+   backend répond déjà `Content-Disposition: attachment`. */
+export const thumbnailUrl = (sessionId: string) => `/admin/gallery/${sessionId}/thumbnail`;
+export const photoDownloadUrl = (sessionId: string) => `/admin/gallery/${sessionId}/photo`;
+export const photoViewUrl = (sessionId: string) => `/admin/gallery/${sessionId}/view`;
+export const maintenanceThumbnailUrl = (sessionId: string) =>
+  `/api/maintenance/gallery/${sessionId}/thumbnail`;
+export const maintenancePhotoUrl = (sessionId: string) =>
+  `/api/maintenance/gallery/${sessionId}/view`;
+export const ARCHIVE_URL = "/admin/gallery/archive.zip";
