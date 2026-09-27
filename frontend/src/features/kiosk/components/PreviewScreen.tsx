@@ -2,10 +2,10 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Camera, Home, Timer } from "lucide-react";
 
 import { BLANK_PIXEL, previewStreamUrl, type ShotTimerSeconds } from "@/api/client";
+import { scheduleCountdownStep, type CapturePhase } from "../captureTiming";
 import { FramingGuide } from "./FramingGuide";
 
 const RETURN_HINT_THRESHOLD_S = 20;
-const COUNTDOWN_STEP_MS = 1000;
 const SHOT_TIMER_OPTIONS: ShotTimerSeconds[] = [3, 5, 10];
 
 interface Props {
@@ -24,11 +24,6 @@ interface Props {
  * page, et le faire remonter jusqu'au serveur imposerait un aller-retour par seconde
  * pour un effet purement visuel. Le déclenchement réel, lui, reste une transition
  * serveur. */
-type Phase =
-  | { kind: "waiting" }
-  | { kind: "counting"; value: number }
-  | { kind: "capturing" };
-
 export function PreviewScreen({
   printAspectRatio,
   overlayUrl,
@@ -38,7 +33,7 @@ export function PreviewScreen({
   onCapture,
   onCancel,
 }: Props) {
-  const [phase, setPhase] = useState<Phase>({ kind: "waiting" });
+  const [phase, setPhase] = useState<CapturePhase>({ kind: "waiting" });
   const [shotTimerSeconds, setShotTimerSeconds] = useState(defaultShotTimerSeconds);
   const [timerOpen, setTimerOpen] = useState(false);
 
@@ -65,18 +60,11 @@ export function PreviewScreen({
   useEffect(() => {
     if (phase.kind !== "counting") return;
 
-    const timer = setTimeout(() => {
-      if (phase.value > 1) {
-        setPhase({ kind: "counting", value: phase.value - 1 });
-        return;
-      }
+    return scheduleCountdownStep(phase, setPhase, () => {
       // Le flash est affiché avant l'appel réseau, pas après : il doit coïncider avec
       // l'instant où le visiteur croit que la photo est prise.
-      setPhase({ kind: "capturing" });
       void onCapture();
-    }, COUNTDOWN_STEP_MS);
-
-    return () => clearTimeout(timer);
+    });
   }, [phase, onCapture]);
 
   const showReturnHint =
