@@ -7,13 +7,12 @@ import {
   type SessionStatus,
   type SystemStatus,
 } from "@/api/client";
+import { captureAfterScreenFlash } from "./captureTiming";
 
 const POLL_INTERVAL_MS = 500;
 const MAX_OFFLINE_POLL_INTERVAL_MS = 8_000;
 const EVENT_POLL_INTERVAL_MS = 2000;
 const SYSTEM_POLL_INTERVAL_MS = 2000;
-const SCREEN_FLASH_LEAD_MS = 300;
-const SCREEN_FLASH_HOLD_MS = 150;
 
 export type Connection = "connecting" | "online" | "offline";
 
@@ -150,16 +149,9 @@ export function useKioskState(): KioskState {
     captureInFlightRef.current = true;
     try {
       const screenFlashEnabled = eventRef.current?.screen_flash_enabled ?? true;
-      if (screenFlashEnabled) {
-        // L'écran doit être blanc avant l'exposition pour que sa lumière atteigne le
-        // capteur et que l'exposition automatique ait le temps de réagir.
-        await new Promise<void>((resolve) => setTimeout(resolve, SCREEN_FLASH_LEAD_MS));
-      }
-      const status = await api.capture(id);
-      if (screenFlashEnabled) {
-        // Un bref maintien rend le déclenchement perceptible sans retarder la revue.
-        await new Promise<void>((resolve) => setTimeout(resolve, SCREEN_FLASH_HOLD_MS));
-      }
+      // Le flash précède l'exposition de 300 ms, puis reste visible 150 ms après la
+      // réponse afin que la dalle éclaire réellement la scène sans disparaître trop tôt.
+      const status = await captureAfterScreenFlash(screenFlashEnabled, () => api.capture(id));
       setSession(status);
     } catch (error) {
       console.warn(error);

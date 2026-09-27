@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "check:capture": "node --experimental-strip-types src/features/kiosk/captureTiming.test.ts",
     "check:maintenance": "node --experimental-strip-types src/features/kiosk/maintenance/maintenanceDiagnostics.test.ts",
     "check:release": "node --experimental-strip-types src/features/admin/kioskRelease.test.ts",
     "typecheck": "tsc --noEmit",
