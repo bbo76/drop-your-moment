@@ -42,8 +42,12 @@ export function ConfirmationScreen({ printing, outputMode, outputCopies, photoUr
         <section className="flex min-h-0 flex-col justify-between rounded-panel bg-surface p-8">
           <Printer className="size-14 text-signal" strokeWidth={1.8} aria-hidden="true" />
           <div className="grid gap-3">
-            <h1 className="max-w-[9ch] text-5xl leading-none font-bold tracking-[-0.02em]">{multipleCopies ? "Vos exemplaires prennent forme" : "Votre photo prend forme"}</h1>
+            <h1 className="text-5xl leading-none font-bold tracking-[-0.02em]">{multipleCopies ? "Vos exemplaires prennent forme" : "Votre photo prend forme"}</h1>
             <Lede>{multipleCopies ? "Encore un instant, ils arrivent." : "Encore un instant, elle arrive."}</Lede>
+          </div>
+          <div className="grid gap-1 rounded-panel border-2 border-edge bg-ink p-4" role="status">
+            <p className="text-2xl leading-tight font-semibold text-body">Patientez avant de prendre la photo</p>
+            <p className="text-lg leading-tight text-muted">Elle effectue encore quelques passages dans l’imprimante.</p>
           </div>
           <div className="grid gap-3">
             <div className="flex items-end justify-between">
