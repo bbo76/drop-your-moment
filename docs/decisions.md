@@ -386,15 +386,38 @@ le repli reste conservateur plutôt que d'inventer des consommables disponibles.
 
 ## Outillage
 
-### Frontend en React + Tailwind, un projet à deux points d'entrée
+### Frontend en React + Tailwind, kiosque et portail responsive
 
 Le vanilla tenait pour deux écrans mais pas pour la trajectoire : le portail
 d'administration demande des formulaires, un téléversement avec retour de validation et
 une galerie paginée. Bascule faite tôt parce qu'elle coûtait peu tant que le frontend
 restait un simple afficheur d'état.
 
-Un seul projet Vite pour les deux interfaces plutôt que deux : jetons de design, client
-d'API et composants partagés, un seul arbre de dépendances.
+Un seul projet Vite pour le kiosque et l'administration : jetons de design, client d'API
+et composants partagés, un seul arbre de dépendances. Le portail d'administration converge
+vers une URL unique : `DayOfView` sous 768 px et le shell complet à partir de 768 px. Le
+hook responsive existant suffit ; un routeur ou un store global ne résoudrait aucun besoin.
+
+La bascule de largeur démonte la présentation active et peut perdre un formulaire non
+enregistré. C'est accepté : redimensionner pendant une saisie n'est pas un cas d'exploitation
+normal, et conserver ces brouillons imposerait une source de vérité supplémentaire.
+
+### Hotspot opérateur à la demande
+
+La borne ne dépend ni du Wi-Fi du lieu ni d'une couverture mobile. Le Raspberry Pi fournit
+donc lui-même le hotspot `DYM-PhotoBooth`, activé explicitement depuis la maintenance locale,
+sans expiration automatique, routage Internet ou mode client Wi-Fi simultané.
+
+Le secret Wi-Fi est stable et propre à l'installation. Un code administrateur aléatoire à
+six chiffres est généré à l'activation ; son empreinte et les sessions survivent aux
+redémarrages tant que le hotspot reste actif. La désactivation invalide code et sessions.
+Un arrêt volontaire depuis la maintenance effectue cette désactivation avant `poweroff` ;
+un reboot ou une coupure imprévue conserve l'état actif.
+
+Le QR Wi-Fi contient uniquement les paramètres standard de connexion. Un second QR ouvre
+la racine du portail sans embarquer le code administrateur. Les clients sont isolés entre
+eux, le pare-feu n'expose que `:8001`, et la capacité attendue est d'environ cinq appareils
+sans limite stricte qui pénaliserait les adresses MAC privées et les reconnexions.
 
 ### Le portail est une page qui défile, pas des onglets
 
@@ -453,7 +476,7 @@ et frontend construit — explicitement pas le chemin de déploiement de la born
 
 | dette | pourquoi acceptée | quand la traiter |
 |---|---|---|
-| Portail d'administration sans authentification | Accès LAN pendant un événement, réseau maîtrisé. À noter qu'il expose désormais les photos de l'événement en téléchargement, et non plus seulement un diagnostic | Si l'usage sort de ce cadre : multi-sites, réseau partagé, ou un événement où les invités ont le mot de passe du wifi |
+| Portail d'administration encore sans authentification | L'authentification par code de session est décidée avec le lot hotspot mais pas encore implémentée | Au lot « Accès opérateur autonome » |
 | Types d'API TypeScript écrits à la main | Surface petite, tenable | Si elle grossit : génération depuis le schéma OpenAPI que FastAPI expose déjà |
 | Pas de linter JavaScript | TypeScript en mode strict couvre l'essentiel | Si des règles de style deviennent un sujet |
 | État de session en mémoire, perdu au redémarrage | Le visiteur recommence, sans gravité | Jamais, sauf besoin d'audit |

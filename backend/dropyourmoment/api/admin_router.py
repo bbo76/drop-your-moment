@@ -22,7 +22,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse, Response, StreamingResponse
 from PIL import Image, UnidentifiedImageError
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from dropyourmoment.api.kiosk_router import PowerTransition, SessionStatus, _status, get_runtime
 from dropyourmoment.core.errors import PrinterError
@@ -129,6 +129,16 @@ class PrinterConfiguration(BaseModel):
 class PrinterChange(BaseModel):
     driver: PrinterDriverName
     printer_name: str | None = None
+
+
+class QuickEventConfigChange(BaseModel):
+    """Réglages sûrs modifiables depuis la présentation mobile."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    copies_per_print: int | None = Field(default=None, ge=1, le=10)
+    default_shot_timer_seconds: Literal[3, 5, 10] | None = None
+    screen_flash_enabled: bool | None = None
 
 
 @router.get("/system/health", response_model=AdminHealth)
@@ -319,13 +329,25 @@ def write_event_config(
     dimensions positives, `overlay_file` réduit à un nom de fichier. FastAPI en fait un
     422 avec le détail du champ fautif, ce qui est exactement ce que le formulaire affiche.
 
-    Le corps remplace la configuration entière plutôt que d'être fusionné : c'est un objet
-    unique, l'opérateur le relit avant de le renvoyer, et un PATCH partiel demanderait de
-    distinguer « champ absent » de « champ remis à zéro ».
+    Le corps remplace la configuration entière. Les trois réglages rapides utilisent le
+    PATCH dédié afin de ne pas écraser une modification concurrente.
     """
     runtime.event_store.save_config(config)
     runtime.reload_event()
     logger.info("configuration d'événement mise à jour : « %s »", config.event_name)
+    return runtime.event.config
+
+
+@router.patch("/event-config", response_model=EventConfig)
+def patch_event_config(
+    changes: QuickEventConfigChange,
+    runtime: Runtime = Depends(get_runtime),
+) -> EventConfig:
+    """Fusionne uniquement les réglages rapides reçus avec la configuration active."""
+    updated = runtime.event.config.model_copy(update=changes.model_dump(exclude_none=True))
+    runtime.event_store.save_config(updated)
+    runtime.reload_event()
+    logger.info("réglages rapides de l'événement mis à jour")
     return runtime.event.config
 
 

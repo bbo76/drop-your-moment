@@ -1,6 +1,6 @@
 # Feuille de route
 
-État au 15 septembre 2026.
+État au 27 septembre 2026.
 
 Le projet avance par jalons. Chacun se termine sur quelque chose d'observable, pas sur
 une couche technique : c'est ce qui permet de vérifier sur le vrai matériel avant
@@ -115,15 +115,26 @@ de photo, consommer de papier ni modifier les compteurs réels.
 
 ### ✅ Jalon 5.4 — Administration mobile Jour J
 
-Deux points d'accès explicites partagent les API et composants du même projet frontend.
-`admin.html` reste le backoffice complet sur laptop pour l'identité du mariage, l'overlay,
-les filtres, le format, la sécurité et la galerie. `mobile.html` sert uniquement le Jour J :
+La première version de l'administration mobile a introduit une composition Jour J dédiée :
 verdict global, session, caméra, stockage, température, consommables, retour à l'accueil,
-réglages rapides sûrs et six photos récentes.
+réglages rapides sûrs et trois photos récentes. Elle partage les API et composants du portail
+desktop ; le jalon suivant les réunit sous une même URL.
 
 Le module administratif adopte un thème neutre fixe, indépendant du branding événementiel.
 La maintenance tactile du kiosque n'est pas modifiée. Le rendu est vérifié sans débordement
 à 320 et 390 px ainsi que sur desktop, sans application native ni PWA.
+
+### ✅ Jalon 5.5 — Portail d'administration responsive unique
+
+Les deux points d'entrée administratifs sont remplacés par une seule URL. Sous 768 px, elle
+présente la composition mobile allégée ; à partir de 768 px, le shell desktop complet. La
+bascule réagit au redimensionnement sans routeur, store global ni mode manuel. L'ancienne
+route `/mobile.html` a disparu sans compatibilité, le produit n'étant pas encore en
+production.
+
+Les réglages rapides mobiles n'envoient plus une copie complète de la
+configuration : ils modifient uniquement les champs concernés afin de ne pas écraser une
+mise à jour concurrente.
 
 ### ✅ Jalon 6 — Validation sur le Raspberry Pi
 
@@ -146,6 +157,19 @@ Waveshare 1024×600, le tactile et le démarrage autonome après extinction comp
 - ✅ Réglages matériels finaux : aperçu 640×360 en qualité MJPEG haute à 29,9 images/s,
   capture 2304×1296, timeouts aperçu/review de 60/90 s, viseur plein cadre et parcours
   complet validés sur la dalle réelle
+
+### ⬜ Jalon 6.1 — Accès opérateur autonome
+
+Le Raspberry Pi fournit un hotspot local `DYM-PhotoBooth`, sans routage Internet ni mode
+client Wi-Fi simultané. La maintenance locale permet de l'activer et de le désactiver,
+affiche le secret Wi-Fi stable de l'installation, un QR de connexion, l'URL et son QR,
+ainsi qu'un code administrateur aléatoire à six chiffres.
+
+L'état actif, le code et les sessions administratives survivent aux redémarrages et aux
+coupures imprévues. Un arrêt volontaire depuis la maintenance désactive d'abord le hotspot
+et invalide le code et les sessions. Les clients Wi-Fi sont isolés entre eux ; environ cinq
+appareils sont supportés sans quota DHCP strict. Le kiosque `:8000` reste inaccessible et
+seul le portail `:8001` est ouvert sur ce réseau.
 
 ### ✅ Pilote webcam universel — macOS, Windows, USB
 

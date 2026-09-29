@@ -65,6 +65,26 @@ def test_aller_retour_de_la_configuration(admin: TestClient) -> None:
     assert relu["pause_message"] == "On recharge les sourires."
 
 
+def test_un_reglage_rapide_necrase_pas_les_autres_champs(admin: TestClient) -> None:
+    config = admin.get("/admin/event-config").json()
+    config["event_name"] = "Événement concurrent"
+    config["copies_per_print"] = 2
+    assert admin.put("/admin/event-config", json=config).status_code == 200
+
+    response = admin.patch("/admin/event-config", json={"screen_flash_enabled": False})
+
+    assert response.status_code == 200
+    assert response.json()["screen_flash_enabled"] is False
+    assert response.json()["event_name"] == "Événement concurrent"
+    assert response.json()["copies_per_print"] == 2
+
+
+def test_un_reglage_rapide_inconnu_est_refuse(admin: TestClient) -> None:
+    response = admin.patch("/admin/event-config", json={"event_name": "Intrus"})
+
+    assert response.status_code == 422
+
+
 def test_une_couleur_dominante_invalide_est_refusee(admin: TestClient) -> None:
     config = admin.get("/admin/event-config").json()
     config["accent_color"] = "jaune"

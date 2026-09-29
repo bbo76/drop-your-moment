@@ -93,16 +93,17 @@ reste en plus limitée à la socket locale du kiosque et n'est jamais exposée s
 
 ## Portail d'administration
 
-Sur `0.0.0.0:8001`, depuis n'importe quel PC du LAN. Sans authentification : risque assumé,
-l'accès est censé rester limité au réseau d'un événement.
+Sur `0.0.0.0:8001`, depuis un appareil du LAN. L'état actuel reste sans authentification
+jusqu'au lot hotspot ; la cible actée exige alors le code de session affiché dans la
+maintenance locale.
 
-Deux accès partagent les mêmes API avec un thème administratif neutre, indépendant de la
-couleur du mariage :
+Le produit pilote une seule borne et ne prévoit pas de gestion multi-borne. Le portail est
+utilisable avant comme pendant l'événement, avec un thème administratif neutre indépendant
+de la couleur du mariage.
 
-- `http://<adresse-du-pi>:8001/` — backoffice complet sur laptop, pour préparer l'événement
-  et récupérer les photos ;
-- `http://<adresse-du-pi>:8001/mobile.html` — console Jour J sur smartphone, limitée à la
-  surveillance et aux interventions utiles pendant la soirée.
+Le portail utilise une URL unique, `http://<adresse-du-pi>:8001/` : vue mobile allégée sous
+768 px et vue desktop complète à partir de 768 px. La présentation bascule immédiatement
+quand la largeur disponible franchit ce seuil.
 
 - **État du système** — pilote caméra et résolutions négociées, aperçu vivant ou gelé,
   imprimante, état de session, cumul des tirages, stock papier déclaré et bac CP1500,

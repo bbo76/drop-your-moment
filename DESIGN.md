@@ -1,11 +1,6 @@
 ---
 name: Drop Your Moment — Kiosk
 description: Un système de signalétique événementielle tactile, direct et hospitalier.
-viewport:
-  canonicalWidth: 1024
-  canonicalHeight: 600
-  devicePixelRatio: 1
-  orientation: landscape
 colors:
   action-yellow: "#ffd400"
   night-field: "#101418"
@@ -318,16 +313,20 @@ formulaire ouvert.
 
 La configuration desktop conserve le nom et le message de l'événement, l'overlay, les
 filtres, le format, les copies et le minuteur. Couleur et typographie appartiennent à la
-maintenance de la borne ; le flash appartient à la borne et à la Console Jour J. La galerie
+maintenance de la borne ; le flash appartient à la borne et à la présentation mobile. La galerie
 privilégie les vignettes API, la pagination et une lightbox. Le diagnostic regroupe caméra,
 impression, parcours, stockage et ressources dans des cartes de lecture rapide. Sécurité
 reste un formulaire court et étroit, centré sur le remplacement du PIN. Les surfaces,
 champs, boutons, badges, séparateurs et alertes reprennent directement les composants et
 rôles sémantiques shadcn plutôt que des couleurs administratives isolées.
 
-La Console Jour J mobile est une vue dédiée, pas une réduction du shell desktop. `DayOfView`
-est composé directement en Tailwind et réutilise les `Button` et `Feedback` partagés fondés
-sur shadcn/ui. Dans une colonne plafonnée à 42rem avec prise en compte des safe areas, elle
+Le portail d'administration utilise une seule URL et choisit sa présentation selon la
+largeur disponible : mobile sous 768 px, desktop à partir de 768 px, avec bascule réactive
+au redimensionnement. Il ne propose ni sélecteur de vue ni gestion multi-borne. La
+présentation mobile reste une composition allégée dédiée, pas une réduction du shell
+desktop. `DayOfView` est composé directement en Tailwind et réutilise les `Button` et
+`Feedback` partagés fondés sur shadcn/ui. Dans une colonne plafonnée à 42rem avec prise en
+compte des safe areas, elle
 ordonne : disponibilité, retours d'action, trois faits essentiels, geste d'urgence
 conditionnel, diagnostic, impression, réglages rapides, puis photos récentes. La rangée Écran / Caméra /
 Tirages conserve trois colonnes ; les valeurs autorisent le retour à la ligne afin que
@@ -359,9 +358,9 @@ la borne avant d'exposer configuration, métriques ou raccourcis.
 locaux ; émeraude, ambre et rouge ne qualifient qu'un état opérationnel et toujours avec un
 libellé et une icône.
 
-**The Two Consoles Rule.** Le desktop prépare et diagnostique ; le mobile surveille et
-intervient. Une fonctionnalité n'est partagée que si elle est sûre et utile dans les deux
-contextes.
+**The Responsive Portal Rule.** Une seule URL choisit automatiquement sa présentation :
+le desktop prépare et diagnostique ; le mobile surveille et intervient. Le changement de
+largeur bascule immédiatement de composition, sans option manuelle ni second point d'entrée.
 
 **The Compact App Type Rule.** Un titre d'administration reste entre 24 et 30 px ; la
 priorité vient de la grille, du poids et de l'ordre des informations, jamais d'une échelle
