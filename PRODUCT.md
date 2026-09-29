@@ -14,11 +14,9 @@ web
 - L'organisateur ou le technicien intervient ponctuellement sur ce même écran pour
   diagnostiquer la borne et effectuer les gestes de maintenance urgents pendant un
   événement.
-- Un opérateur prépare l'événement et récupère les photos depuis le backoffice complet sur
-  un ordinateur du réseau local.
-- Le jour de l'événement, l'organisateur surveille la borne et effectue les interventions
-  urgentes depuis la console mobile dédiée, sur son smartphone connecté au hotspot local
-  du photobooth.
+- Un opérateur prépare l'événement, surveille la borne et récupère les photos depuis le
+  portail d'administration du réseau local. Le portail adapte les fonctions présentées à
+  la largeur disponible : vue complète sur ordinateur, vue allégée sur smartphone.
 
 ## Product Purpose
 
@@ -26,6 +24,9 @@ Drop Your Moment fait fonctionner un photobooth autonome : aperçu en direct, pr
 choix du rendu, conservation ou impression de la photo, puis remise à disposition de la
 borne. Le produit est réussi lorsque le parcours invité est évident et que les incidents
 courants peuvent être compris et corrigés rapidement sur place.
+
+Une installation Drop Your Moment pilote une seule borne. La gestion simultanée de
+plusieurs bornes n'est pas un cas d'usage du produit.
 
 ## Positioning
 
@@ -62,11 +63,13 @@ maintenance tactile locale protégée et une administration complète sur le LAN
   main au parcours invité.
 - La configuration d'overlay, l'archive complète et les réglages de format restent dans
   le portail d'administration complet.
-- La console smartphone ne duplique pas la préparation : elle expose l'état global, la
-  session, les consommables, les réglages rapides sûrs et les dernières photos. L'identité
-  de l'événement, l'overlay, les filtres, le format et la sécurité restent dans le
-  backoffice complet.
-- L'authentification du portail LAN complet reste hors périmètre du MVP.
+- Le portail d'administration propose deux vues du même produit, utilisables avant comme
+  pendant l'événement : une vue desktop complète et une vue mobile allégée. La vue mobile
+  expose l'état global, la session, les consommables, les réglages rapides sûrs et les
+  dernières photos ; l'identité de l'événement, l'overlay, les filtres, le format et la
+  sécurité restent dans la vue desktop.
+- Lorsque le hotspot opérateur est actif, le portail LAN exige le code de session affiché
+  dans la maintenance locale. Cette session vaut pour les présentations desktop et mobile.
 - Les fonctions Raspberry Pi et impression réelle restent en attente du matériel.
 
 ## Brand Commitments

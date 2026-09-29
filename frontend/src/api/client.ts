@@ -370,6 +370,12 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(config),
     }),
+  patchEventConfig: (changes: Partial<EventConfigPayload>) =>
+    request<EventConfigPayload>("/admin/event-config", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(changes),
+    }),
 };
 
 /** URL du flux MJPEG.

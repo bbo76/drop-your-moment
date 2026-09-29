@@ -8,15 +8,12 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
 
   build: {
-    // Trois points d'entrée dans un seul projet : kiosque, administration complète et
-    // pilotage mobile. Ils partagent le client d'API et les composants.
-    // partagent les jetons de design, le client d'API et les composants, sans
-    // dupliquer l'outillage ni l'arbre de dépendances.
+    // Deux points d'entrée dans un seul projet : kiosque et portail responsive.
+    // Ils partagent les jetons, le client d'API et les composants.
     rollupOptions: {
       input: {
         kiosk: "index.html",
         admin: "admin.html",
-        mobile: "mobile.html",
       },
     },
   },

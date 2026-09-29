@@ -103,10 +103,9 @@ export function DayOfView() {
 
   const saveQuickSetting = (changes: Partial<EventConfigPayload>) => {
     if (!config) return;
-    const next = { ...config, ...changes };
     void run(
       "settings",
-      async () => setConfig(await api.saveEventConfig(next)),
+      async () => setConfig(await api.patchEventConfig(changes)),
       "Réglage appliqué à la borne.",
     );
   };
