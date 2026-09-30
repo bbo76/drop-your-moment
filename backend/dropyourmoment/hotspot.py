@@ -282,7 +282,7 @@ class Hotspot:
     def disconnect_wifi(self) -> None:
         if not self.available:
             raise RuntimeError("Wi-Fi indisponible sur cette borne")
-        self.runner(["/usr/bin/nmcli", "device", "disconnect", self.interface])
+        self.runner(["sudo", "/usr/bin/nmcli", "device", "disconnect", self.interface])
 
     def forget_wifi(self, profile: str) -> None:
         if not self.available:
