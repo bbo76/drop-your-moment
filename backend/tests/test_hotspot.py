@@ -174,6 +174,14 @@ def test_profils_reconnexion_reseau_masque_et_oubli(tmp_path: Path) -> None:
     assert hidden_command[-2:] == ["hidden", "yes"]
 
 
+def test_deconnexion_wifi_utilise_la_commande_autorisee(tmp_path: Path) -> None:
+    hotspot, network = configured_hotspot(tmp_path, OperatorAccess(tmp_path))
+
+    hotspot.disconnect_wifi()
+
+    assert ["sudo", "/usr/bin/nmcli", "device", "disconnect", "wlan0"] in network.commands
+
+
 def test_api_locale_pilote_et_compte_les_clients(
     kiosk: TestClient, runtime: Runtime, tmp_path: Path
 ) -> None:
