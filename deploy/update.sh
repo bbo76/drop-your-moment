@@ -25,6 +25,13 @@ else
 fi
 git merge --ff-only "origin/$branch"
 
+if ! command -v nmcli >/dev/null 2>&1 \
+    || [ ! -s /etc/dropyourmoment/hotspot.secret ] \
+    || ! nmcli -g NAME connection show dym-hotspot >/dev/null 2>&1; then
+    echo "Configuration du réseau opérateur"
+    sudo "$repo_dir/deploy/install-hotspot.sh"
+fi
+
 echo "Synchronisation du backend"
 (cd backend && uv sync --no-dev --inexact)
 

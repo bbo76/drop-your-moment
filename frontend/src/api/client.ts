@@ -139,6 +139,27 @@ export interface MaintenanceSnapshot {
   print_busy: boolean;
   print_error: string | null;
   hotspot: HotspotStatus;
+  wifi: WifiStatus;
+}
+
+export interface WifiStatus {
+  available: boolean;
+  mode: "hotspot" | "client" | "offline";
+  ssid: string | null;
+  connectivity: "full" | "limited" | "portal" | "none" | "unknown";
+}
+
+export interface WifiNetwork {
+  ssid: string;
+  signal: number;
+  security: string;
+  active: boolean;
+  profile: string | null;
+}
+
+export interface WifiProfile {
+  name: string;
+  ssid: string;
 }
 
 export interface HotspotStatus {
@@ -317,6 +338,21 @@ export const api = {
   maintenanceStatus: () => request<MaintenanceSnapshot>("/api/maintenance/status"),
   changeHotspot: (action: "activate" | "deactivate") =>
     post<HotspotStatus>(`/api/maintenance/hotspot/${action}`),
+  scanWifi: () => request<WifiNetwork[]>("/api/maintenance/wifi/scan"),
+  wifiProfiles: () => request<WifiProfile[]>("/api/maintenance/wifi/profiles"),
+  connectWifi: (ssid: string, options: { password?: string; profile?: string; hidden?: boolean } = {}) =>
+    post<WifiStatus>("/api/maintenance/wifi/connect", {
+      ssid,
+      password: options.password || null,
+      profile: options.profile || null,
+      hidden: options.hidden ?? false,
+    }),
+  disconnectWifi: () => post<WifiStatus>("/api/maintenance/wifi/disconnect"),
+  forgetWifi: (profile: string) => request<void>("/api/maintenance/wifi/forget", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ profile }),
+  }),
   maintenanceGallery: (offset = 0, limit = 8) =>
     request<GalleryPage>(`/api/maintenance/gallery?offset=${offset}&limit=${limit}`),
   printMaintenanceGalleryEntry: async (sessionId: string, copies: number) => {

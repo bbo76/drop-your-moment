@@ -19,6 +19,21 @@ from dropyourmoment.storage.atomic import write_atomic
 CommandRunner = Callable[[list[str]], str]
 
 
+@dataclass(frozen=True)
+class WifiNetwork:
+    ssid: str
+    signal: int
+    security: str
+    active: bool
+    profile: str | None
+
+
+@dataclass(frozen=True)
+class WifiProfile:
+    name: str
+    ssid: str
+
+
 def _run(command: list[str]) -> str:
     return subprocess.run(command, check=True, capture_output=True, text=True).stdout
 
@@ -120,6 +135,156 @@ class Hotspot:
             "FAILED" not in line and "INCOMPLETE" not in line for line in output.splitlines()
         )
 
+    def wifi_status(self) -> dict[str, object]:
+        if not self.available:
+            return {"available": False, "mode": "offline", "ssid": None, "connectivity": "unknown"}
+        try:
+            connection = self.runner(
+                ["/usr/bin/nmcli", "-g", "GENERAL.CONNECTION", "device", "show", self.interface]
+            ).strip()
+            connectivity = self.runner(
+                ["/usr/bin/nmcli", "-t", "-f", "CONNECTIVITY", "general"]
+            ).strip()
+        except (OSError, subprocess.SubprocessError):
+            return {"available": True, "mode": "offline", "ssid": None, "connectivity": "unknown"}
+        active = connection not in {"", "--"}
+        return {
+            "available": True,
+            "mode": (
+                "hotspot" if connection == self.connection else "client" if active else "offline"
+            ),
+            "ssid": self.ssid if connection == self.connection else connection if active else None,
+            "connectivity": (
+                connectivity if connectivity in {"full", "limited", "portal", "none"} else "unknown"
+            ),
+        }
+
+    def scan_wifi(self) -> list[WifiNetwork]:
+        if not self.available:
+            return []
+        output = self.runner(
+            [
+                "/usr/bin/nmcli",
+                "-t",
+                "-f",
+                "IN-USE,SSID,SIGNAL,SECURITY",
+                "device",
+                "wifi",
+                "list",
+                "ifname",
+                self.interface,
+                "--rescan",
+                "yes",
+            ]
+        )
+        profiles = {profile.ssid: profile.name for profile in self.wifi_profiles()}
+        by_ssid: dict[str, WifiNetwork] = {}
+        for line in output.splitlines():
+            fields = _split_nmcli(line)
+            if len(fields) != 4 or not fields[1]:
+                continue
+            try:
+                signal = max(0, min(100, int(fields[2])))
+            except ValueError:
+                continue
+            network = WifiNetwork(
+                fields[1],
+                signal,
+                fields[3] or "Ouvert",
+                fields[0] == "*",
+                profiles.get(fields[1]),
+            )
+            previous = by_ssid.get(network.ssid)
+            if previous is None or network.signal > previous.signal:
+                by_ssid[network.ssid] = network
+        return sorted(
+            by_ssid.values(), key=lambda network: (-network.signal, network.ssid.casefold())
+        )
+
+    def wifi_profiles(self) -> list[WifiProfile]:
+        if not self.available:
+            return []
+        output = self.runner(["/usr/bin/nmcli", "-t", "-f", "NAME,TYPE", "connection", "show"])
+        profiles: list[WifiProfile] = []
+        for line in output.splitlines():
+            fields = _split_nmcli(line)
+            if len(fields) != 2 or fields[1] not in {"802-11-wireless", "wifi"}:
+                continue
+            ssid = self.runner(
+                [
+                    "/usr/bin/nmcli",
+                    "-g",
+                    "802-11-wireless.ssid",
+                    "connection",
+                    "show",
+                    "id",
+                    fields[0],
+                ]
+            ).strip()
+            if ssid:
+                profiles.append(WifiProfile(fields[0], ssid))
+        return sorted(profiles, key=lambda profile: profile.ssid.casefold())
+
+    def connect_wifi(
+        self,
+        ssid: str,
+        password: str | None = None,
+        *,
+        profile: str | None = None,
+        hidden: bool = False,
+    ) -> None:
+        if not self.available:
+            raise RuntimeError("Wi-Fi indisponible sur cette borne")
+        hotspot_was_active = self.active()
+        try:
+            if hotspot_was_active:
+                self.deactivate()
+            command = (
+                [
+                    "/usr/bin/nmcli",
+                    "--wait",
+                    "20",
+                    "connection",
+                    "up",
+                    "id",
+                    profile,
+                    "ifname",
+                    self.interface,
+                ]
+                if profile
+                else [
+                    "/usr/bin/nmcli",
+                    "--wait",
+                    "20",
+                    "device",
+                    "wifi",
+                    "connect",
+                    ssid,
+                    "ifname",
+                    self.interface,
+                ]
+            )
+            if password and not profile:
+                command.extend(["password", password])
+            if hidden and not profile:
+                command.extend(["hidden", "yes"])
+            self.runner(command)
+            self._save(False)
+        except Exception:
+            if hotspot_was_active:
+                self.activate()
+            raise
+
+    def disconnect_wifi(self) -> None:
+        if not self.available:
+            raise RuntimeError("Wi-Fi indisponible sur cette borne")
+        self.runner(["/usr/bin/nmcli", "device", "disconnect", self.interface])
+
+    def forget_wifi(self, profile: str) -> None:
+        if not self.available:
+            raise RuntimeError("Wi-Fi indisponible sur cette borne")
+        self.runner(["/usr/bin/nmcli", "connection", "delete", "id", profile])
+
     def qr_png(self, content: str) -> bytes:
         output = BytesIO()
         qrcode.make(content).save(output, format="PNG")
@@ -141,3 +306,22 @@ class Hotspot:
         if previous_connection not in {None, "", "--", self.connection}:
             state["previous_connection"] = previous_connection
         write_atomic(self.state_path, json.dumps(state).encode())
+
+
+def _split_nmcli(line: str) -> list[str]:
+    """Découpe la sortie terse de nmcli sans casser les SSID contenant ':' ou '\\'."""
+    fields = [""]
+    escaped = False
+    for character in line:
+        if escaped:
+            fields[-1] += character
+            escaped = False
+        elif character == "\\":
+            escaped = True
+        elif character == ":":
+            fields.append("")
+        else:
+            fields[-1] += character
+    if escaped:
+        fields[-1] += "\\"
+    return fields

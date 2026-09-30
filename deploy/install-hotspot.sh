@@ -34,6 +34,7 @@ nmcli connection modify "$CONNECTION" \
   ipv4.addresses 10.42.0.1/24 \
   ipv6.method disabled
 
+install -d -m 755 /etc/nftables.d
 install -m 644 "$SCRIPT_DIR/dropyourmoment-hotspot.nft" /etc/nftables.d/dropyourmoment-hotspot.nft
 install -m 644 "$SCRIPT_DIR/dropyourmoment-hotspot-firewall.service" /etc/systemd/system/dropyourmoment-hotspot-firewall.service
 install -m 440 "$SCRIPT_DIR/dropyourmoment-sudoers" /etc/sudoers.d/dropyourmoment

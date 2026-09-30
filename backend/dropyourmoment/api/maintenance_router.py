@@ -22,7 +22,7 @@ from dropyourmoment.api.kiosk_router import get_runtime
 from dropyourmoment.core.errors import PrinterError
 from dropyourmoment.core.event_config import LaunchFont
 from dropyourmoment.core.session import SessionState
-from dropyourmoment.hotspot import development_portal_url
+from dropyourmoment.hotspot import WifiNetwork, WifiProfile, development_portal_url
 from dropyourmoment.runtime import Runtime
 from dropyourmoment.storage.gallery import list_sessions, thumbnail_jpeg
 from dropyourmoment.system_power import PowerAction
@@ -52,6 +52,37 @@ class HotspotStatus(BaseModel):
     client_count: int
 
 
+class WifiStatus(BaseModel):
+    available: bool
+    mode: Literal["hotspot", "client", "offline"]
+    ssid: str | None
+    connectivity: Literal["full", "limited", "portal", "none", "unknown"]
+
+
+class WifiNetworkStatus(BaseModel):
+    ssid: str
+    signal: int
+    security: str
+    active: bool
+    profile: str | None
+
+
+class WifiProfileStatus(BaseModel):
+    name: str
+    ssid: str
+
+
+class WifiCredentials(BaseModel):
+    ssid: str = Field(min_length=1, max_length=32)
+    password: str | None = Field(default=None, min_length=8, max_length=63)
+    profile: str | None = Field(default=None, min_length=1, max_length=255)
+    hidden: bool = False
+
+
+class WifiProfileRequest(BaseModel):
+    profile: str = Field(min_length=1, max_length=255)
+
+
 class MaintenanceSnapshot(BaseModel):
     health: AdminHealth
     settings: MaintenanceSettings
@@ -59,6 +90,7 @@ class MaintenanceSnapshot(BaseModel):
     print_busy: bool
     print_error: str | None
     hotspot: HotspotStatus
+    wifi: WifiStatus
 
 
 def _authorized(
@@ -110,6 +142,7 @@ def maintenance_status(runtime: Runtime = Depends(_authorized)) -> MaintenanceSn
         print_busy=runtime.print_flow.job is not None,
         print_error=runtime.print_flow.last_error,
         hotspot=_hotspot_status(runtime),
+        wifi=WifiStatus.model_validate(runtime.hotspot.wifi_status()),
     )
 
 
@@ -147,6 +180,59 @@ def change_hotspot(
     except (OSError, subprocess.SubprocessError, RuntimeError) as exc:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
     return _hotspot_status(runtime)
+
+
+@router.get("/wifi/scan", response_model=list[WifiNetworkStatus])
+def scan_wifi(runtime: Runtime = Depends(_authorized)) -> list[WifiNetwork]:
+    try:
+        return runtime.hotspot.scan_wifi()
+    except (OSError, subprocess.SubprocessError, RuntimeError) as exc:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+
+
+@router.get("/wifi/profiles", response_model=list[WifiProfileStatus])
+def wifi_profiles(runtime: Runtime = Depends(_authorized)) -> list[WifiProfile]:
+    try:
+        return runtime.hotspot.wifi_profiles()
+    except (OSError, subprocess.SubprocessError, RuntimeError) as exc:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+
+
+@router.post("/wifi/connect", response_model=WifiStatus)
+def connect_wifi(
+    credentials: WifiCredentials,
+    runtime: Runtime = Depends(_authorized),
+) -> WifiStatus:
+    try:
+        runtime.hotspot.connect_wifi(
+            credentials.ssid,
+            credentials.password,
+            profile=credentials.profile,
+            hidden=credentials.hidden,
+        )
+    except (OSError, subprocess.SubprocessError, RuntimeError) as exc:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+    return WifiStatus.model_validate(runtime.hotspot.wifi_status())
+
+
+@router.post("/wifi/disconnect", response_model=WifiStatus)
+def disconnect_wifi(runtime: Runtime = Depends(_authorized)) -> WifiStatus:
+    try:
+        runtime.hotspot.disconnect_wifi()
+    except (OSError, subprocess.SubprocessError, RuntimeError) as exc:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+    return WifiStatus.model_validate(runtime.hotspot.wifi_status())
+
+
+@router.post("/wifi/forget", status_code=status.HTTP_204_NO_CONTENT)
+def forget_wifi(
+    request: WifiProfileRequest,
+    runtime: Runtime = Depends(_authorized),
+) -> None:
+    try:
+        runtime.hotspot.forget_wifi(request.profile)
+    except (OSError, subprocess.SubprocessError, RuntimeError) as exc:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
 
 
 @router.get("/hotspot/qr/{kind}")
