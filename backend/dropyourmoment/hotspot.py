@@ -57,10 +57,13 @@ class Hotspot:
 
     @property
     def desired_active(self) -> bool:
-        try:
-            return json.loads(self.state_path.read_text()).get("active") is True
-        except (OSError, ValueError, TypeError, json.JSONDecodeError):
-            return False
+        return self._state().get("active") is True
+
+    @property
+    def previous_connection(self) -> str | None:
+        value = self._state().get("previous_connection")
+        valid = isinstance(value, str) and value not in {"", "--", self.connection}
+        return value if valid else None
 
     @property
     def secret(self) -> str | None:
@@ -72,15 +75,21 @@ class Hotspot:
 
     def activate(self) -> None:
         self._require_configured()
+        previous_connection = self.runner(
+            ["/usr/bin/nmcli", "-g", "GENERAL.CONNECTION", "device", "show", self.interface]
+        ).strip()
         self.runner(["sudo", "/usr/bin/nmcli", "connection", "up", "id", self.connection])
         self.operator_access.activate()
-        self._save(True)
+        self._save(True, previous_connection)
 
     def deactivate(self) -> None:
+        previous_connection = self.previous_connection
         if self.active():
             self.runner(["sudo", "/usr/bin/nmcli", "connection", "down", "id", self.connection])
         self.operator_access.deactivate()
         self._save(False)
+        if previous_connection:
+            self.runner(["sudo", "/usr/bin/nmcli", "connection", "up", "id", previous_connection])
 
     def restore(self) -> None:
         if not self.desired_active:
@@ -120,5 +129,15 @@ class Hotspot:
         if not self.available or self.secret is None:
             raise RuntimeError("hotspot non configuré sur cette borne")
 
-    def _save(self, active: bool) -> None:
-        write_atomic(self.state_path, json.dumps({"active": active}).encode())
+    def _state(self) -> dict[str, object]:
+        try:
+            value = json.loads(self.state_path.read_text())
+            return value if isinstance(value, dict) else {}
+        except (OSError, ValueError, TypeError, json.JSONDecodeError):
+            return {}
+
+    def _save(self, active: bool, previous_connection: str | None = None) -> None:
+        state: dict[str, object] = {"active": active}
+        if previous_connection not in {None, "", "--", self.connection}:
+            state["previous_connection"] = previous_connection
+        write_atomic(self.state_path, json.dumps(state).encode())
