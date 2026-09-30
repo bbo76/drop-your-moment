@@ -104,7 +104,7 @@ class Hotspot:
         self.operator_access.deactivate()
         self._save(False)
         if previous_connection:
-            self.runner(["sudo", "/usr/bin/nmcli", "connection", "up", "id", previous_connection])
+            self.runner(["/usr/bin/nmcli", "connection", "up", "id", previous_connection])
 
     def restore(self) -> None:
         if not self.desired_active:
@@ -181,7 +181,7 @@ class Hotspot:
         by_ssid: dict[str, WifiNetwork] = {}
         for line in output.splitlines():
             fields = _split_nmcli(line)
-            if len(fields) != 4 or not fields[1]:
+            if len(fields) != 4 or not fields[1] or fields[1] == self.ssid:
                 continue
             try:
                 signal = max(0, min(100, int(fields[2])))
@@ -208,7 +208,11 @@ class Hotspot:
         profiles: list[WifiProfile] = []
         for line in output.splitlines():
             fields = _split_nmcli(line)
-            if len(fields) != 2 or fields[1] not in {"802-11-wireless", "wifi"}:
+            if (
+                len(fields) != 2
+                or fields[0] == self.connection
+                or fields[1] not in {"802-11-wireless", "wifi"}
+            ):
                 continue
             ssid = self.runner(
                 [

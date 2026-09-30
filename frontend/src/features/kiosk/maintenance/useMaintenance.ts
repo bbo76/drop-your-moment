@@ -84,9 +84,9 @@ export function useMaintenance(debugFailure: DebugFailure, onExpired: () => void
       const hotspot = await api.changeHotspot(action);
       setSnapshot((current) => current && ({ ...current, hotspot }));
       setError(null);
-    } catch {
-      setError("Le réseau opérateur n’a pas pu être modifié.");
-      throw new Error("hotspot");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Le réseau opérateur n’a pas pu être modifié.");
+      throw cause;
     } finally {
       setSaving(false);
     }

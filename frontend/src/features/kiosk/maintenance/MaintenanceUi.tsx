@@ -15,10 +15,11 @@ import { GhostButton } from "../components/Screen";
 import type { MaintenanceStatus } from "./maintenanceDiagnostics";
 import type { MaintenancePrintNotice } from "./maintenanceDiagnostics";
 
-export function MaintenanceFrame({ title, status, printNotice, onBack, children }: {
+export function MaintenanceFrame({ title, status, printNotice, error, onBack, children }: {
   title: string;
   status: MaintenanceStatus;
   printNotice: MaintenancePrintNotice | null;
+  error?: string | null;
   onBack: () => void;
   children: ReactNode;
 }) {
@@ -35,6 +36,7 @@ export function MaintenanceFrame({ title, status, printNotice, onBack, children 
         </div>
       </header>
       {children}
+      {error && <p className="fixed bottom-3 left-4 z-50 rounded-panel bg-warn-bg px-4 py-2 text-lg font-medium text-warn" role="alert">{error}</p>}
     </main>
   );
 }
