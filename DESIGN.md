@@ -256,7 +256,10 @@ La maintenance présente les journaux comme un registre tactile en deux zones : 
 chronologique à gauche, contexte et conseil à droite. Les filtres Incidents/Tout et
 Borne/Caméra/Impression/Réseau restent des choix de 48 px minimum ; seule la liste défile.
 L’heure utilise des chiffres tabulaires, le niveau est toujours nommé et le corail reste
-réservé aux incidents. L’administration desktop reprend la même taxonomie dans un tableau
+réservé aux incidents. Une bascule Live, arrêtée par défaut, actualise la première page
+toutes les trois secondes tant que la vue est visible ; elle s'arrête explicitement au
+second appui et automatiquement dès que l'opérateur consulte des événements plus anciens.
+L’administration desktop reprend la même taxonomie dans un tableau
 compact avec filtres, recherche, détail et export ; cette destination reste absente de la
 présentation mobile.
 

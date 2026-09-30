@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-import { CircleAlert, RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { CircleAlert, Radio, RefreshCw } from "lucide-react";
 
 import {
   api,
@@ -31,23 +31,37 @@ export function MaintenanceJournalView() {
   const [nextOffset, setNextOffset] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [live, setLive] = useState(false);
+  const loading = useRef(false);
 
-  const load = useCallback(async (offset = 0, append = false) => {
+  const load = useCallback(async (offset = 0, append = false, preserveSelection = false) => {
+    if (loading.current) return;
+    loading.current = true;
     setBusy(true);
     try {
       const page = await api.maintenanceJournal({ offset, limit: 40, component, incidents });
       setEntries((current) => append ? [...current, ...page.entries] : page.entries);
-      setSelected((current) => append ? current : (page.entries[0] ?? null));
+      setSelected((current) => append || preserveSelection
+        ? page.entries.find((entry) => entryKey(entry) === entryKey(current)) ?? current ?? page.entries[0] ?? null
+        : (page.entries[0] ?? null));
       setNextOffset(page.next_offset);
       setError(null);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Impossible de lire les journaux.");
     } finally {
+      loading.current = false;
       setBusy(false);
     }
   }, [component, incidents]);
 
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    if (!live) return;
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible") void load(0, false, true);
+    }, 3_000);
+    return () => window.clearInterval(interval);
+  }, [live, load]);
 
   const incidentCount = entries.filter(({ level }) =>
     level === "critical" || level === "error" || level === "warning"
@@ -59,10 +73,16 @@ export function MaintenanceJournalView() {
         <p className="text-xl font-semibold">
           {error ? "Lecture indisponible" : incidentCount ? `${incidentCount} incident${incidentCount > 1 ? "s" : ""} affiché${incidentCount > 1 ? "s" : ""}` : "Aucun incident affiché"}
         </p>
-        <button type="button" disabled={busy} onClick={() => void load()} className="flex min-h-12 items-center gap-2 rounded-panel border-2 border-edge px-4 text-lg font-semibold disabled:opacity-40">
-          <RefreshCw className={`size-5 ${busy ? "motion-safe:animate-spin" : ""}`} />
-          Actualiser
-        </button>
+        <div className="flex gap-2">
+          <button type="button" aria-pressed={live} onClick={() => setLive((current) => !current)} className="flex min-h-12 items-center gap-2 rounded-panel border-2 border-edge px-4 text-lg font-semibold aria-pressed:border-signal aria-pressed:bg-signal aria-pressed:text-signal-ink">
+            <Radio className={`size-5 ${live ? "motion-safe:animate-pulse" : ""}`} />
+            {live ? "Live activé" : "Live arrêté"}
+          </button>
+          <button type="button" disabled={busy} onClick={() => void load()} className="flex min-h-12 items-center gap-2 rounded-panel border-2 border-edge px-4 text-lg font-semibold disabled:opacity-40">
+            <RefreshCw className={`size-5 ${busy ? "motion-safe:animate-spin" : ""}`} />
+            Actualiser
+          </button>
+        </div>
       </div>
       <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Filtres des journaux">
         <FilterButton pressed={incidents} onClick={() => setIncidents(true)}>Incidents</FilterButton>
@@ -81,7 +101,7 @@ export function MaintenanceJournalView() {
               <span className="min-w-0"><strong className="block text-base font-semibold">{componentLabel(entry.component)}</strong><span className="block truncate text-base text-muted">{entry.message}</span></span>
             </button>
           ))}
-          {nextOffset !== null && <button type="button" disabled={busy} onClick={() => void load(nextOffset, true)} className="min-h-14 w-full text-lg font-semibold text-signal disabled:opacity-40">Afficher les événements plus anciens</button>}
+          {nextOffset !== null && <button type="button" disabled={busy} onClick={() => { setLive(false); void load(nextOffset, true); }} className="min-h-14 w-full text-lg font-semibold text-signal disabled:opacity-40">Afficher les événements plus anciens</button>}
         </div>
         <aside className="min-h-0 rounded-panel border-2 border-edge bg-ink p-5" aria-label="Détail du journal sélectionné">
           {selected ? <><div className="flex items-center justify-between gap-3"><span className={`font-semibold ${isIncident(selected) ? "text-warn" : "text-signal"}`}>{LEVEL_LABEL[selected.level]}</span><time className="text-base tabular-nums text-muted">{dateTime(selected.timestamp)}</time></div><h2 className="mt-5 text-2xl font-bold">{componentLabel(selected.component)}</h2><p className="mt-3 max-h-32 overflow-y-auto text-lg leading-snug text-body">{selected.message}</p><p className="mt-5 border-t border-edge pt-4 text-base text-muted">Conseil : notez l’heure et le composant. Si le problème persiste après un nouvel essai, consultez le détail depuis l’administration.</p></> : <p className="text-lg text-muted">Sélectionnez une ligne pour lire son contexte.</p>}
@@ -101,5 +121,6 @@ function EmptyState({ title, detail }: { title: string; detail: string }) {
 
 const isIncident = ({ level }: JournalEntry) => ["critical", "error", "warning"].includes(level);
 const componentLabel = (component: JournalComponent) => ({ borne: "Borne", camera: "Caméra", impression: "Impression", reseau: "Réseau" })[component];
+const entryKey = (entry: JournalEntry | null) => entry ? `${entry.timestamp}-${entry.message}` : "";
 const time = (value: string) => new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date(value));
 const dateTime = (value: string) => new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
