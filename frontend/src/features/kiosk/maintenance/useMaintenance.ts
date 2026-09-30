@@ -109,20 +109,6 @@ export function useMaintenance(debugFailure: DebugFailure, onExpired: () => void
     }
   };
 
-  const disconnectWifi = async () => {
-    setSaving(true);
-    try {
-      const wifi = await api.disconnectWifi();
-      setSnapshot((current) => current && ({ ...current, wifi }));
-      setError(null);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Déconnexion Wi-Fi impossible.");
-      throw cause;
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const forgetWifi = async (profile: string) => {
     setSaving(true);
     try {
@@ -152,7 +138,6 @@ export function useMaintenance(debugFailure: DebugFailure, onExpired: () => void
     saveSettings,
     changeHotspot,
     connectWifi,
-    disconnectWifi,
     forgetWifi,
     reloadCassette: () => run(api.reloadCassette, "Le rechargement du bac n’a pas été enregistré."),
     replaceInk: (capacity: 36 | 54) => run(() => api.replaceMaintenanceInk(capacity), "Le remplacement de la cassette d’encre n’a pas été enregistré."),
