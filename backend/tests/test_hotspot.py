@@ -25,11 +25,16 @@ class FakeNetwork:
         if "CONNECTIVITY" in command:
             return "full\n" if self.current_connection not in {"", "--"} else "none\n"
         if "IN-USE,SSID,SIGNAL,SECURITY" in command:
-            return "*:wifi-maison:74:WPA2\n:Invites:61:\n:Atelier\\: photo:82:WPA3\n:Invites:32:\n"
+            return (
+                "*:wifi-maison:74:WPA2\n:DYM-PhotoBooth:99:WPA2\n:Invites:61:\n"
+                ":Atelier\\: photo:82:WPA3\n:Invites:32:\n"
+            )
         if "NAME,TYPE" in command:
-            return "wifi-maison:802-11-wireless\ncable:802-3-ethernet\n"
+            return (
+                "wifi-maison:802-11-wireless\ndym-hotspot:802-11-wireless\ncable:802-3-ethernet\n"
+            )
         if "802-11-wireless.ssid" in command:
-            return "wifi-maison\n"
+            return "DYM-PhotoBooth\n" if command[-1] == "dym-hotspot" else "wifi-maison\n"
         if "wifi" in command and "connect" in command:
             if self.fail_next_wifi_connection:
                 self.fail_next_wifi_connection = False
@@ -106,14 +111,7 @@ def test_desactivation_coupe_le_reseau_et_invalide_les_acces(tmp_path: Path) -> 
     assert not hotspot.active()
     assert access.code is None
     assert network.current_connection == "wifi-maison"
-    assert [
-        "sudo",
-        "/usr/bin/nmcli",
-        "connection",
-        "up",
-        "id",
-        "wifi-maison",
-    ] in network.commands
+    assert ["/usr/bin/nmcli", "connection", "up", "id", "wifi-maison"] in network.commands
 
 
 def test_scan_wifi_fusionne_trie_et_decoupe_les_ssid_echappes(tmp_path: Path) -> None:
