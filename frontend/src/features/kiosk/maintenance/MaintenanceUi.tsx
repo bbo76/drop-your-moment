@@ -6,19 +6,23 @@ import {
   HardDrive,
   Images,
   Printer,
+  Router,
   Wifi,
   SlidersHorizontal,
   type LucideIcon,
 } from "lucide-react";
 
 import { GhostButton } from "../components/Screen";
+import type { HotspotStatus, WifiStatus } from "@/api/client";
 import type { MaintenanceStatus } from "./maintenanceDiagnostics";
 import type { MaintenancePrintNotice } from "./maintenanceDiagnostics";
 
-export function MaintenanceFrame({ title, status, printNotice, error, onBack, children }: {
+export function MaintenanceFrame({ title, status, printNotice, wifi, hotspot, error, onBack, children }: {
   title: string;
   status: MaintenanceStatus;
   printNotice: MaintenancePrintNotice | null;
+  wifi: WifiStatus;
+  hotspot: HotspotStatus;
   error?: string | null;
   onBack: () => void;
   children: ReactNode;
@@ -32,6 +36,7 @@ export function MaintenanceFrame({ title, status, printNotice, error, onBack, ch
         </div>
         <div className="flex items-center gap-3">
           <MaintenancePrintStatus notice={printNotice} />
+          <MaintenanceNetworkStatus wifi={wifi} hotspot={hotspot} />
           <MaintenanceStatusBanner status={status} />
         </div>
       </header>
@@ -79,7 +84,13 @@ export function MaintenanceStatusBanner({ status }: { status: MaintenanceStatus 
       </div>
     );
   }
-  return <div className="flex min-h-14 items-center px-1 text-lg font-semibold text-signal">Borne prête</div>;
+  return null;
+}
+
+export function MaintenanceNetworkStatus({ wifi, hotspot }: { wifi: WifiStatus; hotspot: HotspotStatus }) {
+  if (hotspot.active) return <div className="flex min-h-12 items-center gap-2 text-base font-semibold text-signal" role="status" aria-label={`Réseau opérateur ${hotspot.ssid} actif`}><Router className="size-7" strokeWidth={1.8} /><span>Wi-Fi opérateur</span></div>;
+  if (wifi.mode === "client") return <div className="flex min-h-12 min-w-0 items-center gap-2 text-base font-semibold text-signal" role="status" aria-label={`Connectée au Wi-Fi ${wifi.ssid ?? "client"}`}><Wifi className="size-7 flex-none" strokeWidth={1.8} /><span className="max-w-40 truncate">{wifi.ssid ?? "Wi-Fi"}</span></div>;
+  return null;
 }
 
 export function MaintenanceIcon({ name, className = "size-[4.25rem] rounded-[0.55rem] bg-signal p-[0.9rem] fill-none stroke-current stroke-2 text-signal-ink [stroke-linecap:round] [stroke-linejoin:round]" }: {
