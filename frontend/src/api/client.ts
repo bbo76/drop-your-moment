@@ -347,7 +347,6 @@ export const api = {
       profile: options.profile || null,
       hidden: options.hidden ?? false,
     }),
-  disconnectWifi: () => post<WifiStatus>("/api/maintenance/wifi/disconnect"),
   forgetWifi: (profile: string) => request<void>("/api/maintenance/wifi/forget", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
