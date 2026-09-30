@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -15,13 +16,31 @@ class FakeNetwork:
         self.active = False
         self.current_connection = "wifi-maison"
         self.commands: list[list[str]] = []
+        self.fail_next_wifi_connection = False
 
     def __call__(self, command: list[str]) -> str:
         self.commands.append(command)
         if "GENERAL.CONNECTION" in command:
             return f"{self.current_connection}\n"
+        if "CONNECTIVITY" in command:
+            return "full\n" if self.current_connection not in {"", "--"} else "none\n"
+        if "IN-USE,SSID,SIGNAL,SECURITY" in command:
+            return "*:wifi-maison:74:WPA2\n:Invites:61:\n:Atelier\\: photo:82:WPA3\n:Invites:32:\n"
+        if "NAME,TYPE" in command:
+            return "wifi-maison:802-11-wireless\ncable:802-3-ethernet\n"
+        if "802-11-wireless.ssid" in command:
+            return "wifi-maison\n"
+        if "wifi" in command and "connect" in command:
+            if self.fail_next_wifi_connection:
+                self.fail_next_wifi_connection = False
+                raise subprocess.CalledProcessError(10, command)
+            self.current_connection = command[command.index("connect") + 1]
+            self.active = False
+            return ""
+        if "delete" in command:
+            return ""
         if "up" in command:
-            self.current_connection = command[-1]
+            self.current_connection = command[command.index("id") + 1]
             self.active = self.current_connection == "dym-hotspot"
         elif "down" in command:
             self.active = False
@@ -97,6 +116,66 @@ def test_desactivation_coupe_le_reseau_et_invalide_les_acces(tmp_path: Path) -> 
     ] in network.commands
 
 
+def test_scan_wifi_fusionne_trie_et_decoupe_les_ssid_echappes(tmp_path: Path) -> None:
+    hotspot, _ = configured_hotspot(tmp_path, OperatorAccess(tmp_path))
+
+    networks = hotspot.scan_wifi()
+
+    assert [(item.ssid, item.signal, item.security, item.profile) for item in networks] == [
+        ("Atelier: photo", 82, "WPA3", None),
+        ("wifi-maison", 74, "WPA2", "wifi-maison"),
+        ("Invites", 61, "Ouvert", None),
+    ]
+
+
+def test_connexion_client_coupe_le_hotspot_et_ne_persiste_pas_le_secret(tmp_path: Path) -> None:
+    access = OperatorAccess(tmp_path)
+    hotspot, network = configured_hotspot(tmp_path, access)
+    hotspot.activate()
+
+    hotspot.connect_wifi("Atelier", "secret-client")
+
+    assert hotspot.wifi_status() == {
+        "available": True,
+        "mode": "client",
+        "ssid": "Atelier",
+        "connectivity": "full",
+    }
+    assert access.code is None
+    assert "secret-client" not in hotspot.state_path.read_text()
+
+
+def test_echec_de_connexion_restaure_le_hotspot(tmp_path: Path) -> None:
+    access = OperatorAccess(tmp_path)
+    hotspot, network = configured_hotspot(tmp_path, access)
+    hotspot.activate()
+    network.fail_next_wifi_connection = True
+
+    try:
+        hotspot.connect_wifi("Injoignable", "secret-client")
+    except subprocess.CalledProcessError:
+        pass
+
+    assert hotspot.active()
+    assert hotspot.desired_active
+    assert access.code is not None
+
+
+def test_profils_reconnexion_reseau_masque_et_oubli(tmp_path: Path) -> None:
+    hotspot, network = configured_hotspot(tmp_path, OperatorAccess(tmp_path))
+
+    assert [(profile.name, profile.ssid) for profile in hotspot.wifi_profiles()] == [
+        ("wifi-maison", "wifi-maison")
+    ]
+    hotspot.connect_wifi("wifi-maison", profile="wifi-maison")
+    hotspot.connect_wifi("Secret", "mot-de-passe", hidden=True)
+    hotspot.forget_wifi("wifi-maison")
+
+    assert ["/usr/bin/nmcli", "connection", "delete", "id", "wifi-maison"] in network.commands
+    hidden_command = next(command for command in network.commands if "Secret" in command)
+    assert hidden_command[-2:] == ["hidden", "yes"]
+
+
 def test_api_locale_pilote_et_compte_les_clients(
     kiosk: TestClient, runtime: Runtime, tmp_path: Path
 ) -> None:
@@ -109,6 +188,31 @@ def test_api_locale_pilote_et_compte_les_clients(
     assert response.json()["active"] is True
     assert response.json()["client_count"] == 2
     assert len(response.json()["admin_code"]) == 6
+
+
+def test_api_wifi_ne_renvoie_jamais_le_mot_de_passe(
+    kiosk: TestClient, runtime: Runtime, tmp_path: Path
+) -> None:
+    runtime.hotspot, _ = configured_hotspot(tmp_path, runtime.operator_access)
+    assert kiosk.post("/api/maintenance/unlock", json={"pin": "2580"}).status_code == 204
+
+    networks = kiosk.get("/api/maintenance/wifi/scan")
+    profiles = kiosk.get("/api/maintenance/wifi/profiles")
+    connected = kiosk.post(
+        "/api/maintenance/wifi/connect",
+        json={"ssid": "Atelier", "password": "secret-client"},
+    )
+
+    assert networks.status_code == 200
+    assert networks.json()[0]["ssid"] == "Atelier: photo"
+    assert profiles.json() == [{"name": "wifi-maison", "ssid": "wifi-maison"}]
+    assert connected.status_code == 200
+    assert connected.json()["ssid"] == "Atelier"
+    assert "secret-client" not in connected.text
+    assert (
+        kiosk.post("/api/maintenance/wifi/forget", json={"profile": "wifi-maison"}).status_code
+        == 204
+    )
 
 
 def test_qr_de_developpement_utilisent_l_adresse_du_poste(

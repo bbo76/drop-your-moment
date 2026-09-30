@@ -17,6 +17,12 @@ const snapshot = {
     portal_url: "http://10.42.0.1:8001/",
     client_count: 0,
   },
+  wifi: {
+    available: false,
+    mode: "offline",
+    ssid: null,
+    connectivity: "unknown",
+  },
   settings: {
     default_shot_timer_seconds: 3,
     screen_flash_enabled: true,
