@@ -90,6 +90,10 @@ class Hotspot:
 
     def activate(self) -> None:
         self._require_configured()
+        if self.active():
+            self.operator_access.activate()
+            self._save(True, self.previous_connection)
+            return
         previous_connection = self.runner(
             ["/usr/bin/nmcli", "-g", "GENERAL.CONNECTION", "device", "show", self.interface]
         ).strip()

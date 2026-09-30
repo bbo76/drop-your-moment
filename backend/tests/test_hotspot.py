@@ -97,6 +97,17 @@ def test_activation_persiste_et_restaure_le_hotspot(tmp_path: Path) -> None:
     assert network.commands.count(["/usr/bin/nmcli", "connection", "up", "id", "dym-hotspot"]) == 2
 
 
+def test_double_activation_conserve_la_connexion_precedente(tmp_path: Path) -> None:
+    access = OperatorAccess(tmp_path)
+    hotspot, network = configured_hotspot(tmp_path, access)
+
+    hotspot.activate()
+    hotspot.activate()
+    hotspot.deactivate()
+
+    assert network.current_connection == "wifi-maison"
+
+
 def test_desactivation_coupe_le_reseau_et_invalide_les_acces(tmp_path: Path) -> None:
     access = OperatorAccess(tmp_path)
     hotspot, network = configured_hotspot(tmp_path, access)
