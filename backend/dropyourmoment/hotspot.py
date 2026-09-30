@@ -155,17 +155,20 @@ class Hotspot:
         ssid = self.ssid if connection == self.connection else None
         if active and ssid is None:
             try:
-                ssid = self.runner(
-                    [
-                        "/usr/bin/nmcli",
-                        "-g",
-                        "802-11-wireless.ssid",
-                        "connection",
-                        "show",
-                        "id",
-                        connection,
-                    ]
-                ).strip() or None
+                ssid = (
+                    self.runner(
+                        [
+                            "/usr/bin/nmcli",
+                            "-g",
+                            "802-11-wireless.ssid",
+                            "connection",
+                            "show",
+                            "id",
+                            connection,
+                        ]
+                    ).strip()
+                    or None
+                )
             except (OSError, subprocess.SubprocessError):
                 pass
         return {
