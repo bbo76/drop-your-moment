@@ -1,14 +1,15 @@
 table inet dropyourmoment_hotspot {
   chain input {
     type filter hook input priority -10; policy accept;
-    iifname "wlan0" udp dport { 53, 67 } accept
-    iifname "wlan0" tcp dport { 53, 8001 } accept
-    iifname "wlan0" ip protocol icmp accept
-    iifname "wlan0" drop
+    iifname "wlan0" udp dport 67 accept
+    iifname "wlan0" ip daddr 10.42.0.1 udp dport 53 accept
+    iifname "wlan0" ip daddr 10.42.0.1 tcp dport { 53, 8001 } accept
+    iifname "wlan0" ip daddr 10.42.0.1 ip protocol icmp accept
+    iifname "wlan0" ip daddr 10.42.0.1 drop
   }
 
   chain forward {
     type filter hook forward priority -10; policy accept;
-    iifname "wlan0" drop
+    iifname "wlan0" ip saddr 10.42.0.0/24 drop
   }
 }

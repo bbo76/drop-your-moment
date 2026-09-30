@@ -13,14 +13,19 @@ from dropyourmoment.system_power import SystemPower
 class FakeNetwork:
     def __init__(self) -> None:
         self.active = False
+        self.current_connection = "wifi-maison"
         self.commands: list[list[str]] = []
 
     def __call__(self, command: list[str]) -> str:
         self.commands.append(command)
+        if "GENERAL.CONNECTION" in command:
+            return f"{self.current_connection}\n"
         if "up" in command:
-            self.active = True
+            self.current_connection = command[-1]
+            self.active = self.current_connection == "dym-hotspot"
         elif "down" in command:
             self.active = False
+            self.current_connection = "--"
         elif "GENERAL.STATE" in command:
             return "activated\n" if self.active else "deactivated\n"
         elif "neigh" in command:
@@ -73,7 +78,7 @@ def test_activation_persiste_et_restaure_le_hotspot(tmp_path: Path) -> None:
 
 def test_desactivation_coupe_le_reseau_et_invalide_les_acces(tmp_path: Path) -> None:
     access = OperatorAccess(tmp_path)
-    hotspot, _ = configured_hotspot(tmp_path, access)
+    hotspot, network = configured_hotspot(tmp_path, access)
     hotspot.activate()
 
     hotspot.deactivate()
@@ -81,6 +86,15 @@ def test_desactivation_coupe_le_reseau_et_invalide_les_acces(tmp_path: Path) -> 
     assert not hotspot.desired_active
     assert not hotspot.active()
     assert access.code is None
+    assert network.current_connection == "wifi-maison"
+    assert [
+        "sudo",
+        "/usr/bin/nmcli",
+        "connection",
+        "up",
+        "id",
+        "wifi-maison",
+    ] in network.commands
 
 
 def test_api_locale_pilote_et_compte_les_clients(
