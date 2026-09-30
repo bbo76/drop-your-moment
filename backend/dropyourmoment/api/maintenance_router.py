@@ -23,6 +23,13 @@ from dropyourmoment.core.errors import PrinterError
 from dropyourmoment.core.event_config import LaunchFont
 from dropyourmoment.core.session import SessionState
 from dropyourmoment.hotspot import WifiNetwork, WifiProfile, development_portal_url
+from dropyourmoment.journal import (
+    JournalComponent,
+    JournalLevel,
+    JournalPage,
+    JournalUnavailable,
+    read_journal,
+)
 from dropyourmoment.runtime import Runtime
 from dropyourmoment.storage.gallery import list_sessions, thumbnail_jpeg
 from dropyourmoment.system_power import PowerAction
@@ -144,6 +151,29 @@ def maintenance_status(runtime: Runtime = Depends(_authorized)) -> MaintenanceSn
         hotspot=_hotspot_status(runtime),
         wifi=WifiStatus.model_validate(runtime.hotspot.wifi_status()),
     )
+
+
+@router.get("/journal", response_model=JournalPage)
+def maintenance_journal(
+    offset: int = Query(0, ge=0, le=1_000),
+    limit: int = Query(40, ge=1, le=80),
+    incidents: bool = False,
+    level: JournalLevel | None = None,
+    component: JournalComponent | None = None,
+    runtime: Runtime = Depends(_authorized),
+) -> JournalPage:
+    del runtime  # l'injection porte l'autorisation locale ; la lecture reste sans état.
+    try:
+        return read_journal(
+            offset=offset,
+            limit=limit,
+            incidents=incidents,
+            level=level,
+            component=component,
+            detail=False,
+        )
+    except JournalUnavailable as exc:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
 
 
 def _hotspot_status(runtime: Runtime) -> HotspotStatus:

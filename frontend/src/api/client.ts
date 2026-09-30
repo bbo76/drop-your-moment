@@ -252,6 +252,41 @@ export interface GalleryPage {
   entries: GalleryEntry[];
 }
 
+export type JournalLevel = "critical" | "error" | "warning" | "info" | "debug";
+export type JournalComponent = "borne" | "camera" | "impression" | "reseau";
+
+export interface JournalEntry {
+  timestamp: string;
+  level: JournalLevel;
+  component: JournalComponent;
+  message: string;
+  context: Record<string, string>;
+}
+
+export interface JournalPage {
+  entries: JournalEntry[];
+  next_offset: number | null;
+}
+
+export interface JournalQuery {
+  offset?: number;
+  limit?: number;
+  since?: string;
+  until?: string;
+  level?: JournalLevel;
+  component?: JournalComponent;
+  search?: string;
+  incidents?: boolean;
+}
+
+const journalQuery = (query: JournalQuery) => {
+  const params = new URLSearchParams();
+  Object.entries(query).forEach(([key, value]) => {
+    if (value !== undefined && value !== "") params.set(key, String(value));
+  });
+  return params.toString();
+};
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, { cache: "no-store", ...init });
   if (!response.ok) throw new Error(await errorMessage(response, path));
@@ -336,6 +371,8 @@ export const api = {
     if (!response.ok) throw new Error(await errorMessage(response, "/api/maintenance/lock"));
   },
   maintenanceStatus: () => request<MaintenanceSnapshot>("/api/maintenance/status"),
+  maintenanceJournal: (query: JournalQuery = {}) =>
+    request<JournalPage>(`/api/maintenance/journal?${journalQuery(query)}`),
   changeHotspot: (action: "activate" | "deactivate") =>
     post<HotspotStatus>(`/api/maintenance/hotspot/${action}`),
   scanWifi: () => request<WifiNetwork[]>("/api/maintenance/wifi/scan"),
@@ -385,6 +422,8 @@ export const api = {
     if (!response.ok) throw new Error(await errorMessage(response, path));
   },
   health: () => request<AdminHealth>("/admin/system/health"),
+  adminJournal: (query: JournalQuery = {}) =>
+    request<JournalPage>(`/admin/journal?${journalQuery(query)}`),
   schedulePowerAction: (action: PowerAction) =>
     post<PowerTransition>(`/admin/power/${action}`),
   printerConfig: () => request<PrinterConfiguration>("/admin/printer"),
