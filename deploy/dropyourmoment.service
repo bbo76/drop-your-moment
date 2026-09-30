@@ -1,6 +1,7 @@
 [Unit]
 Description=Drop Your Moment backend
-After=network.target
+After=NetworkManager.service dropyourmoment-hotspot-firewall.service
+Wants=dropyourmoment-hotspot-firewall.service
 
 [Service]
 Type=simple

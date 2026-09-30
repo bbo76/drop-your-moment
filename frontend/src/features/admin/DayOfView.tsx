@@ -6,6 +6,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Progress } from "@/components/ui/progress";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
 
 import {
   api,
@@ -23,6 +24,7 @@ import { canReleaseKiosk, releaseKioskCopy } from "./kioskRelease";
 const POLL_INTERVAL_MS = 2_000;
 const RECENT_PHOTO_COUNT = 3;
 const SHOT_TIMER_OPTIONS: ShotTimerSeconds[] = [3, 5, 10];
+const DEFAULT_PAUSE_MESSAGE = "Je recharge les sourires…";
 type Readiness = {
   tone: "ready" | "busy" | "attention";
   title: string;
@@ -38,6 +40,7 @@ export function DayOfView() {
   const [working, setWorking] = useState<string | null>(null);
   const [releaseDialogOpen, setReleaseDialogOpen] = useState(false);
   const [refreshNonce, setRefreshNonce] = useState(0);
+  const [pauseMessage, setPauseMessage] = useState("");
 
   const loadPhotos = useCallback(async () => {
     const page = await api.gallery(0, RECENT_PHOTO_COUNT);
@@ -67,7 +70,10 @@ export function DayOfView() {
     };
 
     void tick();
-    void api.eventConfig().then(setConfig, () => undefined);
+    void api.eventConfig().then((fresh) => {
+      setConfig(fresh);
+      setPauseMessage(fresh.pause_message);
+    }, () => undefined);
     void loadPhotos().catch(() => undefined);
     return () => {
       cancelled = true;
@@ -108,6 +114,27 @@ export function DayOfView() {
       async () => setConfig(await api.patchEventConfig(changes)),
       "Réglage appliqué à la borne.",
     );
+  };
+
+  const savePauseMessageValue = (message: string, success: string) => {
+    void run(
+      "settings",
+      async () => {
+        const updated = await api.patchEventConfig({ pause_message: message });
+        setConfig(updated);
+        setPauseMessage(updated.pause_message);
+      },
+      success,
+    );
+  };
+
+  const savePauseMessage = () => {
+    const message = pauseMessage.trim();
+    if (message) savePauseMessageValue(message, "Message de pause mis à jour.");
+  };
+
+  const resetPauseMessage = () => {
+    savePauseMessageValue(DEFAULT_PAUSE_MESSAGE, "Message par défaut rétabli.");
   };
 
   if (!health) {
@@ -211,11 +238,39 @@ export function DayOfView() {
       </Accordion>
 
       <Accordion type="single" collapsible className="rounded-xl border bg-card">
+        <AccordionItem value="printing" className="border-0">
+          <AccordionTrigger className="min-h-18 px-4 py-3 hover:no-underline">
+            <span className="grid text-left">
+              <strong className="text-lg">Impression</strong>
+              <small className="flex flex-wrap gap-x-3 text-muted-foreground">
+                <span>Feuilles <b className="font-semibold tabular-nums text-foreground">{cassetteRemaining}</b></span>
+                <span>Encre <b className="font-semibold tabular-nums text-foreground">{inkRemaining}</b></span>
+              </small>
+            </span>
+          </AccordionTrigger>
+          <AccordionContent className="border-t p-4">
+        <div className="mb-3 grid grid-cols-[auto_1fr] items-baseline gap-x-3 [&_strong]:row-span-2 [&_strong]:text-5xl [&_strong]:leading-none [&_strong]:tabular-nums [&_span]:font-bold [&_small]:text-muted-foreground">
+          <strong>{printableNow}</strong>
+          <span>impression{printableNow > 1 ? "s" : ""} avant intervention</span>
+          <small>{nextAction}</small>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Consumable label="Bac" remaining={cassetteRemaining} capacity={health.counters.cassette_capacity} />
+          <Consumable label="Encre" remaining={inkRemaining} capacity={health.counters.cartridge_capacity} />
+          <Consumable label="Stock total" remaining={stockRemaining} capacity={health.counters.paper_stock_capacity} />
+        </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+
+      <Accordion type="single" collapsible className="rounded-xl border bg-card">
         <AccordionItem value="quick-settings" className="border-0">
           <AccordionTrigger className="min-h-18 px-4 py-3 hover:no-underline">
             <span className="grid text-left">
               <strong className="flex items-center gap-2 text-lg"><SlidersHorizontal className="size-5" aria-hidden="true" />Réglages rapides</strong>
-              <small className="text-muted-foreground">Minuteur, flash et copies</small>
+              <small className="text-muted-foreground">
+                {config ? `Minuteur ${config.default_shot_timer_seconds} s · Flash ${config.screen_flash_enabled ? "activé" : "désactivé"}` : "Lecture des réglages…"}
+              </small>
             </span>
           </AccordionTrigger>
           <AccordionContent className="grid gap-4 border-t p-4">
@@ -235,74 +290,60 @@ export function DayOfView() {
                   <Zap className="size-5" fill={config.screen_flash_enabled ? "currentColor" : "none"} aria-hidden="true" />
                   <span className="grid"><strong>Flash d’appoint</strong><small className="text-muted-foreground">{config.screen_flash_enabled ? "Activé" : "Désactivé"}</small></span>
                 </button>
-                <label className="grid gap-2 font-medium">
-                  Copies par défaut
-                  <select disabled={working === "settings"} value={config.copies_per_print} onChange={(event) => saveQuickSetting({ copies_per_print: Number(event.target.value) })} className="min-h-11 rounded-md border bg-background px-3 font-normal">
-                    {Array.from({ length: 10 }, (_, index) => index + 1).map((copies) => <option key={copies} value={copies}>{copies}</option>)}
-                  </select>
-                </label>
               </>
             ) : <Skeleton className="h-40 rounded-lg" />}
           </AccordionContent>
         </AccordionItem>
       </Accordion>
 
-      <Accordion type="single" collapsible className="rounded-xl border bg-card">
-        <AccordionItem value="power" className="border-0">
-          <AccordionTrigger className="min-h-18 px-4 py-3 hover:no-underline">
-            <span className="grid text-left">
-              <strong className="text-lg">Alimentation</strong>
-              <small className={health.session_state === "printing" ? "font-semibold text-amber-800" : "text-muted-foreground"}>
-                {health.session_state === "printing" ? "Verrouillée pendant l’impression" : "Redémarrer ou éteindre la borne"}
-              </small>
-            </span>
-          </AccordionTrigger>
-          <AccordionContent className="border-t p-4">
-            <PowerControls
-              health={health}
-              onScheduled={(power_transition) => setHealth((current) => current && ({ ...current, power_transition }))}
-            />
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
-
-      <Accordion type="single" collapsible defaultValue="printing" className="rounded-xl border bg-card">
-        <AccordionItem value="printing" className="border-0">
-          <AccordionTrigger className="min-h-18 px-4 py-3 hover:no-underline">
-            <span className="grid"><strong className="text-lg">Impression</strong><small className="text-muted-foreground">{nextAction}</small></span>
-            <b className="ml-auto mr-3 text-3xl tabular-nums">{printableNow}</b>
-          </AccordionTrigger>
-          <AccordionContent className="border-t p-4">
-        <div className="mb-3 grid grid-cols-[auto_1fr] items-baseline gap-x-3 [&_strong]:row-span-2 [&_strong]:text-5xl [&_strong]:leading-none [&_strong]:tabular-nums [&_span]:font-bold [&_small]:text-muted-foreground">
-          <strong>{printableNow}</strong>
-          <span>impression{printableNow > 1 ? "s" : ""} avant intervention</span>
-          <small>{nextAction}</small>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <Consumable label="Bac" remaining={cassetteRemaining} capacity={health.counters.cassette_capacity} />
-          <Consumable label="Encre" remaining={inkRemaining} capacity={health.counters.cartridge_capacity} />
-          <Consumable label="Stock total" remaining={stockRemaining} capacity={health.counters.paper_stock_capacity} />
-        </div>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
-
       {config ? (
-        <button
-          type="button"
-          aria-pressed={config.capture_paused}
-          disabled={working === "settings"}
-          onClick={() => saveQuickSetting({ capture_paused: !config.capture_paused })}
-          className="flex min-h-18 w-full items-center gap-3 rounded-xl border bg-card px-4 py-3 text-left transition-colors disabled:opacity-50 aria-pressed:border-amber-600 aria-pressed:bg-amber-50 aria-pressed:text-amber-950"
+        <section
+          className={`overflow-hidden rounded-xl border-2 transition-colors ${config.capture_paused ? "border-amber-500 bg-amber-50" : "border-emerald-600 bg-emerald-50"}`}
+          aria-label="Mode pause"
         >
-          <Pause className="size-6 flex-none" fill={config.capture_paused ? "currentColor" : "none"} aria-hidden="true" />
-          <span className="grid">
-            <strong className="text-lg">Mode pause</strong>
-            <small className={config.capture_paused ? "text-amber-800" : "text-muted-foreground"}>
-              {config.capture_paused ? "Activé — les nouvelles prises sont bloquées" : "Désactivé — la borne est disponible"}
-            </small>
-          </span>
-        </button>
+          <div className="grid gap-4 p-4">
+            <div className="flex items-start gap-3" aria-live="polite">
+              <span className={`grid size-12 flex-none place-items-center rounded-lg ${config.capture_paused ? "bg-amber-500 text-amber-950" : "bg-emerald-600 text-white"}`}>
+                {config.capture_paused ? <Pause className="size-6" fill="currentColor" aria-hidden="true" /> : <Camera className="size-6" aria-hidden="true" />}
+              </span>
+              <span className="min-w-0 pt-0.5">
+                <strong className="block text-xl leading-tight">{config.capture_paused ? "Pause active" : "Borne ouverte"}</strong>
+                <small className={`mt-1 block text-sm leading-snug ${config.capture_paused ? "text-amber-900" : "text-emerald-900"}`}>
+                  {config.capture_paused ? "Aucune nouvelle prise ne peut commencer." : "Les invités peuvent lancer une nouvelle prise."}
+                </small>
+              </span>
+            </div>
+            <ShadButton
+              type="button"
+              variant={config.capture_paused ? "default" : "outline"}
+              className={`min-h-12 w-full text-base ${config.capture_paused ? "" : "border-amber-700 bg-white text-amber-950 hover:bg-amber-100"}`}
+              aria-pressed={config.capture_paused}
+              disabled={working === "settings"}
+              onClick={() => saveQuickSetting({ capture_paused: !config.capture_paused })}
+            >
+              {config.capture_paused ? <Camera aria-hidden="true" /> : <Pause aria-hidden="true" />}
+              {config.capture_paused ? "Reprendre les prises" : "Mettre la borne en pause"}
+            </ShadButton>
+          </div>
+
+          <div className="grid gap-3 border-t border-black/10 bg-card p-4">
+            <label className="grid gap-2 text-sm font-medium">
+              <span className="flex items-baseline justify-between gap-3">
+                Message affiché pendant la pause
+                <small className="font-normal tabular-nums text-muted-foreground">{pauseMessage.length}/120</small>
+              </span>
+              <Input value={pauseMessage} maxLength={120} onChange={(event) => setPauseMessage(event.target.value)} disabled={working === "settings"} />
+            </label>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <ShadButton type="button" className="min-h-11" disabled={working === "settings" || !pauseMessage.trim() || pauseMessage.trim() === config.pause_message} onClick={savePauseMessage}>
+                Enregistrer le message
+              </ShadButton>
+              <ShadButton type="button" variant="ghost" className="min-h-11" disabled={working === "settings" || (pauseMessage === DEFAULT_PAUSE_MESSAGE && config.pause_message === DEFAULT_PAUSE_MESSAGE)} onClick={resetPauseMessage}>
+                <RotateCcw aria-hidden="true" /> Message par défaut
+              </ShadButton>
+            </div>
+          </div>
+        </section>
       ) : (
         <Skeleton className="h-18 rounded-xl" />
       )}
@@ -336,6 +377,25 @@ export function DayOfView() {
           <p className="py-4 text-muted-foreground">Les premières photos apparaîtront ici.</p>
         )}
       </section>
+
+      <Accordion type="single" collapsible className="rounded-xl border bg-card">
+        <AccordionItem value="power" className="border-0">
+          <AccordionTrigger className="min-h-18 px-4 py-3 hover:no-underline">
+            <span className="grid text-left">
+              <strong className="text-lg">Alimentation</strong>
+              <small className={health.session_state === "printing" ? "font-semibold text-amber-800" : "text-muted-foreground"}>
+                {health.session_state === "printing" ? "Verrouillée pendant l’impression" : "Redémarrer ou éteindre la borne"}
+              </small>
+            </span>
+          </AccordionTrigger>
+          <AccordionContent className="border-t p-4">
+            <PowerControls
+              health={health}
+              onScheduled={(power_transition) => setHealth((current) => current && ({ ...current, power_transition }))}
+            />
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
 
       <AlertDialog open={releaseDialogOpen} onOpenChange={setReleaseDialogOpen}>
         <AlertDialogContent>

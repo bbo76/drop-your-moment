@@ -35,6 +35,14 @@ class Settings(BaseSettings):
     admin_host: str = "0.0.0.0"  # noqa: S104 — exposition LAN volontaire
     admin_port: int = 8001
 
+    hotspot_ssid: str = "DYM-PhotoBooth"
+    hotspot_connection: str = "dym-hotspot"
+    hotspot_interface: str = "wlan0"
+    hotspot_address: str = "10.42.0.1"
+    hotspot_secret_file: Path = Path("/etc/dropyourmoment/hotspot.secret")
+    hotspot_development_secret: str = "DYM-PhotoBooth-Dev"
+    hotspot_development_portal_url: str | None = None
+
     # Accès de proximité depuis l'écran tactile. La route n'existe que sur la socket
     # locale du kiosque ; le PIN protège surtout contre les manipulations des invités.
     maintenance_pin: str = "2580"
@@ -103,6 +111,10 @@ class Settings(BaseSettings):
     @property
     def event_dir(self) -> Path:
         return self.data_dir / "events" / "current"
+
+    @property
+    def hotspot_portal_url(self) -> str:
+        return f"http://{self.hotspot_address}:{self.admin_port}/"
 
 
 def load_settings() -> Settings:

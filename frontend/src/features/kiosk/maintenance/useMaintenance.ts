@@ -78,6 +78,20 @@ export function useMaintenance(debugFailure: DebugFailure, onExpired: () => void
     }
   };
 
+  const changeHotspot = async (action: "activate" | "deactivate") => {
+    setSaving(true);
+    try {
+      const hotspot = await api.changeHotspot(action);
+      setSnapshot((current) => current && ({ ...current, hotspot }));
+      setError(null);
+    } catch {
+      setError("Le réseau opérateur n’a pas pu être modifié.");
+      throw new Error("hotspot");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return {
     snapshot,
     error,
@@ -92,6 +106,7 @@ export function useMaintenance(debugFailure: DebugFailure, onExpired: () => void
       setSnapshot((current) => current && ({ ...current, print_busy: true, print_error: null }));
     },
     saveSettings,
+    changeHotspot,
     reloadCassette: () => run(api.reloadCassette, "Le rechargement du bac n’a pas été enregistré."),
     replaceInk: (capacity: 36 | 54) => run(() => api.replaceMaintenanceInk(capacity), "Le remplacement de la cassette d’encre n’a pas été enregistré."),
   };

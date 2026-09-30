@@ -1,0 +1,13 @@
+[Unit]
+Description=Drop Your Moment hotspot firewall
+After=NetworkManager.service
+Before=dropyourmoment.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/nft -f /etc/nftables.d/dropyourmoment-hotspot.nft
+ExecStop=/usr/sbin/nft delete table inet dropyourmoment_hotspot
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

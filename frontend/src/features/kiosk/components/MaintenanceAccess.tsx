@@ -7,6 +7,7 @@ import { MaintenanceGalleryView } from "../maintenance/MaintenanceGalleryView";
 import { MaintenanceHealthView } from "../maintenance/MaintenanceHealthView";
 import { MaintenancePrintingView } from "../maintenance/MaintenancePrintingView";
 import { MaintenanceSettingsView } from "../maintenance/MaintenanceSettingsView";
+import { MaintenanceNetworkView } from "../maintenance/MaintenanceNetworkView";
 import { maintenanceDiagnostics } from "../maintenance/maintenanceDiagnostics";
 import { MaintenanceFrame, MaintenanceIcon, MaintenancePrintStatus, MaintenanceStatusBanner } from "../maintenance/MaintenanceUi";
 import { useMaintenance } from "../maintenance/useMaintenance";
@@ -50,7 +51,7 @@ function PinScreen({ onUnlocked, onCancel }: { onUnlocked: () => void; onCancel:
   );
 }
 
-type MaintenanceView = "home" | "health" | "printing" | "gallery" | "settings";
+type MaintenanceView = "home" | "health" | "printing" | "gallery" | "settings" | "network";
 
 function MaintenancePanel({ onExpired, onExit, debugFailure }: { onExpired: () => void; onExit: () => void; debugFailure: DebugFailure }) {
   const [view, setView] = useState<MaintenanceView>("home");
@@ -65,6 +66,7 @@ function MaintenancePanel({ onExpired, onExit, debugFailure }: { onExpired: () =
   if (view === "printing") return <MaintenanceFrame title="Impression" status={diagnostics.status} printNotice={maintenance.printNotice} onBack={back}><MaintenancePrintingView snapshot={snapshot} saving={saving} onReloadCassette={maintenance.reloadCassette} onReplaceInk={maintenance.replaceInk} /></MaintenanceFrame>;
   if (view === "gallery") return <MaintenanceFrame title="Galerie photo" status={diagnostics.status} printNotice={maintenance.printNotice} onBack={back}><MaintenanceGalleryView onExpired={onExpired} printBusy={snapshot.print_busy} printError={snapshot.print_error} printsRemaining={diagnostics.supplies.printable} onPrintStarted={maintenance.markPrintStarted} /></MaintenanceFrame>;
   if (view === "settings") return <MaintenanceFrame title="Réglages borne" status={diagnostics.status} printNotice={maintenance.printNotice} onBack={back}><MaintenanceSettingsView snapshot={snapshot} saving={saving} onSaveSettings={saveSettings} onPowerAction={async (action) => { setPowerTransition(action); try { await api.requestPowerAction(action); } catch (cause) { setPowerTransition(null); throw cause; } }} /></MaintenanceFrame>;
+  if (view === "network") return <MaintenanceFrame title="Réseau opérateur" status={diagnostics.status} printNotice={maintenance.printNotice} onBack={back}><MaintenanceNetworkView hotspot={snapshot.hotspot} saving={saving} onChange={maintenance.changeHotspot} /></MaintenanceFrame>;
   const { settings } = snapshot;
   return (
     <main className="grid h-full grid-rows-[auto_1fr] gap-4 bg-ink p-4 text-body [--color-signal:#d8dee4] [--color-signal-ink:#101418] max-h-[600px]:gap-3 max-h-[600px]:p-3">
@@ -74,6 +76,7 @@ function MaintenancePanel({ onExpired, onExit, debugFailure }: { onExpired: () =
         <MaintenanceTile icon="print" title="Impression" detail={diagnostics.printingDetail} attention={diagnostics.printingNeedsAttention} onClick={() => setView("printing")} />
         <MaintenanceTile icon="gallery" title="Galerie" detail="Voir toutes les photos" onClick={() => setView("gallery")} />
         <MaintenanceTile icon="settings" title="Réglages borne" detail={`${KIOSK_FONTS.find((font) => font.value === settings.launch_font)?.label ?? "Apparence"} · flash ${settings.screen_flash_enabled ? "activé" : "coupé"}`} onClick={() => setView("settings")} />
+        <MaintenanceTile icon="network" title="Réseau opérateur" detail={snapshot.hotspot.active ? `${snapshot.hotspot.client_count} appareil(s) · ${snapshot.hotspot.ssid}` : "Hotspot désactivé"} attention={!snapshot.hotspot.available} onClick={() => setView("network")} />
       </div>
       {error && <p className="fixed bottom-3 left-4 rounded-panel bg-warn-bg px-4 py-2 text-lg font-medium text-warn" role="status">{error}</p>}
     </main>
@@ -85,6 +88,6 @@ function PowerTransition({ action }: { action: "reboot" | "poweroff" }) {
   return <main className="grid h-full place-content-center bg-ink px-8 text-center text-body"><div className="mx-auto size-16 animate-pulse rounded-full bg-signal" /><h1 className="mt-8 text-5xl font-bold">{reboot ? "Redémarrage en cours" : "Arrêt en cours"}</h1><p className="mt-5 text-2xl text-muted">{reboot ? "La borne reviendra automatiquement au kiosque." : "Attendez l’extinction complète avant de débrancher."}</p>{!reboot && <p className="mt-3 text-lg text-muted">Une remise sous tension physique sera nécessaire.</p>}</main>;
 }
 
-function MaintenanceTile({ icon, title, detail, attention = false, onClick }: { icon: "health" | "print" | "gallery" | "settings"; title: string; detail: string; attention?: boolean; onClick: () => void }) {
+function MaintenanceTile({ icon, title, detail, attention = false, onClick }: { icon: "health" | "print" | "gallery" | "settings" | "network"; title: string; detail: string; attention?: boolean; onClick: () => void }) {
   return <button type="button" className={`grid min-h-0 grid-cols-[4.25rem_1fr_2rem] items-center gap-4 rounded-[0.65rem] border-2 p-4 px-5 text-left text-body active:scale-[0.985] ${attention ? "border-warn bg-[color-mix(in_srgb,var(--color-warn)_7%,var(--color-surface))] motion-safe:animate-pulse" : "border-transparent bg-surface"}`} onClick={onClick}><MaintenanceIcon name={icon} /><span>{attention && <span className="mb-2.5 inline-flex text-[0.95rem] font-semibold text-warn">À vérifier</span>}<strong className="block text-[1.75rem] leading-none font-semibold">{title}</strong><small className="mt-2 block text-base font-normal text-muted">{detail}</small></span><ChevronRight className="w-8 text-muted" strokeWidth={2.5} /></button>;
 }

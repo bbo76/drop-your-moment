@@ -5,11 +5,12 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from fastapi import FastAPI
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, Request
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from dropyourmoment.api import admin_router, kiosk_router, maintenance_router
+from dropyourmoment.api import admin_router, auth_router, kiosk_router, maintenance_router
+from dropyourmoment.api.auth_router import COOKIE_NAME
 from dropyourmoment.runtime import Runtime
 
 logger = logging.getLogger(__name__)
@@ -27,7 +28,20 @@ def build_kiosk_app(runtime: Runtime) -> FastAPI:
 def build_admin_app(runtime: Runtime) -> FastAPI:
     app = FastAPI(title="Drop Your Moment — administration")
     app.state.runtime = runtime
+    app.include_router(auth_router.router)
     app.include_router(admin_router.router)
+
+    @app.middleware("http")
+    async def require_operator_session(request: Request, call_next):
+        path = request.url.path
+        if (
+            path.startswith("/admin/")
+            and not path.startswith("/admin/auth/")
+            and not runtime.operator_access.authorize(request.cookies.get(COOKIE_NAME))
+        ):
+            return JSONResponse({"detail": "authentification requise"}, status_code=401)
+        return await call_next(request)
+
     _mount_frontend(app, runtime.settings.frontend_dist_dir, document="admin.html")
     return app
 

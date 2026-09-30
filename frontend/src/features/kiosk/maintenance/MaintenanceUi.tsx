@@ -6,6 +6,7 @@ import {
   HardDrive,
   Images,
   Printer,
+  Wifi,
   SlidersHorizontal,
   type LucideIcon,
 } from "lucide-react";
@@ -80,10 +81,10 @@ export function MaintenanceStatusBanner({ status }: { status: MaintenanceStatus 
 }
 
 export function MaintenanceIcon({ name, className = "size-[4.25rem] rounded-[0.55rem] bg-signal p-[0.9rem] fill-none stroke-current stroke-2 text-signal-ink [stroke-linecap:round] [stroke-linejoin:round]" }: {
-  name: "health" | "print" | "gallery" | "settings";
+  name: "health" | "print" | "gallery" | "settings" | "network";
   className?: string;
 }) {
-  const icons: Record<typeof name, LucideIcon> = { health: Activity, print: Printer, gallery: Images, settings: SlidersHorizontal };
+  const icons: Record<typeof name, LucideIcon> = { health: Activity, print: Printer, gallery: Images, settings: SlidersHorizontal, network: Wifi };
   const Icon = icons[name];
   return <Icon className={className} strokeWidth={2} />;
 }

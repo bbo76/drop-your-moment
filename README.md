@@ -76,10 +76,10 @@ et sans interrompre une prise de vue.
 ### Maintenance sur la borne
 
 Le bouton outil, présent dans le coin supérieur droit du kiosque, ouvre une maintenance
-tactile protégée par un PIN à quatre chiffres. Quatre grandes tuiles donnent accès à la
+tactile protégée par un PIN à quatre chiffres. Les grandes tuiles donnent accès à la
 santé (caméra, stockage, CPU, RAM), à l'impression (connexion CP1500, bac de 18 feuilles
 et cassette d'encre 36/54), à la galerie locale et aux réglages de la borne (flash écran
-et minuteur par défaut). La galerie charge progressivement toutes les photos et permet
+et minuteur par défaut), ainsi qu’au réseau opérateur. La galerie charge progressivement toutes les photos et permet
 d'en agrandir, réimprimer ou supprimer une. Un retirage reste signalé dans toute la
 maintenance jusqu'à sa réussite ou son échec. La borne permet aussi de choisir rapidement son ambiance parmi
 dix couleurs événementielles présélectionnées et les dix typographies du launch screen ;
@@ -93,9 +93,9 @@ reste en plus limitée à la socket locale du kiosque et n'est jamais exposée s
 
 ## Portail d'administration
 
-Sur `0.0.0.0:8001`, depuis un appareil du LAN. L'état actuel reste sans authentification
-jusqu'au lot hotspot ; la cible actée exige alors le code de session affiché dans la
-maintenance locale.
+Sur `0.0.0.0:8001`, depuis un appareil du LAN. Lorsque le hotspot est actif, le portail
+exige le code de session à six chiffres affiché dans la maintenance locale. Le code et les
+sessions survivent à un reboot ; couper le hotspot les invalide immédiatement.
 
 Le produit pilote une seule borne et ne prévoit pas de gestion multi-borne. Le portail est
 utilisable avant comme pendant l'événement, avec un thème administratif neutre indépendant
@@ -256,6 +256,7 @@ Variables d'environnement préfixées `DYM_` (voir
 | `KIOSK_HOST` / `ADMIN_HOST` | `127.0.0.1` / `0.0.0.0` | adresses de bind |
 | `MAINTENANCE_PIN` | `2580` | PIN à quatre chiffres de la maintenance tactile locale |
 | `MAINTENANCE_SESSION_TIMEOUT_S` | `300` | fermeture automatique de la maintenance locale |
+| `HOTSPOT_*` | voir `config.py` | profil NetworkManager, interface, adresse et fichier secret |
 | `RETENTION_MAX_AGE_DAYS` | `30` | âge au-delà duquel une session est purgée |
 | `RETENTION_MAX_TOTAL_GB` | `8` | plafond du dossier `data/sessions`, filet contre le disque plein |
 
@@ -277,7 +278,36 @@ uv venv --python /usr/bin/python3 --system-site-packages
 uv sync --no-dev --inexact
 
 cd ../frontend && pnpm install --frozen-lockfile && pnpm build   # construit sur place
+
+# Crée le secret, le profil NetworkManager, le pare-feu nftables et les droits sudoers.
+cd .. && sudo ./deploy/install-hotspot.sh
 ```
+
+Le hotspot utilise `10.42.0.1/24`, distribue les adresses via le mode partagé de
+NetworkManager, puis bloque tout transfert depuis `wlan0`. Le pare-feu n’accepte depuis ce
+réseau que DHCP/DNS, ICMP et le portail TCP `:8001`; le kiosque reste lié à `127.0.0.1:8000`.
+Le secret est généré une seule fois dans `/etc/dropyourmoment/hotspot.secret`, lisible par
+le groupe `photobooth` et absent du dépôt.
+
+Hors Raspberry Pi, la maintenance affiche des QR de démonstration : le portail pointe vers
+`http://<IP-LAN-DU-POSTE>:8001/` et le réseau fictif utilise le secret
+`DYM-PhotoBooth-Dev`. L’adresse est choisie d’après la route réseau du poste ; en présence
+de plusieurs interfaces ou d’un VPN, `DYM_HOTSPOT_DEVELOPMENT_PORTAL_URL` permet de la
+forcer. Le secret se surcharge avec `DYM_HOTSPOT_DEVELOPMENT_SECRET`.
+
+Contrôles après installation :
+
+```sh
+sudo systemctl status NetworkManager dropyourmoment-hotspot-firewall dropyourmoment
+sudo nft list table inet dropyourmoment_hotspot
+nmcli connection show dym-hotspot
+sudo -u photobooth test -r /etc/dropyourmoment/hotspot.secret
+```
+
+Depuis deux téléphones connectés, vérifier que `http://10.42.0.1:8001/` demande le code,
+que `http://10.42.0.1:8000/` et SSH sont injoignables, et que les deux téléphones ne se
+joignent pas. Tester enfin un reboot hotspot actif, puis un arrêt volontaire : le premier
+conserve l’accès, le second redémarre hotspot désactivé.
 
 Deux précautions liées à `picamera2`, qui dépend de bindings Python de libcamera compilés
 contre le libcamera système et ne s'installe donc pas par pip :

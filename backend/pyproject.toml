@@ -19,6 +19,7 @@ dependencies = [
     # l'appel. Rien d'optionnel donc, malgré son nom de dépendance de confort.
     "python-multipart>=0.0.20",
     "psutil>=6.1",
+    "qrcode[pil]>=8.0",
 ]
 
 # Extra et non groupe PEP 735 : opencv est bien une dépendance d'exécution — pour qui

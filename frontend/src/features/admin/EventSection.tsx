@@ -52,6 +52,7 @@ export function EventSection() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [pauseSaving, setPauseSaving] = useState(false);
   // Anti-cache de l'aperçu : l'URL de l'overlay est fixe, donc rien ne rechargerait
   // l'image après un remplacement.
   const [overlayRevision, setOverlayRevision] = useState(0);
@@ -77,6 +78,21 @@ export function EventSection() {
   const patch = (changes: Partial<EventConfigPayload>) => {
     setDraft({ ...draft, ...changes });
     setNotice(null);
+  };
+
+  const savePause = async (capture_paused: boolean) => {
+    setPauseSaving(true);
+    setError(null);
+    setNotice(null);
+    try {
+      await api.patchEventConfig({ capture_paused });
+      setDraft((current) => current && ({ ...current, capture_paused }));
+      setNotice(capture_paused ? "Prises mises en pause." : "Prises réactivées.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setPauseSaving(false);
+    }
   };
 
   const patchFormat = (changes: Partial<PrintFormatPayload>) =>
@@ -193,7 +209,8 @@ export function EventSection() {
                 <Switch
                   aria-label="Autoriser les prises de photo"
                   checked={!draft.capture_paused}
-                  onCheckedChange={(checked) => patch({ capture_paused: !checked })}
+                  disabled={pauseSaving}
+                  onCheckedChange={(checked) => void savePause(!checked)}
                 />
               </div>
               <Field label="Message secondaire affiché pendant la pause">

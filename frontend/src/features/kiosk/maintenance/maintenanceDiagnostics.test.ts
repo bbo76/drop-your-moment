@@ -8,6 +8,15 @@ const snapshot = {
   power_available: true,
   print_busy: false,
   print_error: null,
+  hotspot: {
+    available: false,
+    active: false,
+    ssid: "DYM-PhotoBooth",
+    secret: null,
+    admin_code: null,
+    portal_url: "http://10.42.0.1:8001/",
+    client_count: 0,
+  },
   settings: {
     default_shot_timer_seconds: 3,
     screen_flash_enabled: true,

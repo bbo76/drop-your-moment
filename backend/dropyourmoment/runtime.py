@@ -10,7 +10,9 @@ chargée côté kiosque.
 from __future__ import annotations
 
 import hmac
+import logging
 import secrets
+import subprocess
 import time
 from dataclasses import dataclass, field
 
@@ -28,12 +30,16 @@ from dropyourmoment.hardware.printer.factory import (
     load_printer_selection,
     save_printer_selection,
 )
+from dropyourmoment.hotspot import Hotspot
 from dropyourmoment.imaging.filters import FilterName
 from dropyourmoment.imaging.pipeline import ImagePipeline
+from dropyourmoment.operator_access import OperatorAccess
 from dropyourmoment.storage.counters import CounterStore
 from dropyourmoment.storage.maintenance_pin import MaintenancePinStore
 from dropyourmoment.storage.retention import purge
 from dropyourmoment.system_power import SystemPower
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -50,6 +56,8 @@ class Runtime:
     counters: CounterStore = field(init=False)
     print_flow: PrintFlow = field(init=False)
     maintenance_pin: MaintenancePinStore = field(init=False)
+    operator_access: OperatorAccess = field(init=False)
+    hotspot: Hotspot = field(init=False)
     _maintenance_token: str | None = field(default=None, init=False, repr=False)
     _maintenance_expires_at: float = field(default=0.0, init=False, repr=False)
 
@@ -62,6 +70,16 @@ class Runtime:
         self.counters = CounterStore(self.settings.data_dir)
         self.maintenance_pin = MaintenancePinStore(
             self.settings.data_dir, self.settings.maintenance_pin
+        )
+        self.operator_access = OperatorAccess(self.settings.data_dir)
+        self.hotspot = Hotspot(
+            data_dir=self.settings.data_dir,
+            secret_file=self.settings.hotspot_secret_file,
+            operator_access=self.operator_access,
+            ssid=self.settings.hotspot_ssid,
+            connection=self.settings.hotspot_connection,
+            interface=self.settings.hotspot_interface,
+            portal_url=self.settings.hotspot_portal_url,
         )
         self.print_flow = PrintFlow(
             machine=self.machine,
@@ -147,6 +165,10 @@ class Runtime:
         self.settings.event_dir.mkdir(parents=True, exist_ok=True)
         self.purge_sessions()
         self.camera.start()
+        try:
+            self.hotspot.restore()
+        except (OSError, RuntimeError, subprocess.SubprocessError):
+            logger.exception("impossible de restaurer le hotspot demandé")
 
     def stop(self) -> None:
         self.system_power.cancel_pending()

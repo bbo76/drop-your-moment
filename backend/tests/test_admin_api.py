@@ -37,6 +37,17 @@ def test_lecture_de_la_configuration_active(admin: TestClient) -> None:
     assert body["pause_message"] == "Je recharge les sourires…"
 
 
+def test_le_portail_exige_le_code_quand_l_acces_operateur_est_actif(
+    admin: TestClient, runtime: Runtime
+) -> None:
+    code = runtime.operator_access.activate()
+
+    assert admin.get("/admin/event-config").status_code == 401
+    assert admin.post("/admin/auth/login", json={"code": "000000"}).status_code == 401
+    assert admin.post("/admin/auth/login", json={"code": code}).status_code == 204
+    assert admin.get("/admin/event-config").status_code == 200
+
+
 def test_aller_retour_de_la_configuration(admin: TestClient) -> None:
     config = admin.get("/admin/event-config").json()
     config["event_name"] = "Mariage Camille & Théo"
@@ -77,6 +88,17 @@ def test_un_reglage_rapide_necrase_pas_les_autres_champs(admin: TestClient) -> N
     assert response.json()["screen_flash_enabled"] is False
     assert response.json()["event_name"] == "Événement concurrent"
     assert response.json()["copies_per_print"] == 2
+
+
+def test_le_mode_pause_est_un_reglage_rapide(admin: TestClient) -> None:
+    response = admin.patch(
+        "/admin/event-config",
+        json={"capture_paused": True, "pause_message": "Photos suspendues un instant."},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["capture_paused"] is True
+    assert response.json()["pause_message"] == "Photos suspendues un instant."
 
 
 def test_un_reglage_rapide_inconnu_est_refuse(admin: TestClient) -> None:
