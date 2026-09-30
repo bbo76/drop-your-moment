@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Eye, EyeOff, Globe2, LoaderCircle, Radio, Router, Trash2, Wifi, WifiOff } from "lucide-react";
+import { ArrowBigUp, Delete, Eye, EyeOff, Globe2, LoaderCircle, Radio, Router, Trash2, Wifi, WifiOff } from "lucide-react";
 
 import { api, type HotspotStatus, type WifiNetwork, type WifiStatus } from "@/api/client";
 import { MaintenanceDialog } from "./MaintenanceUi";
@@ -147,8 +147,9 @@ function SignalBars({ signal }: { signal: number }) {
   return <span className="flex h-10 items-end gap-1" role="img" aria-label={`Signal ${signal}%`}>{[1, 2, 3, 4].map((bar) => <span key={bar} className={`w-2.5 rounded-sm ${bar <= active ? "bg-signal" : "bg-edge"}`} style={{ height: `${bar * 22}%` }} />)}</span>;
 }
 
-const LETTERS = ["a","z","e","r","t","y","u","i","o","p","q","s","d","f","g","h","j","k","l","m","w","x","c","v","b","n"];
-const SYMBOLS = ["1","2","3","4","5","6","7","8","9","0","-","_","@",".","!","?","#","$","%","&","*","+","=","/"];
+const LETTER_ROWS = [["a","z","e","r","t","y","u","i","o","p"], ["q","s","d","f","g","h","j","k","l","m"], ["w","x","c","v","b","n"]] as const;
+const NUMBER_ROWS = [["1","2","3","4","5","6","7","8","9","0"], ["-","/",":",";","(",")","€","&","@","\""], [".",",","?","!","'"]] as const;
+const SYMBOL_ROWS = [["[","]","{","}","#","%","^","*","+","="], ["_","\\","|","~","<",">","$","£","¥","`"], [".",",","?","!","'"]] as const;
 
 function PasswordScreen({ ssid, password, revealed, saving, onPassword, onReveal, onBack, onConnect }: { ssid: string; password: string; revealed: boolean; saving: boolean; onPassword: (value: string) => void; onReveal: () => void; onBack: () => void; onConnect: () => void }) {
   return <section className="grid min-h-0 grid-cols-[19rem_1fr] gap-3">
@@ -177,8 +178,23 @@ function HiddenNetworkScreen({ saving, onBack, onConnect }: { saving: boolean; o
 }
 
 function OnScreenKeyboard({ value, onChange, disabled }: { value: string; onChange: (value: string) => void; disabled: boolean }) {
-  const [symbols, setSymbols] = useState(false);
+  const [mode, setMode] = useState<"letters" | "numbers" | "symbols">("letters");
   const [uppercase, setUppercase] = useState(false);
-  const keys = symbols ? SYMBOLS : LETTERS.map((key) => uppercase ? key.toUpperCase() : key);
-  return <div className="grid min-h-0 grid-cols-8 gap-2 rounded-panel border-2 border-edge p-3" aria-label="Clavier tactile">{keys.map((key) => <button key={key} type="button" disabled={disabled} onClick={() => onChange(value + key)} className="min-h-12 rounded-[0.55rem] bg-surface text-xl font-semibold active:scale-95 disabled:opacity-40">{key}</button>)}{!symbols && <button type="button" aria-pressed={uppercase} disabled={disabled} onClick={() => setUppercase((current) => !current)} className="col-span-2 min-h-12 rounded-[0.55rem] border-2 border-edge text-lg font-semibold aria-pressed:bg-signal aria-pressed:text-signal-ink">Maj.</button>}<button type="button" disabled={disabled} onClick={() => setSymbols((current) => !current)} className="col-span-2 min-h-12 rounded-[0.55rem] border-2 border-edge text-lg font-semibold">{symbols ? "ABC" : "123"}</button><button type="button" disabled={disabled} onClick={() => onChange(value + " ")} className={`${symbols ? "col-span-4" : "col-span-2"} min-h-12 rounded-[0.55rem] border-2 border-edge text-lg font-semibold`}>Espace</button><button type="button" disabled={disabled || !value} onClick={() => onChange(value.slice(0, -1))} className="col-span-2 min-h-12 rounded-[0.55rem] border-2 border-edge text-lg font-semibold">Effacer</button></div>;
+  const rows = mode === "letters" ? LETTER_ROWS : mode === "numbers" ? NUMBER_ROWS : SYMBOL_ROWS;
+  const [topRow, middleRow, bottomRow] = rows;
+  const append = (key: string) => {
+    onChange(value + (mode === "letters" && uppercase ? key.toUpperCase() : key));
+    if (uppercase) setUppercase(false);
+  };
+  const keyClass = "grid min-h-12 min-w-0 flex-1 place-items-center rounded-[0.55rem] text-xl font-semibold active:scale-95 disabled:opacity-40";
+  return <div className="flex min-h-0 flex-col justify-center gap-2 rounded-panel border-2 border-edge p-3" aria-label="Clavier tactile">
+    <div className="flex gap-1.5">{topRow.map((key) => <button key={key} type="button" disabled={disabled} onClick={() => append(key)} className={`${keyClass} bg-surface`}>{mode === "letters" && uppercase ? key.toUpperCase() : key}</button>)}</div>
+    <div className="flex gap-1.5 px-5">{middleRow.map((key) => <button key={key} type="button" disabled={disabled} onClick={() => append(key)} className={`${keyClass} bg-surface`}>{mode === "letters" && uppercase ? key.toUpperCase() : key}</button>)}</div>
+    <div className="flex gap-1.5">
+      {mode === "letters" ? <button type="button" aria-label="Majuscule" aria-pressed={uppercase} disabled={disabled} onClick={() => setUppercase((current) => !current)} className={`${keyClass} max-w-16 border-2 border-edge bg-ink aria-pressed:bg-signal aria-pressed:text-signal-ink`}><ArrowBigUp className="size-7" /></button> : <button type="button" disabled={disabled} onClick={() => setMode(mode === "numbers" ? "symbols" : "numbers")} className={`${keyClass} max-w-16 border-2 border-edge bg-ink text-base`}>{mode === "numbers" ? "#+=" : "123"}</button>}
+      {bottomRow.map((key) => <button key={key} type="button" disabled={disabled} onClick={() => append(key)} className={`${keyClass} bg-surface`}>{mode === "letters" && uppercase ? key.toUpperCase() : key}</button>)}
+      <button type="button" aria-label="Effacer le dernier caractère" disabled={disabled || !value} onClick={() => onChange(value.slice(0, -1))} className={`${keyClass} max-w-16 border-2 border-edge bg-ink`}><Delete className="size-7" /></button>
+    </div>
+    <div className="flex gap-2 px-10"><button type="button" disabled={disabled} onClick={() => setMode(mode === "letters" ? "numbers" : "letters")} className="min-h-12 w-24 rounded-[0.55rem] border-2 border-edge text-lg font-semibold">{mode === "letters" ? "123" : "ABC"}</button><button type="button" disabled={disabled} onClick={() => onChange(value + " ")} className="min-h-12 flex-1 rounded-[0.55rem] border-2 border-edge text-lg font-semibold">Espace</button></div>
+  </div>;
 }
