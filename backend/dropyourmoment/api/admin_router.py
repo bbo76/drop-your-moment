@@ -1,7 +1,4 @@
-"""API du portail d'administration, exposée sur le LAN.
-
-Pas d'authentification : risque assumé, l'accès est censé rester limité au LAN pendant un
-événement. À revoir si l'usage sort de ce cadre.
+"""API du portail d'administration, exposée sur le LAN et protégée quand le hotspot est actif.
 
 Ces routes ne sont montées que sur l'application admin, et l'API du kiosque ne l'est que
 sur la sienne. C'est vérifié par `tests/test_network_isolation.py` : la garantie ne tient
@@ -139,6 +136,8 @@ class QuickEventConfigChange(BaseModel):
     copies_per_print: int | None = Field(default=None, ge=1, le=10)
     default_shot_timer_seconds: Literal[3, 5, 10] | None = None
     screen_flash_enabled: bool | None = None
+    capture_paused: bool | None = None
+    pause_message: str | None = Field(default=None, min_length=1, max_length=120)
 
 
 @router.get("/system/health", response_model=AdminHealth)

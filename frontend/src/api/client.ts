@@ -138,6 +138,22 @@ export interface MaintenanceSnapshot {
   power_available: boolean;
   print_busy: boolean;
   print_error: string | null;
+  hotspot: HotspotStatus;
+}
+
+export interface HotspotStatus {
+  available: boolean;
+  active: boolean;
+  ssid: string;
+  secret: string | null;
+  admin_code: string | null;
+  portal_url: string;
+  client_count: number;
+}
+
+export interface OperatorAuthStatus {
+  required: boolean;
+  authenticated: boolean;
 }
 
 /** Diagnostic servi par le portail d'administration, sur l'autre socket.
@@ -258,6 +274,17 @@ const post = <T>(path: string, body?: unknown) =>
   });
 
 export const api = {
+  operatorAuthStatus: () => request<OperatorAuthStatus>("/admin/auth/status"),
+  operatorLogin: async (code: string) => {
+    const path = "/admin/auth/login";
+    const response = await fetch(path, {
+      method: "POST",
+      cache: "no-store",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
+    });
+    if (!response.ok) throw new Error(await errorMessage(response, path));
+  },
   status: () => request<SessionStatus>("/api/status"),
   systemStatus: () => request<SystemStatus>("/api/system/status"),
   event: () => request<EventInfo>("/api/event"),
@@ -288,6 +315,8 @@ export const api = {
     if (!response.ok) throw new Error(await errorMessage(response, "/api/maintenance/lock"));
   },
   maintenanceStatus: () => request<MaintenanceSnapshot>("/api/maintenance/status"),
+  changeHotspot: (action: "activate" | "deactivate") =>
+    post<HotspotStatus>(`/api/maintenance/hotspot/${action}`),
   maintenanceGallery: (offset = 0, limit = 8) =>
     request<GalleryPage>(`/api/maintenance/gallery?offset=${offset}&limit=${limit}`),
   printMaintenanceGalleryEntry: async (sessionId: string, copies: number) => {

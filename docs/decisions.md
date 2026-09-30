@@ -476,7 +476,6 @@ et frontend construit — explicitement pas le chemin de déploiement de la born
 
 | dette | pourquoi acceptée | quand la traiter |
 |---|---|---|
-| Portail d'administration encore sans authentification | L'authentification par code de session est décidée avec le lot hotspot mais pas encore implémentée | Au lot « Accès opérateur autonome » |
 | Types d'API TypeScript écrits à la main | Surface petite, tenable | Si elle grossit : génération depuis le schéma OpenAPI que FastAPI expose déjà |
 | Pas de linter JavaScript | TypeScript en mode strict couvre l'essentiel | Si des règles de style deviennent un sujet |
 | État de session en mémoire, perdu au redémarrage | Le visiteur recommence, sans gravité | Jamais, sauf besoin d'audit |

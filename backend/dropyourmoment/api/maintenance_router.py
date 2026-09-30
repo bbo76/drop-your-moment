@@ -22,6 +22,7 @@ from dropyourmoment.api.kiosk_router import get_runtime
 from dropyourmoment.core.errors import PrinterError
 from dropyourmoment.core.event_config import LaunchFont
 from dropyourmoment.core.session import SessionState
+from dropyourmoment.hotspot import development_portal_url
 from dropyourmoment.runtime import Runtime
 from dropyourmoment.storage.gallery import list_sessions, thumbnail_jpeg
 from dropyourmoment.system_power import PowerAction
@@ -41,12 +42,23 @@ class MaintenanceSettings(BaseModel):
     launch_font: LaunchFont
 
 
+class HotspotStatus(BaseModel):
+    available: bool
+    active: bool
+    ssid: str
+    secret: str | None
+    admin_code: str | None
+    portal_url: str
+    client_count: int
+
+
 class MaintenanceSnapshot(BaseModel):
     health: AdminHealth
     settings: MaintenanceSettings
     power_available: bool
     print_busy: bool
     print_error: str | None
+    hotspot: HotspotStatus
 
 
 def _authorized(
@@ -97,7 +109,72 @@ def maintenance_status(runtime: Runtime = Depends(_authorized)) -> MaintenanceSn
         power_available=runtime.system_power.available,
         print_busy=runtime.print_flow.job is not None,
         print_error=runtime.print_flow.last_error,
+        hotspot=_hotspot_status(runtime),
     )
+
+
+def _hotspot_status(runtime: Runtime) -> HotspotStatus:
+    development = not runtime.hotspot.available
+    return HotspotStatus(
+        available=runtime.hotspot.available and runtime.hotspot.secret is not None,
+        active=runtime.hotspot.active(),
+        ssid=runtime.hotspot.ssid,
+        secret=runtime.hotspot.secret
+        or (runtime.settings.hotspot_development_secret if development else None),
+        admin_code=runtime.operator_access.code,
+        portal_url=(
+            development_portal_url(
+                runtime.settings.admin_port,
+                runtime.settings.hotspot_development_portal_url,
+            )
+            if development
+            else runtime.hotspot.portal_url
+        ),
+        client_count=runtime.hotspot.client_count(),
+    )
+
+
+@router.post("/hotspot/{action}", response_model=HotspotStatus)
+def change_hotspot(
+    action: Literal["activate", "deactivate"],
+    runtime: Runtime = Depends(_authorized),
+) -> HotspotStatus:
+    try:
+        if action == "activate":
+            runtime.hotspot.activate()
+        else:
+            runtime.hotspot.deactivate()
+    except (OSError, subprocess.SubprocessError, RuntimeError) as exc:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+    return _hotspot_status(runtime)
+
+
+@router.get("/hotspot/qr/{kind}")
+def hotspot_qr(
+    kind: Literal["wifi", "portal"], runtime: Runtime = Depends(_authorized)
+) -> Response:
+    development = not runtime.hotspot.available
+    secret = runtime.hotspot.secret or (
+        runtime.settings.hotspot_development_secret if development else None
+    )
+    if secret is None:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, detail="secret Wi-Fi absent")
+    content = (
+        f"WIFI:T:WPA;S:{runtime.hotspot.ssid};P:{secret};;"
+        if kind == "wifi"
+        else (
+            development_portal_url(
+                runtime.settings.admin_port,
+                runtime.settings.hotspot_development_portal_url,
+            )
+            if development
+            else runtime.hotspot.portal_url
+        )
+    )
+    try:
+        return Response(runtime.hotspot.qr_png(content), media_type="image/png")
+    except (OSError, subprocess.SubprocessError, RuntimeError) as exc:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
 
 
 @router.post("/power/{action}", status_code=status.HTTP_202_ACCEPTED)
@@ -107,7 +184,14 @@ def request_power_action(action: PowerAction, runtime: Runtime = Depends(_author
             status.HTTP_409_CONFLICT,
             detail="une session photo ou une impression est en cours",
         )
+    if not runtime.system_power.available:
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="action disponible uniquement sur Raspberry Pi avec systemd",
+        )
     try:
+        if action == "poweroff" and runtime.hotspot.active():
+            runtime.hotspot.deactivate()
         runtime.system_power.request(action)
     except RuntimeError as exc:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { CalendarDays, Camera, CircleGauge, HeartPulse, LockKeyhole, Radio } from "lucide-react";
 
 import { DashboardOverview } from "@/features/admin/DashboardOverview";
@@ -25,11 +25,43 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
+import { Input } from "@/components/ui/input";
+import { api, type OperatorAuthStatus } from "@/api/client";
 
 /* Backoffice complet, destiné à la préparation sur laptop. Le pilotage mobile du jour J
  * possède son propre point d'entrée et réutilise directement les mêmes API. */
 
 export function AdminApp() {
+  const [auth, setAuth] = useState<OperatorAuthStatus | null>(null);
+  useEffect(() => { void api.operatorAuthStatus().then(setAuth); }, []);
+  if (!auth) return <main className="grid min-h-screen place-items-center bg-muted/30">Connexion à la borne…</main>;
+  if (auth.required && !auth.authenticated) {
+    return <OperatorLogin onAuthenticated={() => setAuth({ required: true, authenticated: true })} />;
+  }
+  return <AdminPortal />;
+}
+
+function OperatorLogin({ onAuthenticated }: { onAuthenticated: () => void }) {
+  const [code, setCode] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    setBusy(true);
+    try {
+      await api.operatorLogin(code);
+      onAuthenticated();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Code incorrect");
+      setCode("");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return <main className="grid min-h-screen place-items-center bg-muted/30 p-6"><form onSubmit={(event) => void submit(event)} className="grid w-full max-w-sm gap-5 rounded-xl border bg-background p-7 shadow-sm"><div><h1 className="text-2xl font-bold">Accès opérateur</h1><p className="mt-2 text-sm text-muted-foreground">Saisissez le code à six chiffres affiché sur la borne.</p></div><Input autoFocus inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={code} onChange={(event) => { setCode(event.target.value.replace(/\D/g, "")); setError(null); }} aria-label="Code administrateur" className="h-14 text-center text-2xl tracking-[0.4em]" />{error && <p className="text-sm text-destructive" role="alert">{error}</p>}<Button type="submit" disabled={busy || code.length !== 6} className="h-12">{busy ? "Vérification…" : "Ouvrir le portail"}</Button></form></main>;
+}
+
+function AdminPortal() {
   const [view, setView] = useState<AdminView>(() => viewFromHash());
 
   useEffect(() => {

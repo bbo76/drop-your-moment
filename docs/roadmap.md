@@ -158,7 +158,7 @@ Waveshare 1024×600, le tactile et le démarrage autonome après extinction comp
   capture 2304×1296, timeouts aperçu/review de 60/90 s, viseur plein cadre et parcours
   complet validés sur la dalle réelle
 
-### ⬜ Jalon 6.1 — Accès opérateur autonome
+### 🟨 Jalon 6.1 — Accès opérateur autonome
 
 Le Raspberry Pi fournit un hotspot local `DYM-PhotoBooth`, sans routage Internet ni mode
 client Wi-Fi simultané. La maintenance locale permet de l'activer et de le désactiver,
@@ -170,6 +170,9 @@ coupures imprévues. Un arrêt volontaire depuis la maintenance désactive d'abo
 et invalide le code et les sessions. Les clients Wi-Fi sont isolés entre eux ; environ cinq
 appareils sont supportés sans quota DHCP strict. Le kiosque `:8000` reste inaccessible et
 seul le portail `:8001` est ouvert sur ce réseau.
+
+Implémenté dans le logiciel et le déploiement ; les essais réels à cinq appareils et les
+contrôles radio/pare-feu sur le Raspberry Pi restent à exécuter avant de clore le jalon.
 
 ### ✅ Pilote webcam universel — macOS, Windows, USB
 
