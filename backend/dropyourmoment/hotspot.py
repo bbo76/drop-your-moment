@@ -152,12 +152,28 @@ class Hotspot:
         except (OSError, subprocess.SubprocessError):
             return {"available": True, "mode": "offline", "ssid": None, "connectivity": "unknown"}
         active = connection not in {"", "--"}
+        ssid = self.ssid if connection == self.connection else None
+        if active and ssid is None:
+            try:
+                ssid = self.runner(
+                    [
+                        "/usr/bin/nmcli",
+                        "-g",
+                        "802-11-wireless.ssid",
+                        "connection",
+                        "show",
+                        "id",
+                        connection,
+                    ]
+                ).strip() or None
+            except (OSError, subprocess.SubprocessError):
+                pass
         return {
             "available": True,
             "mode": (
                 "hotspot" if connection == self.connection else "client" if active else "offline"
             ),
-            "ssid": self.ssid if connection == self.connection else connection if active else None,
+            "ssid": ssid,
             "connectivity": (
                 connectivity if connectivity in {"full", "limited", "portal", "none"} else "unknown"
             ),

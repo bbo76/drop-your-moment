@@ -34,7 +34,8 @@ class FakeNetwork:
                 "wifi-maison:802-11-wireless\ndym-hotspot:802-11-wireless\ncable:802-3-ethernet\n"
             )
         if "802-11-wireless.ssid" in command:
-            return "DYM-PhotoBooth\n" if command[-1] == "dym-hotspot" else "wifi-maison\n"
+            ssids = {"dym-hotspot": "DYM-PhotoBooth", "netplan-wlan0": "wifi-maison"}
+            return f"{ssids.get(command[-1], command[-1])}\n"
         if "wifi" in command and "connect" in command:
             if self.fail_next_wifi_connection:
                 self.fail_next_wifi_connection = False
@@ -149,6 +150,13 @@ def test_connexion_client_coupe_le_hotspot_et_ne_persiste_pas_le_secret(tmp_path
     }
     assert access.code is None
     assert "secret-client" not in hotspot.state_path.read_text()
+
+
+def test_statut_wifi_affiche_le_ssid_plutot_que_le_nom_du_profil(tmp_path: Path) -> None:
+    hotspot, network = configured_hotspot(tmp_path, OperatorAccess(tmp_path))
+    network.current_connection = "netplan-wlan0"
+
+    assert hotspot.wifi_status()["ssid"] == "wifi-maison"
 
 
 def test_echec_de_connexion_restaure_le_hotspot(tmp_path: Path) -> None:
