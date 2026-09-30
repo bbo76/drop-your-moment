@@ -1,4 +1,2 @@
 # Autorise uniquement les deux actions d'alimentation exposées par la maintenance locale.
 photobooth ALL=(root) NOPASSWD: /usr/bin/systemctl reboot, /usr/bin/systemctl poweroff
-photobooth ALL=(root) NOPASSWD: /usr/bin/nmcli connection up id dym-hotspot, /usr/bin/nmcli connection down id dym-hotspot
-photobooth ALL=(root) NOPASSWD: /usr/bin/nmcli device disconnect wlan0
