@@ -185,13 +185,13 @@ sortie — tiennent sur une ligne et partagent le même axe vertical. Les aides 
 peuvent s'effacer avant qu'une cible tactile ne soit réduite.
 
 L'accès PIN est un écran partagé : contenu et état de saisie à gauche, clavier de signal
-fixe de 22rem à droite. La maintenance s'ouvre sur quatre grandes tuiles en grille 2×2 —
-Santé, Impression, Galerie et Réglages borne — puis chaque tuile conduit à un écran
+fixe de 22rem à droite. La maintenance s'ouvre sur six grandes tuiles en grille 2×3 —
+Santé, Impression, Galerie, Réglages borne, Réseau et Journaux — puis chaque tuile conduit à un écran
 spécialisé avec un retour permanent. Les détails restent en deux zones lorsque cela
 facilite le balayage visuel. À 600 px de hauteur, les marges et blocs adoptent directement
 leur densité d'exploitation sans changer la hiérarchie ni introduire de défilement.
-La galerie est la seule exception à l'absence de défilement : ses miniatures sont chargées
-progressivement dans une zone dédiée. Une photo s'ouvre dans un détail plein cadre avec
+La galerie et les journaux sont les seules exceptions à l'absence de défilement : leurs
+listes défilent dans une zone dédiée sans déplacer le cadre général. Une photo s'ouvre dans un détail plein cadre avec
 le choix du nombre d'exemplaires, le retirage et une suppression confirmée. L'écran
 Impression montre uniquement le bac et l'encre manipulables sur place ; la réserve totale
 de l'événement appartient au portail d'administration.
@@ -235,7 +235,7 @@ Les panneaux et contrôles utilisent des rectangles légèrement arrondis : 0.75
 
 ### Maintenance Tiles
 
-Les quatre destinations locales utilisent toute la surface disponible en grille 2×2. Chaque tuile associe une icône jaune de 4.25rem, un titre très lourd, un résumé opérationnel et un chevron. Toute la tuile est tactile ; aucune petite action secondaire n'y concurrence la destination. Les écrans de détail réutilisent la même barre de titre, un grand bouton Retour et l'état global de la borne.
+Les six destinations locales utilisent toute la surface disponible en grille 2×3. Chaque tuile associe une icône de maintenance de 4.25rem, un titre très lourd, un résumé opérationnel et un chevron. Toute la tuile est tactile ; aucune petite action secondaire n'y concurrence la destination. Les écrans de détail réutilisent la même barre de titre, un grand bouton Retour et l'état global de la borne.
 
 La tuile Impression porte le résumé des consommables. Réglages borne sépare
 **Apparence**, **Écran & session** et **Alimentation** : l'apparence propose seize teintes événementielles
@@ -249,6 +249,16 @@ utilise le corail d'intervention tandis que le redémarrage reste dans le signal
 L’interruption forcée d’une session appartient au portail
 distant : une commande locale pour « libérer » l’écran sur lequel elle s’affiche serait
 une fausse action.
+
+### Journal Timelines
+
+La maintenance présente les journaux comme un registre tactile en deux zones : liste
+chronologique à gauche, contexte et conseil à droite. Les filtres Incidents/Tout et
+Borne/Caméra/Impression/Réseau restent des choix de 48 px minimum ; seule la liste défile.
+L’heure utilise des chiffres tabulaires, le niveau est toujours nommé et le corail reste
+réservé aux incidents. L’administration desktop reprend la même taxonomie dans un tableau
+compact avec filtres, recherche, détail et export ; cette destination reste absente de la
+présentation mobile.
 
 ### Action Rail
 
@@ -315,7 +325,8 @@ La configuration desktop conserve le nom et le message de l'événement, l'overl
 filtres, le format, les copies et le minuteur. Couleur et typographie appartiennent à la
 maintenance de la borne ; le flash appartient à la borne et à la présentation mobile. La galerie
 privilégie les vignettes API, la pagination et une lightbox. Le diagnostic regroupe caméra,
-impression, parcours, stockage et ressources dans des cartes de lecture rapide. Sécurité
+impression, parcours, stockage et ressources dans des cartes de lecture rapide. Journaux
+reste une destination desktop dense et utilitaire, jamais une réduction dans la console mobile. Sécurité
 reste un formulaire court et étroit, centré sur le remplacement du PIN. Les surfaces,
 champs, boutons, badges, séparateurs et alertes reprennent directement les composants et
 rôles sémantiques shadcn plutôt que des couleurs administratives isolées.

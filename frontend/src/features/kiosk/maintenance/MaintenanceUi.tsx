@@ -7,6 +7,7 @@ import {
   Images,
   Printer,
   Router,
+  ScrollText,
   Wifi,
   SlidersHorizontal,
   type LucideIcon,
@@ -94,10 +95,10 @@ export function MaintenanceNetworkStatus({ wifi, hotspot }: { wifi: WifiStatus; 
 }
 
 export function MaintenanceIcon({ name, className = "size-[4.25rem] rounded-[0.55rem] bg-signal p-[0.9rem] fill-none stroke-current stroke-2 text-signal-ink [stroke-linecap:round] [stroke-linejoin:round]" }: {
-  name: "health" | "print" | "gallery" | "settings" | "network";
+  name: "health" | "print" | "gallery" | "settings" | "network" | "journal";
   className?: string;
 }) {
-  const icons: Record<typeof name, LucideIcon> = { health: Activity, print: Printer, gallery: Images, settings: SlidersHorizontal, network: Wifi };
+  const icons: Record<typeof name, LucideIcon> = { health: Activity, print: Printer, gallery: Images, settings: SlidersHorizontal, network: Wifi, journal: ScrollText };
   const Icon = icons[name];
   return <Icon className={className} strokeWidth={2} />;
 }

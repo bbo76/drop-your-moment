@@ -12,6 +12,7 @@ import logging
 import re
 import shutil
 import unicodedata
+from datetime import datetime
 from io import BytesIO
 from pathlib import Path
 from typing import Literal
@@ -34,6 +35,13 @@ from dropyourmoment.hardware.printer.cups_driver import list_cups_printers
 from dropyourmoment.hardware.printer.factory import PrinterDriverName, PrinterSelection
 from dropyourmoment.hardware.system_metrics import read_system_metrics
 from dropyourmoment.imaging.steps import crop_to_aspect
+from dropyourmoment.journal import (
+    JournalComponent,
+    JournalLevel,
+    JournalPage,
+    JournalUnavailable,
+    read_journal,
+)
 from dropyourmoment.runtime import Runtime
 from dropyourmoment.storage.atomic import write_atomic
 from dropyourmoment.storage.counters import PAPER_CASSETTE_CAPACITY, Counters
@@ -183,6 +191,32 @@ def read_health(runtime: Runtime = Depends(get_runtime)) -> AdminHealth:
         throttled_now=metrics.throttled_now,
         throttled_occurred=metrics.throttled_occurred,
     )
+
+
+@router.get("/journal", response_model=JournalPage)
+def read_admin_journal(
+    offset: int = Query(0, ge=0, le=1_000),
+    limit: int = Query(100, ge=1, le=200),
+    since: datetime | None = None,
+    until: datetime | None = None,
+    level: JournalLevel | None = None,
+    component: JournalComponent | None = None,
+    search: str | None = Query(default=None, max_length=120),
+) -> JournalPage:
+    if since and until and since > until:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail="la fin précède le début")
+    try:
+        return read_journal(
+            offset=offset,
+            limit=limit,
+            since=since,
+            until=until,
+            level=level,
+            component=component,
+            search=search,
+        )
+    except JournalUnavailable as exc:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
 
 
 def _printer_configuration(runtime: Runtime) -> PrinterConfiguration:
