@@ -341,6 +341,7 @@ sudo install -m 0644 deploy/dropyourmoment-kiosk.service /etc/systemd/system/
 sudo install -m 0644 deploy/cage.pam /etc/pam.d/cage
 sudo install -m 0644 deploy/99-dropyourmoment-input.rules /etc/udev/rules.d/
 sudo install -m 0440 deploy/dropyourmoment-sudoers /etc/sudoers.d/dropyourmoment
+sudo install -m 0644 deploy/49-dropyourmoment-network.rules /etc/polkit-1/rules.d/
 sudo install -d /etc/chromium/policies/managed
 sudo install -m 0644 deploy/chromium-policy.json /etc/chromium/policies/managed/dropyourmoment.json
 sudo systemctl daemon-reload

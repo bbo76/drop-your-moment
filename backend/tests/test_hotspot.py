@@ -94,10 +94,7 @@ def test_activation_persiste_et_restaure_le_hotspot(tmp_path: Path) -> None:
     assert hotspot.desired_active
     assert hotspot.active()
     assert access.code is not None
-    assert (
-        network.commands.count(["sudo", "/usr/bin/nmcli", "connection", "up", "id", "dym-hotspot"])
-        == 2
-    )
+    assert network.commands.count(["/usr/bin/nmcli", "connection", "up", "id", "dym-hotspot"]) == 2
 
 
 def test_desactivation_coupe_le_reseau_et_invalide_les_acces(tmp_path: Path) -> None:
@@ -174,12 +171,12 @@ def test_profils_reconnexion_reseau_masque_et_oubli(tmp_path: Path) -> None:
     assert hidden_command[-2:] == ["hidden", "yes"]
 
 
-def test_deconnexion_wifi_utilise_la_commande_autorisee(tmp_path: Path) -> None:
+def test_deconnexion_wifi_utilise_network_manager(tmp_path: Path) -> None:
     hotspot, network = configured_hotspot(tmp_path, OperatorAccess(tmp_path))
 
     hotspot.disconnect_wifi()
 
-    assert ["sudo", "/usr/bin/nmcli", "device", "disconnect", "wlan0"] in network.commands
+    assert ["/usr/bin/nmcli", "device", "disconnect", "wlan0"] in network.commands
 
 
 def test_api_locale_pilote_et_compte_les_clients(

@@ -6,6 +6,7 @@ import { EventSection } from "@/features/admin/EventSection";
 import { GallerySection } from "@/features/admin/GallerySection";
 import { HealthSection } from "@/features/admin/HealthSection";
 import { SecuritySection } from "@/features/admin/SecuritySection";
+import { DayOfView } from "@/features/admin/DayOfView";
 import {
   Sidebar,
   SidebarContent,
@@ -31,12 +32,15 @@ import { api, type OperatorAuthStatus } from "@/api/client";
 /* Backoffice complet, destiné à la préparation sur laptop. Le pilotage mobile du jour J
  * possède son propre point d'entrée et réutilise directement les mêmes API. */
 
-export function AdminApp() {
+export function AdminApp({ mobile = false }: { mobile?: boolean }) {
   const [auth, setAuth] = useState<OperatorAuthStatus | null>(null);
   useEffect(() => { void api.operatorAuthStatus().then(setAuth); }, []);
   if (!auth) return <main className="grid min-h-screen place-items-center bg-muted/30">Connexion à la borne…</main>;
   if (auth.required && !auth.authenticated) {
     return <OperatorLogin onAuthenticated={() => setAuth({ required: true, authenticated: true })} />;
+  }
+  if (mobile) {
+    return <div className="mx-auto min-h-dvh w-full max-w-2xl px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1.25rem,env(safe-area-inset-bottom))]"><main><DayOfView /></main></div>;
   }
   return <AdminPortal />;
 }

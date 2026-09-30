@@ -93,14 +93,14 @@ class Hotspot:
         previous_connection = self.runner(
             ["/usr/bin/nmcli", "-g", "GENERAL.CONNECTION", "device", "show", self.interface]
         ).strip()
-        self.runner(["sudo", "/usr/bin/nmcli", "connection", "up", "id", self.connection])
+        self.runner(["/usr/bin/nmcli", "connection", "up", "id", self.connection])
         self.operator_access.activate()
         self._save(True, previous_connection)
 
     def deactivate(self) -> None:
         previous_connection = self.previous_connection
         if self.active():
-            self.runner(["sudo", "/usr/bin/nmcli", "connection", "down", "id", self.connection])
+            self.runner(["/usr/bin/nmcli", "connection", "down", "id", self.connection])
         self.operator_access.deactivate()
         self._save(False)
         if previous_connection:
@@ -110,7 +110,7 @@ class Hotspot:
         if not self.desired_active:
             return
         self._require_configured()
-        self.runner(["sudo", "/usr/bin/nmcli", "connection", "up", "id", self.connection])
+        self.runner(["/usr/bin/nmcli", "connection", "up", "id", self.connection])
         self.operator_access.activate()
 
     def active(self) -> bool:
@@ -282,7 +282,7 @@ class Hotspot:
     def disconnect_wifi(self) -> None:
         if not self.available:
             raise RuntimeError("Wi-Fi indisponible sur cette borne")
-        self.runner(["sudo", "/usr/bin/nmcli", "device", "disconnect", self.interface])
+        self.runner(["/usr/bin/nmcli", "device", "disconnect", self.interface])
 
     def forget_wifi(self, profile: str) -> None:
         if not self.available:

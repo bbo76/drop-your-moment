@@ -38,6 +38,8 @@ install -d -m 755 /etc/nftables.d
 install -m 644 "$SCRIPT_DIR/dropyourmoment-hotspot.nft" /etc/nftables.d/dropyourmoment-hotspot.nft
 install -m 644 "$SCRIPT_DIR/dropyourmoment-hotspot-firewall.service" /etc/systemd/system/dropyourmoment-hotspot-firewall.service
 install -m 440 "$SCRIPT_DIR/dropyourmoment-sudoers" /etc/sudoers.d/dropyourmoment
+install -d -m 755 /etc/polkit-1/rules.d
+install -m 644 "$SCRIPT_DIR/49-dropyourmoment-network.rules" /etc/polkit-1/rules.d/49-dropyourmoment-network.rules
 systemctl daemon-reload
 systemctl enable --now NetworkManager nftables dropyourmoment-hotspot-firewall.service
 
