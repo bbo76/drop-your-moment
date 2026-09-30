@@ -1,5 +1,5 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { Download, RefreshCw, Search } from "lucide-react";
+import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { Download, Radio, RefreshCw, Search } from "lucide-react";
 
 import {
   api,
@@ -38,23 +38,37 @@ export function JournalSection() {
   const [nextOffset, setNextOffset] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [live, setLive] = useState(false);
+  const loading = useRef(false);
 
-  const load = async (nextQuery = query, nextOffsetValue = offset) => {
+  const load = useCallback(async (nextQuery: JournalQuery, nextOffsetValue: number, preserveSelection = false) => {
+    if (loading.current) return;
+    loading.current = true;
     setBusy(true);
     try {
       const page = await api.adminJournal({ ...nextQuery, offset: nextOffsetValue, limit: 100 });
       setEntries(page.entries);
-      setSelected(page.entries[0] ?? null);
+      setSelected((current) => preserveSelection
+        ? page.entries.find((entry) => entryKey(entry) === entryKey(current)) ?? current ?? page.entries[0] ?? null
+        : (page.entries[0] ?? null));
       setNextOffset(page.next_offset);
       setError(null);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Impossible de lire les journaux.");
     } finally {
+      loading.current = false;
       setBusy(false);
     }
-  };
+  }, []);
 
-  useEffect(() => { void load(); }, []); // La recherche reste explicite pour ne pas marteler journald.
+  useEffect(() => { void load({ limit: 100 }, 0); }, [load]);
+  useEffect(() => {
+    if (!live || offset !== 0) return;
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible") void load(query, 0, true);
+    }, 3_000);
+    return () => window.clearInterval(interval);
+  }, [live, load, offset, query]);
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -71,6 +85,7 @@ export function JournalSection() {
   };
 
   const paginate = (next: number) => {
+    if (next > 0) setLive(false);
     setOffset(next);
     void load(query, next);
   };
@@ -92,7 +107,8 @@ export function JournalSection() {
         <div className="flex flex-wrap items-center justify-between gap-3 border-y py-3">
           <p className="text-sm text-muted-foreground">{entries.length ? `${entries.length} événements · plus récents en premier` : "Aucun événement pour ces filtres"}</p>
           <div className="flex gap-2">
-            <Button variant="outline" disabled={busy} onClick={() => void load()}><RefreshCw className={busy ? "animate-spin" : ""} />Actualiser</Button>
+            <Button variant={live ? "default" : "outline"} aria-pressed={live} onClick={() => setLive((current) => !current)}><Radio className={live ? "animate-pulse" : ""} />{live ? "Live activé" : "Live arrêté"}</Button>
+            <Button variant="outline" disabled={busy} onClick={() => void load(query, offset)}><RefreshCw className={busy ? "animate-spin" : ""} />Actualiser</Button>
             <Button variant="outline" disabled={!entries.length} onClick={() => exportEntries(entries, "txt")}><Download />Texte</Button>
             <Button variant="outline" disabled={!entries.length} onClick={() => exportEntries(entries, "json")}><Download />JSON</Button>
           </div>
@@ -140,4 +156,5 @@ function exportEntries(entries: JournalEntry[], format: "txt" | "json") {
 const isIncident = ({ level }: JournalEntry) => ["critical", "error", "warning"].includes(level);
 const levelLabel = (level: JournalLevel) => ({ critical: "Critique", error: "Erreur", warning: "Attention", info: "Info", debug: "Détail" })[level];
 const componentLabel = (component: JournalComponent) => ({ borne: "Borne", camera: "Caméra", impression: "Impression", reseau: "Réseau" })[component];
+const entryKey = (entry: JournalEntry | null) => entry ? `${entry.timestamp}-${entry.message}` : "";
 const dateTime = (value: string, seconds = false) => new Intl.DateTimeFormat("fr-FR", { dateStyle: "short", timeStyle: seconds ? "medium" : "short" }).format(new Date(value));
