@@ -82,6 +82,33 @@ def test_soumet_et_suit_un_job(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) 
     assert driver.get_job_status("cups-42").state is JobState.FAILED
 
 
+@pytest.mark.parametrize(
+    ("reason", "expected"),
+    [
+        ("media-empty", "papier épuisé"),
+        ("marker-supply-low", "cartouche à remplacer"),
+        ("media-jam", "bourrage papier"),
+        ("printer-offline", "imprimante hors ligne"),
+        ("vendor-failure", "erreur imprimante (vendor-failure)"),
+    ],
+)
+def test_traduit_les_raisons_cups_en_detail_metier(
+    monkeypatch: pytest.MonkeyPatch,
+    reason: str,
+    expected: str,
+) -> None:
+    connection = fake_cups(monkeypatch)
+    driver = build_printer_driver(PrinterDriverName.CUPS)
+    driver.print_image(Path("photo.jpg"), copies=1)
+    connection.state = 8
+    connection.getJobAttributes = lambda job_id: {  # type: ignore[method-assign]
+        "job-state": 8,
+        "job-state-reasons": [reason],
+    }
+
+    assert driver.get_job_status("cups-42").detail == expected
+
+
 def test_liste_les_imprimantes_et_respecte_le_nom_configure(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
