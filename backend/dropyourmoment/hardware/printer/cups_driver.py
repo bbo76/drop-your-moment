@@ -32,8 +32,30 @@ def _reason_detail(reasons: object) -> str | None:
         "printer-offline": "imprimante hors ligne",
         "printer-not-connected": "imprimante hors ligne",
         "paused": "imprimante hors ligne",
+        "resources-are-not-ready": "imprimante non prête — vérifier papier ou cartouche",
     }
     return ", ".join(labels.get(reason, f"erreur imprimante ({reason})") for reason in values)
+
+
+def _blocking_printer_reason(reasons: object) -> str | None:
+    if isinstance(reasons, str):
+        values = [reasons]
+    elif isinstance(reasons, (list, tuple)):
+        values = [reason for reason in reasons if isinstance(reason, str)]
+    else:
+        values = []
+    blocking = {
+        "media-empty",
+        "media-needed",
+        "marker-supply-empty",
+        "media-jam",
+        "interlock-open",
+        "printer-offline",
+        "printer-not-connected",
+        "paused",
+        "resources-are-not-ready",
+    }
+    return next((reason for reason in values if reason in blocking), None)
 
 
 def list_cups_printers() -> list[str]:
@@ -99,6 +121,20 @@ class CupsPrinterDriver(PrinterDriver):
             raise PrintJobFailedError(f"job inconnu : {job_id}") from None
         except (self._cups.IPPError, RuntimeError) as exc:
             raise PrintJobFailedError(f"statut CUPS inaccessible pour {job_id} : {exc}") from exc
+
+        try:
+            printer = self._connection.getPrinters().get(self._printer_name, {})
+        except (self._cups.IPPError, RuntimeError) as exc:
+            raise PrintJobFailedError(
+                f"statut de l'imprimante inaccessible pour {job_id} : {exc}"
+            ) from exc
+        if reason := _blocking_printer_reason(printer.get("printer-state-reasons")):
+            return PrintJob(
+                id=job_id,
+                state=JobState.FAILED,
+                copies=copies,
+                detail=_reason_detail(reason) or "imprimante non prête",
+            )
 
         cups_state = attributes.get("job-state")
         if cups_state in (self._cups.IPP_JOB_PENDING, self._cups.IPP_JOB_HELD):
