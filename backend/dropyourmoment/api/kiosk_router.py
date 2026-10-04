@@ -275,6 +275,17 @@ def capture(session_id: str, runtime: Runtime = Depends(get_runtime)) -> Session
     return _status(runtime)
 
 
+@router.post("/session/{session_id}/capture/prepare", response_model=SessionStatus)
+def prepare_capture(session_id: str, runtime: Runtime = Depends(get_runtime)) -> SessionStatus:
+    """Garde la session en prévisualisation pendant le compte à rebours tactile."""
+    _require_session(runtime, session_id)
+    try:
+        runtime.machine.keep_alive()
+    except InvalidTransitionError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    return _status(runtime)
+
+
 class FilterChoice(BaseModel):
     name: FilterName
 

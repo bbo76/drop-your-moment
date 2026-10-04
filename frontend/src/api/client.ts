@@ -353,6 +353,8 @@ export const api = {
   cancelSession: () => post<SessionStatus>("/api/session/cancel"),
 
   capture: (sessionId: string) => post<SessionStatus>(`/api/session/${sessionId}/capture`),
+  prepareCapture: (sessionId: string) =>
+    post<SessionStatus>(`/api/session/${sessionId}/capture/prepare`),
   chooseFilter: (sessionId: string, name: FilterName) =>
     post<SessionStatus>(`/api/session/${sessionId}/filter`, { name }),
   retake: (sessionId: string) => post<SessionStatus>(`/api/session/${sessionId}/retake`),
@@ -521,6 +523,7 @@ export const overlayUrl = (revision: number) => `/admin/overlay?v=${revision}`;
 export const thumbnailUrl = (sessionId: string) => `/admin/gallery/${sessionId}/thumbnail`;
 export const photoDownloadUrl = (sessionId: string) => `/admin/gallery/${sessionId}/photo`;
 export const photoViewUrl = (sessionId: string) => `/admin/gallery/${sessionId}/view`;
+export const rawPhotoViewUrl = (sessionId: string) => `/admin/gallery/${sessionId}/raw`;
 export const maintenanceThumbnailUrl = (sessionId: string) =>
   `/api/maintenance/gallery/${sessionId}/thumbnail`;
 export const maintenancePhotoUrl = (sessionId: string) =>

@@ -23,6 +23,7 @@ export interface KioskState {
   connection: Connection;
   start: () => Promise<void>;
   cancel: () => Promise<void>;
+  prepareCapture: () => Promise<void>;
   capture: () => Promise<void>;
   chooseFilter: (name: FilterName) => Promise<void>;
   retake: () => Promise<void>;
@@ -159,6 +160,17 @@ export function useKioskState(): KioskState {
       captureInFlightRef.current = false;
     }
   }, []);
+  const prepareCapture = useCallback(async () => {
+    const id = sessionIdRef.current;
+    if (!id) return;
+    captureInFlightRef.current = true;
+    try {
+      setSession(await api.prepareCapture(id));
+    } catch (error) {
+      captureInFlightRef.current = false;
+      console.warn(error);
+    }
+  }, []);
   const retake = useCallback(() => withSession(api.retake), [withSession]);
   const keepPhoto = useCallback(
     (copies: number) => withSession((id) => api.printPhoto(id, copies)),
@@ -177,6 +189,7 @@ export function useKioskState(): KioskState {
     connection,
     start,
     cancel,
+    prepareCapture,
     capture,
     chooseFilter,
     retake,

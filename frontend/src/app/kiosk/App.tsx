@@ -34,6 +34,7 @@ export function App() {
     connection,
     start,
     cancel,
+    prepareCapture,
     capture,
     chooseFilter,
     retake,
@@ -147,6 +148,7 @@ export function App() {
             remainingSeconds={session.remaining_seconds}
             defaultShotTimerSeconds={event.default_shot_timer_seconds}
             screenFlashEnabled={event.screen_flash_enabled}
+            onPrepareCapture={prepareCapture}
             onCapture={capture}
             onCancel={cancel}
           />

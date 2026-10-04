@@ -76,6 +76,20 @@ def test_retake_revient_en_preview_sans_perdre_la_session(machine: SessionMachin
     assert machine.session is session, "un retake continue la même session"
 
 
+def test_keep_alive_prolonge_le_compte_a_rebours_de_capture(
+    machine: SessionMachine, clock: FakeClock, timeouts: StateTimeouts
+) -> None:
+    session = machine.start()
+    clock.advance(timeouts.preview - 1)
+
+    machine.keep_alive()
+    clock.advance(timeouts.preview - 1)
+
+    assert machine.tick() is False
+    assert machine.state is SessionState.PREVIEW
+    assert machine.session is session
+
+
 def test_capture_refusee_hors_preview(machine: SessionMachine) -> None:
     with pytest.raises(InvalidTransitionError):
         machine.capture()
