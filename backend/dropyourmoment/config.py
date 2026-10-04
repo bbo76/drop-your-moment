@@ -56,8 +56,9 @@ class Settings(BaseSettings):
     error_timeout_s: float = 15.0
 
     # Donne à l'interface d'attente un vrai état PRINTING pendant le développement.
-    # Le pilote CUPS remplacera entièrement ce délai simulé.
     simulated_print_duration_s: float = 8.0
+    # CUPS annonce la fin à la remise des données ; la CP1500 finit physiquement plus tard.
+    print_completion_delay_s: float = 40.0
 
     data_dir: Path = REPO_ROOT / "data"
 

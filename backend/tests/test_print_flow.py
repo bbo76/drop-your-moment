@@ -99,6 +99,42 @@ def test_un_tirage_lent_affiche_l_ecran_d_attente(
     assert kiosk.get("/api/status").json()["state"] == SessionState.DONE
 
 
+def test_un_job_termine_attend_le_delai_residuel(
+    kiosk: TestClient, runtime: Runtime, printer: FakePrinterDriver
+) -> None:
+    now = [100.0]
+    runtime.print_flow._completion_delay_s = 40.0
+    runtime.print_flow._clock = lambda: now[0]
+    session_id = capture(kiosk)
+    body = kiosk.post(f"/api/session/{session_id}/print").json()
+
+    assert body["state"] == SessionState.PRINTING
+    assert runtime.counters.read().prints_total == 0
+
+    now[0] += 39.9
+    assert kiosk.get("/api/status").json()["state"] == SessionState.PRINTING
+    assert runtime.counters.read().prints_total == 0
+
+    now[0] += 0.1
+    assert kiosk.get("/api/status").json()["state"] == SessionState.DONE
+    assert runtime.counters.read().prints_total == 1
+
+
+def test_le_delai_residuel_ne_redemarre_pas_a_chaque_poll(
+    kiosk: TestClient, runtime: Runtime
+) -> None:
+    now = [100.0]
+    runtime.print_flow._completion_delay_s = 10.0
+    runtime.print_flow._clock = lambda: now[0]
+    session_id = capture(kiosk)
+    kiosk.post(f"/api/session/{session_id}/print")
+
+    now[0] += 5.0
+    assert kiosk.get("/api/status").json()["state"] == SessionState.PRINTING
+    now[0] += 5.0
+    assert kiosk.get("/api/status").json()["state"] == SessionState.DONE
+
+
 def test_le_tirage_transmet_le_fichier_fige(
     kiosk: TestClient, runtime: Runtime, printer: FakePrinterDriver
 ) -> None:

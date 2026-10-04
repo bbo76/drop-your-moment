@@ -27,6 +27,7 @@ def settings(tmp_path: Path) -> Settings:
         camera_driver=CameraDriverName.MOCK,
         data_dir=tmp_path / "data",
         frontend_dist_dir=tmp_path / "dist-absent",
+        print_completion_delay_s=0.0,
     )
 
 
