@@ -157,6 +157,12 @@ class SessionMachine:
         assert self._session is not None  # garanti par la transition depuis PREVIEW
         return self._session
 
+    def keep_alive(self) -> Session:
+        """Prolonge la prévisualisation pendant le compte à rebours de capture."""
+        self._dispatch(SessionEvent.START)
+        assert self._session is not None
+        return self._session
+
     def choose_filter(self, filter_name: str) -> Session:
         self._dispatch(SessionEvent.CHOOSE_FILTER)
         assert self._session is not None

@@ -3,8 +3,8 @@ import { useEffect, useState } from "react";
 
 import { Lede } from "./Screen";
 
-// Estimation CP1500 : CUPS termine à la remise du flux, puis l'imprimante effectue
-// encore ses passes physiques. La confirmation backend reste la seule source du 100 %.
+// Estimation CP1500 : environ 50 s pour les passes physiques observées.
+// Le backend garde la main sur les erreurs et peut terminer plus tôt si nécessaire.
 const ESTIMATED_PRINT_DURATION_MS = 50_000;
 
 interface Props {
@@ -26,7 +26,7 @@ export function ConfirmationScreen({ printing, outputMode, outputCopies, photoUr
     const startedAt = performance.now();
     const timer = window.setInterval(() => {
       const elapsed = performance.now() - startedAt;
-      setProgress(Math.min(94, 8 + (elapsed / ESTIMATED_PRINT_DURATION_MS) * 86));
+      setProgress(Math.min(100, 8 + (elapsed / ESTIMATED_PRINT_DURATION_MS) * 92));
     }, 120);
     return () => window.clearInterval(timer);
   }, [printing]);

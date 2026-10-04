@@ -353,6 +353,8 @@ export const api = {
   cancelSession: () => post<SessionStatus>("/api/session/cancel"),
 
   capture: (sessionId: string) => post<SessionStatus>(`/api/session/${sessionId}/capture`),
+  prepareCapture: (sessionId: string) =>
+    post<SessionStatus>(`/api/session/${sessionId}/capture/prepare`),
   chooseFilter: (sessionId: string, name: FilterName) =>
     post<SessionStatus>(`/api/session/${sessionId}/filter`, { name }),
   retake: (sessionId: string) => post<SessionStatus>(`/api/session/${sessionId}/retake`),

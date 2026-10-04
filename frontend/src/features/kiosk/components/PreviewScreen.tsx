@@ -14,6 +14,7 @@ interface Props {
   remainingSeconds: number | null;
   defaultShotTimerSeconds: ShotTimerSeconds;
   screenFlashEnabled: boolean;
+  onPrepareCapture: () => Promise<void>;
   onCapture: () => Promise<void>;
   onCancel: () => void;
 }
@@ -30,6 +31,7 @@ export function PreviewScreen({
   remainingSeconds,
   defaultShotTimerSeconds,
   screenFlashEnabled,
+  onPrepareCapture,
   onCapture,
   onCancel,
 }: Props) {
@@ -158,7 +160,10 @@ export function PreviewScreen({
             <button
               type="button"
               aria-label="Prendre la photo"
-              onClick={() => setPhase({ kind: "counting", value: shotTimerSeconds })}
+              onClick={() => {
+                void onPrepareCapture();
+                setPhase({ kind: "counting", value: shotTimerSeconds });
+              }}
               className="grid size-24 cursor-pointer place-items-center rounded-full border-4 border-ink bg-signal text-signal-ink transition-transform duration-150 active:scale-[0.94]"
             >
               <Camera aria-hidden="true" className="size-11" strokeWidth={2.25} />
