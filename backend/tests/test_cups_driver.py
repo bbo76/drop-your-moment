@@ -27,6 +27,7 @@ class FakeConnection:
         self.state = 3
         self.submission: tuple[object, ...] | None = None
         self.printer_attributes: dict[str, object] = {}
+        self.cancelled: list[int] = []
 
     def getDefault(self) -> str:
         return "Canon_CP1500"
@@ -44,6 +45,9 @@ class FakeConnection:
     def getJobAttributes(self, job_id: int) -> dict[str, object]:
         assert job_id == 42
         return {"job-state": self.state, "job-state-reasons": ["none"]}
+
+    def cancelJob(self, job_id: int) -> None:
+        self.cancelled.append(job_id)
 
 
 def fake_cups(monkeypatch: pytest.MonkeyPatch) -> FakeConnection:
@@ -144,6 +148,16 @@ def test_un_job_inconnu_est_refuse(monkeypatch: pytest.MonkeyPatch) -> None:
 
     with pytest.raises(PrintJobFailedError):
         driver.get_job_status("cups-999")
+
+
+def test_un_job_cups_peut_etre_annule(monkeypatch: pytest.MonkeyPatch) -> None:
+    connection = fake_cups(monkeypatch)
+    driver = build_printer_driver(PrinterDriverName.CUPS)
+    driver.print_image(Path("photo.jpg"), copies=1)
+
+    driver.cancel_job("cups-42")
+
+    assert connection.cancelled == [42]
 
 
 def test_pycups_absent_est_une_imprimante_hors_ligne(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -64,6 +64,14 @@ class PrintFlow:
     def last_error(self) -> str | None:
         return self._last_error
 
+    def cancel(self) -> None:
+        job = self._job
+        if job is not None:
+            try:
+                self._printer.cancel_job(job.id)
+            finally:
+                self._fail("impression annulée")
+
     def submit(self, image_path: Path, copies: int, *, complete_session: bool = True) -> PrintJob:
         """Soumet le tirage. Lève `PrinterError` si l'imprimante refuse la demande."""
         if self._job is not None:
@@ -104,7 +112,12 @@ class PrintFlow:
             and self._clock() - self._submitted_at >= self._job_timeout_s
         )
         if timed_out:
-            self._fail("délai d'impression dépassé : vérifiez l'imprimante")
+            try:
+                self._printer.cancel_job(job.id)
+            except PrinterError as exc:
+                logger.warning("annulation du job %s impossible après timeout : %s", job.id, exc)
+            finally:
+                self._fail("délai d'impression dépassé : vérifiez l'imprimante")
             return
 
         try:
