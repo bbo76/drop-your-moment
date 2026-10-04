@@ -10,6 +10,32 @@ from dropyourmoment.core.errors import PrinterOfflineError, PrintJobFailedError
 from dropyourmoment.hardware.printer.base import JobState, PrinterDriver, PrintJob
 
 
+def _reason_detail(reasons: object) -> str | None:
+    if isinstance(reasons, str):
+        values = [reasons]
+    elif isinstance(reasons, (list, tuple)):
+        values = [reason for reason in reasons if isinstance(reason, str)]
+    else:
+        values = []
+
+    values = [reason for reason in values if reason != "none"]
+    if not values:
+        return None
+
+    labels = {
+        "media-empty": "papier épuisé",
+        "media-needed": "papier épuisé",
+        "marker-supply-empty": "cartouche vide",
+        "marker-supply-low": "cartouche à remplacer",
+        "media-jam": "bourrage papier",
+        "interlock-open": "incident mécanique",
+        "printer-offline": "imprimante hors ligne",
+        "printer-not-connected": "imprimante hors ligne",
+        "paused": "imprimante hors ligne",
+    }
+    return ", ".join(labels.get(reason, f"erreur imprimante ({reason})") for reason in values)
+
+
 def list_cups_printers() -> list[str]:
     try:
         import cups
@@ -84,9 +110,5 @@ class CupsPrinterDriver(PrinterDriver):
         else:
             state = JobState.FAILED
 
-        reasons = attributes.get("job-state-reasons")
-        if isinstance(reasons, (list, tuple)):
-            detail = ", ".join(reason for reason in reasons if reason != "none") or None
-        else:
-            detail = reasons if reasons != "none" else None
+        detail = _reason_detail(attributes.get("job-state-reasons"))
         return PrintJob(id=job_id, state=state, copies=copies, detail=detail)
