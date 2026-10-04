@@ -58,7 +58,7 @@ class Settings(BaseSettings):
     # Donne à l'interface d'attente un vrai état PRINTING pendant le développement.
     simulated_print_duration_s: float = 8.0
     # CUPS annonce la fin à la remise des données ; la CP1500 finit physiquement plus tard.
-    print_completion_delay_s: float = 40.0
+    print_completion_delay_s: float = 50.0
     # Aucun job ne doit pouvoir immobiliser le kiosque indéfiniment.
     print_job_timeout_s: float = 120.0
 
