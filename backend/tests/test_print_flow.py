@@ -135,6 +135,23 @@ def test_le_delai_residuel_ne_redemarre_pas_a_chaque_poll(
     assert kiosk.get("/api/status").json()["state"] == SessionState.DONE
 
 
+def test_un_job_bloque_finit_en_erreur_apres_timeout(
+    kiosk: TestClient, runtime: Runtime
+) -> None:
+    now = [100.0]
+    runtime.print_flow._job_timeout_s = 30.0
+    runtime.print_flow._clock = lambda: now[0]
+    session_id = capture(kiosk)
+    runtime.printer.mode = "spooling"  # type: ignore[attr-defined]
+    kiosk.post(f"/api/session/{session_id}/print")
+
+    now[0] += 30.0
+    status = kiosk.get("/api/status").json()
+
+    assert status["state"] == SessionState.ERROR
+    assert status["error"] == "délai d'impression dépassé : vérifiez l'imprimante"
+
+
 def test_le_tirage_transmet_le_fichier_fige(
     kiosk: TestClient, runtime: Runtime, printer: FakePrinterDriver
 ) -> None:

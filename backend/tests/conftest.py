@@ -28,6 +28,7 @@ def settings(tmp_path: Path) -> Settings:
         data_dir=tmp_path / "data",
         frontend_dist_dir=tmp_path / "dist-absent",
         print_completion_delay_s=0.0,
+        print_job_timeout_s=120.0,
     )
 
 

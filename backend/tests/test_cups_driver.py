@@ -26,12 +26,16 @@ class FakeConnection:
     def __init__(self) -> None:
         self.state = 3
         self.submission: tuple[object, ...] | None = None
+        self.printer_attributes: dict[str, object] = {}
 
     def getDefault(self) -> str:
         return "Canon_CP1500"
 
     def getPrinters(self) -> dict[str, object]:
-        return {"Secondaire": {}, "Canon_CP1500": {}}
+        return {
+            "Secondaire": {},
+            "Canon_CP1500": self.printer_attributes,
+        }
 
     def printFile(self, *args: object) -> int:
         self.submission = args
@@ -107,6 +111,20 @@ def test_traduit_les_raisons_cups_en_detail_metier(
     }
 
     assert driver.get_job_status("cups-42").detail == expected
+
+
+def test_une_file_cups_non_prete_fait_echouer_le_job(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    connection = fake_cups(monkeypatch)
+    connection.printer_attributes["printer-state-reasons"] = ["resources-are-not-ready"]
+    driver = build_printer_driver(PrinterDriverName.CUPS)
+    driver.print_image(Path("photo.jpg"), copies=1)
+
+    status = driver.get_job_status("cups-42")
+
+    assert status.state is JobState.FAILED
+    assert status.detail == "imprimante non prête — vérifier papier ou cartouche"
 
 
 def test_liste_les_imprimantes_et_respecte_le_nom_configure(

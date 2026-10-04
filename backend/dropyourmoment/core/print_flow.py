@@ -34,6 +34,7 @@ class PrintFlow:
         counters: CounterStore,
         on_completed: Callable[[], None] | None = None,
         completion_delay_s: float = 0.0,
+        job_timeout_s: float = 120.0,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
         self._machine = machine
@@ -45,8 +46,10 @@ class PrintFlow:
         self._source_path: Path | None = None
         self._last_error: str | None = None
         self._completion_delay_s = max(0.0, completion_delay_s)
+        self._job_timeout_s = max(0.0, job_timeout_s)
         self._clock = clock
         self._completed_at: float | None = None
+        self._submitted_at: float | None = None
 
     @property
     def job(self) -> PrintJob | None:
@@ -76,6 +79,7 @@ class PrintFlow:
         self._source_path = image_path
         self._last_error = None
         self._completed_at = None
+        self._submitted_at = self._clock()
         logger.info("tirage %s soumis (%d copie(s))", job.id, job.copies)
         return job
 
@@ -88,10 +92,19 @@ class PrintFlow:
             self._job = None
             self._source_path = None
             self._completed_at = None
+            self._submitted_at = None
             return
 
         job = self._job
         if job is None:
+            return
+
+        timed_out = (
+            self._submitted_at is not None
+            and self._clock() - self._submitted_at >= self._job_timeout_s
+        )
+        if timed_out:
+            self._fail("délai d'impression dépassé : vérifiez l'imprimante")
             return
 
         try:
@@ -115,6 +128,7 @@ class PrintFlow:
         self._job = None
         self._source_path = None
         self._completed_at = None
+        self._submitted_at = None
         self._counters.record_prints(job.copies)
         if self._complete_session:
             self._machine.complete()
@@ -126,6 +140,7 @@ class PrintFlow:
         self._job = None
         self._source_path = None
         self._completed_at = None
+        self._submitted_at = None
         self._last_error = reason
         if self._complete_session:
             self._machine.fail(reason)

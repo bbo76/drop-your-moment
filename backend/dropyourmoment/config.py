@@ -59,6 +59,8 @@ class Settings(BaseSettings):
     simulated_print_duration_s: float = 8.0
     # CUPS annonce la fin à la remise des données ; la CP1500 finit physiquement plus tard.
     print_completion_delay_s: float = 40.0
+    # Aucun job ne doit pouvoir immobiliser le kiosque indéfiniment.
+    print_job_timeout_s: float = 120.0
 
     data_dir: Path = REPO_ROOT / "data"
 

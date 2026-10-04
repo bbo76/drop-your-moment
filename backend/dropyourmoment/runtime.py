@@ -86,6 +86,7 @@ class Runtime:
             printer=self.printer,
             counters=self.counters,
             completion_delay_s=self.settings.print_completion_delay_s,
+            job_timeout_s=self.settings.print_job_timeout_s,
             # La purge se déclenche après un tirage terminé : le visiteur regarde déjà
             # l'écran de confirmation, personne n'attend le balayage de répertoire.
             on_completed=self.purge_sessions,
