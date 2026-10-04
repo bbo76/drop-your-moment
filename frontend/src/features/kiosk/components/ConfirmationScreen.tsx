@@ -5,7 +5,7 @@ import { Lede } from "./Screen";
 
 // Estimation CP1500 : CUPS termine à la remise du flux, puis l'imprimante effectue
 // encore ses passes physiques. La confirmation backend reste la seule source du 100 %.
-const ESTIMATED_PRINT_DURATION_MS = 40_000;
+const ESTIMATED_PRINT_DURATION_MS = 50_000;
 
 interface Props {
   printing: boolean;
