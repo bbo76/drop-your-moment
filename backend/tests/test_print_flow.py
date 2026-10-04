@@ -49,6 +49,9 @@ class FakePrinterDriver(PrinterDriver):
     def get_job_status(self, job_id: str) -> PrintJob:
         return self.jobs[job_id]
 
+    def cancel_job(self, job_id: str) -> None:
+        self.jobs.pop(job_id)
+
     def settle(self, state: JobState, detail: str | None = None) -> None:
         """Fait aboutir (ou échouer) le dernier job soumis."""
         last = list(self.jobs)[-1]

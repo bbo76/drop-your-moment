@@ -77,3 +77,9 @@ class NullPrinterDriver(PrinterDriver):
             self._jobs[job_id] = job
             del self._deadlines[job_id]
         return job
+
+    def cancel_job(self, job_id: str) -> None:
+        if job_id not in self._jobs:
+            raise PrintJobFailedError(f"job inconnu : {job_id}")
+        self._jobs.pop(job_id)
+        self._deadlines.pop(job_id, None)

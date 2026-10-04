@@ -148,3 +148,13 @@ class CupsPrinterDriver(PrinterDriver):
 
         detail = _reason_detail(attributes.get("job-state-reasons"))
         return PrintJob(id=job_id, state=state, copies=copies, detail=detail)
+
+    def cancel_job(self, job_id: str) -> None:
+        try:
+            cups_id = int(job_id.removeprefix("cups-"))
+            self._copies[cups_id]
+            self._connection.cancelJob(cups_id)
+        except (ValueError, KeyError):
+            raise PrintJobFailedError(f"job inconnu : {job_id}") from None
+        except (self._cups.IPPError, RuntimeError) as exc:
+            raise PrintJobFailedError(f"annulation CUPS impossible pour {job_id} : {exc}") from exc

@@ -123,6 +123,19 @@ export function useMaintenance(debugFailure: DebugFailure, onExpired: () => void
     }
   };
 
+  const cancelPrint = async () => {
+    setSaving(true);
+    try {
+      await api.cancelMaintenancePrint();
+      await load();
+      setError(null);
+    } catch {
+      setError("L’annulation de l’impression a échoué.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const forgetWifi = async (profile: string) => {
     setSaving(true);
     try {
@@ -156,5 +169,6 @@ export function useMaintenance(debugFailure: DebugFailure, onExpired: () => void
     forgetWifi,
     reloadCassette: () => run(api.reloadCassette, "Le rechargement du bac n’a pas été enregistré."),
     replaceInk: (capacity: 36 | 54) => run(() => api.replaceMaintenanceInk(capacity), "Le remplacement de la cassette d’encre n’a pas été enregistré."),
+    cancelPrint,
   };
 }

@@ -96,6 +96,10 @@ class MaintenanceSnapshot(BaseModel):
     power_available: bool
     print_busy: bool
     print_error: str | None
+    print_job_id: str | None
+    print_job_state: str | None
+    print_job_copies: int | None
+    print_job_detail: str | None
     hotspot: HotspotStatus
     wifi: WifiStatus
 
@@ -148,9 +152,20 @@ def maintenance_status(runtime: Runtime = Depends(_authorized)) -> MaintenanceSn
         power_available=runtime.system_power.available,
         print_busy=runtime.print_flow.job is not None,
         print_error=runtime.print_flow.last_error,
+        print_job_id=runtime.print_flow.job.id if runtime.print_flow.job else None,
+        print_job_state=runtime.print_flow.job.state if runtime.print_flow.job else None,
+        print_job_copies=runtime.print_flow.job.copies if runtime.print_flow.job else None,
+        print_job_detail=runtime.print_flow.job.detail if runtime.print_flow.job else None,
         hotspot=_hotspot_status(runtime),
         wifi=WifiStatus.model_validate(runtime.hotspot.wifi_status()),
     )
+
+
+@router.post("/print/cancel", status_code=status.HTTP_204_NO_CONTENT)
+def cancel_print(runtime: Runtime = Depends(_authorized)) -> None:
+    if runtime.print_flow.job is None:
+        return
+    runtime.print_flow.cancel()
 
 
 @router.get("/journal", response_model=JournalPage)

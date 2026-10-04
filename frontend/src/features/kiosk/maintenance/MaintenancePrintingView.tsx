@@ -5,11 +5,12 @@ import { InkCartridgeDialog } from "@/components/InkCartridgeDialog";
 import { supplyLevels } from "./maintenanceDiagnostics";
 import { MaintenanceChoice, MaintenanceIcon, ProgressMeter, WarningMark } from "./MaintenanceUi";
 
-export function MaintenancePrintingView({ snapshot, saving, onReloadCassette, onReplaceInk }: {
+export function MaintenancePrintingView({ snapshot, saving, onReloadCassette, onReplaceInk, onCancelPrint }: {
   snapshot: MaintenanceSnapshot;
   saving: boolean;
   onReloadCassette: () => Promise<boolean>;
   onReplaceInk: (capacity: 36 | 54) => Promise<boolean>;
+  onCancelPrint: () => Promise<void>;
 }) {
   const [inkDialogOpen, setInkDialogOpen] = useState(false);
   const { health } = snapshot;
@@ -29,6 +30,7 @@ export function MaintenancePrintingView({ snapshot, saving, onReloadCassette, on
         </div>
       </div>
       <div className="grid min-h-0 content-center gap-4 overflow-hidden rounded-[0.65rem] bg-surface px-5 py-6">
+        {snapshot.print_busy && <div className="rounded border-2 border-warn p-3"><p className="font-semibold">Job {snapshot.print_job_id} · {snapshot.print_job_state}</p><p className="text-sm text-muted">{snapshot.print_job_detail ?? `${snapshot.print_job_copies} exemplaire(s)`}</p><MaintenanceChoice disabled={saving} onClick={() => void onCancelPrint()}>Annuler l’impression</MaintenanceChoice></div>}
         <div><h2 className="text-2xl font-semibold">Après une intervention</h2><p className="mt-1 text-base text-muted">Mettez les consommables à jour après chaque remplacement.</p></div>
         <MaintenanceChoice accentBorder disabled={saving} onClick={() => void onReloadCassette()}>Bac rechargé · 18 feuilles</MaintenanceChoice>
         <MaintenanceChoice disabled={saving} onClick={() => setInkDialogOpen(true)}>Cassette d’encre remplacée</MaintenanceChoice>

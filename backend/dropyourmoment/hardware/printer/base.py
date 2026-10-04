@@ -75,3 +75,7 @@ class PrinterDriver(ABC):
         Un identifiant inconnu lève `PrintJobFailedError` : mieux vaut un écran d'erreur
         qu'une session bloquée en PRINTING pour l'éternité.
         """
+
+    @abstractmethod
+    def cancel_job(self, job_id: str) -> None:
+        """Demande l'annulation d'un job encore présent dans le spouleur."""

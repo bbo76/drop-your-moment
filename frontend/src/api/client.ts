@@ -138,6 +138,10 @@ export interface MaintenanceSnapshot {
   power_available: boolean;
   print_busy: boolean;
   print_error: string | null;
+  print_job_id?: string | null;
+  print_job_state?: string | null;
+  print_job_copies?: number | null;
+  print_job_detail?: string | null;
   hotspot: HotspotStatus;
   wifi: WifiStatus;
 }
@@ -371,6 +375,7 @@ export const api = {
     if (!response.ok) throw new Error(await errorMessage(response, "/api/maintenance/lock"));
   },
   maintenanceStatus: () => request<MaintenanceSnapshot>("/api/maintenance/status"),
+  cancelMaintenancePrint: () => post<void>("/api/maintenance/print/cancel"),
   maintenanceJournal: (query: JournalQuery = {}) =>
     request<JournalPage>(`/api/maintenance/journal?${journalQuery(query)}`),
   changeHotspot: (action: "activate" | "deactivate") =>
