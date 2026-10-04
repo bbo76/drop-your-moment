@@ -523,6 +523,7 @@ export const overlayUrl = (revision: number) => `/admin/overlay?v=${revision}`;
 export const thumbnailUrl = (sessionId: string) => `/admin/gallery/${sessionId}/thumbnail`;
 export const photoDownloadUrl = (sessionId: string) => `/admin/gallery/${sessionId}/photo`;
 export const photoViewUrl = (sessionId: string) => `/admin/gallery/${sessionId}/view`;
+export const rawPhotoViewUrl = (sessionId: string) => `/admin/gallery/${sessionId}/raw`;
 export const maintenanceThumbnailUrl = (sessionId: string) =>
   `/api/maintenance/gallery/${sessionId}/thumbnail`;
 export const maintenancePhotoUrl = (sessionId: string) =>

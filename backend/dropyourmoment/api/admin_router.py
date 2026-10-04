@@ -616,6 +616,15 @@ def view_photo(session_id: str, runtime: Runtime = Depends(get_runtime)) -> File
     )
 
 
+@router.get("/gallery/{session_id}/raw")
+def view_raw_photo(session_id: str, runtime: Runtime = Depends(get_runtime)) -> FileResponse:
+    """Capture caméra non composée, réservée au diagnostic opérateur."""
+    path = _photo_path(runtime, session_id).with_name("raw.jpg")
+    if not path.is_file():
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="capture brute introuvable")
+    return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "no-store"})
+
+
 @router.delete("/gallery/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_photo(session_id: str, runtime: Runtime = Depends(get_runtime)) -> Response:
     """Supprime définitivement toute la session associée à une photo.

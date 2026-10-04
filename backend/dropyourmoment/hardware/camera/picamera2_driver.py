@@ -29,6 +29,7 @@ import threading
 from collections.abc import Iterator
 from pathlib import Path
 
+from libcamera import controls
 from picamera2 import Picamera2
 from picamera2.encoders import MJPEGEncoder, Quality
 from picamera2.outputs import FileOutput
@@ -113,6 +114,10 @@ class Picamera2Driver(CameraDriver):
                 quality=PREVIEW_QUALITY,
                 name="lores",
             )
+            # Le Camera Module 3 (IMX708) reste en autofocus continu pendant l'aperçu
+            # et la capture : la distance visiteur varie, et la borne n'a pas de plan
+            # focal fixe fiable à imposer.
+            camera.set_controls({"AfMode": controls.AfModeEnum.Continuous})
         except Exception as exc:
             raise CameraNotAvailableError(f"ouverture du capteur impossible : {exc}") from exc
         self._camera = camera
