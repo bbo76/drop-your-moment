@@ -14,6 +14,7 @@ statut. Même raison — c'est la seule horloge dont l'état a besoin, et les te
 from __future__ import annotations
 
 import logging
+import time
 from collections.abc import Callable
 from pathlib import Path
 
@@ -32,6 +33,8 @@ class PrintFlow:
         printer: PrinterDriver,
         counters: CounterStore,
         on_completed: Callable[[], None] | None = None,
+        completion_delay_s: float = 0.0,
+        clock: Callable[[], float] = time.monotonic,
     ) -> None:
         self._machine = machine
         self._printer = printer
@@ -41,6 +44,9 @@ class PrintFlow:
         self._complete_session = True
         self._source_path: Path | None = None
         self._last_error: str | None = None
+        self._completion_delay_s = max(0.0, completion_delay_s)
+        self._clock = clock
+        self._completed_at: float | None = None
 
     @property
     def job(self) -> PrintJob | None:
@@ -69,6 +75,7 @@ class PrintFlow:
         self._complete_session = complete_session
         self._source_path = image_path
         self._last_error = None
+        self._completed_at = None
         logger.info("tirage %s soumis (%d copie(s))", job.id, job.copies)
         return job
 
@@ -80,6 +87,7 @@ class PrintFlow:
             # pas une refonte.
             self._job = None
             self._source_path = None
+            self._completed_at = None
             return
 
         job = self._job
@@ -96,10 +104,17 @@ class PrintFlow:
             self._fail(current.detail or "le tirage a échoué")
             return
         if current.state is not JobState.COMPLETED:
+            self._completed_at = None
+            return
+
+        if self._completed_at is None:
+            self._completed_at = self._clock()
+        if self._clock() - self._completed_at < self._completion_delay_s:
             return
 
         self._job = None
         self._source_path = None
+        self._completed_at = None
         self._counters.record_prints(job.copies)
         if self._complete_session:
             self._machine.complete()
@@ -110,6 +125,7 @@ class PrintFlow:
         logger.error("tirage échoué : %s", reason)
         self._job = None
         self._source_path = None
+        self._completed_at = None
         self._last_error = reason
         if self._complete_session:
             self._machine.fail(reason)
