@@ -3,7 +3,9 @@ import { useEffect, useState } from "react";
 
 import { Lede } from "./Screen";
 
-const ESTIMATED_PRINT_DURATION_MS = 8_000;
+// Estimation CP1500 : CUPS termine à la remise du flux, puis l'imprimante effectue
+// encore ses passes physiques. La confirmation backend reste la seule source du 100 %.
+const ESTIMATED_PRINT_DURATION_MS = 40_000;
 
 interface Props {
   printing: boolean;
