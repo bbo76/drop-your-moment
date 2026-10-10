@@ -84,6 +84,9 @@ def test_support_externe_indisponible_revient_sur_sd(
     assert health["photo_storage_mode"] == "sd"
     assert health["photo_storage_label"] == "Carte SD"
     assert health["photo_storage_reason"] == "support sélectionné indisponible"
+    volumes = admin.get("/admin/storage").json()
+    assert volumes[0]["active"] is True
+    assert volumes[0]["selected"] is False
 
 
 def test_changement_de_stockage_est_refuse_pendant_une_session(
@@ -105,6 +108,60 @@ def test_un_support_non_disponible_ne_peut_pas_etre_selectionne(
     response = admin.post("/admin/storage/select", json={"root": "/not-mounted"})
 
     assert response.status_code == 404
+
+
+def test_preparer_un_support_cree_le_dossier_et_ne_touche_pas_aux_autres_fichiers(
+    admin: TestClient, runtime: Runtime, tmp_path
+) -> None:
+    usb = tmp_path / "Photos USB"
+    usb.mkdir()
+    marker = usb / "mes-documents.txt"
+    marker.write_text("à garder")
+    runtime.photo_storage.available = lambda: [usb]  # type: ignore[method-assign]
+
+    response = admin.post("/admin/storage/prepare", json={"root": str(usb)})
+
+    assert response.status_code == 200
+    assert response.json()["ready"] is True
+    assert (usb / "photobooth").is_dir()
+    assert marker.read_text() == "à garder"
+
+
+def test_etat_stockage_signale_un_espace_faible(admin: TestClient, monkeypatch) -> None:
+    from dropyourmoment.api import admin_router
+
+    usage = type("Usage", (), {"free": 100, "total": 10_000})()
+    monkeypatch.setattr(admin_router.shutil, "disk_usage", lambda _path: usage)
+
+    response = admin.get("/admin/storage")
+
+    assert response.status_code == 200
+    assert response.json()[0]["low_space"] is True
+
+
+def test_sante_affiche_la_capacite_de_la_destination_photo_active(
+    admin: TestClient, runtime: Runtime, tmp_path, monkeypatch
+) -> None:
+    from dropyourmoment.api import admin_router
+
+    usb = tmp_path / "Photos USB"
+    usb.mkdir()
+    runtime.photo_storage.select(usb)
+    original = admin_router.shutil.disk_usage
+
+    def disk_usage(path):
+        if path == runtime.photo_storage.sessions_root:
+            return type("Usage", (), {"free": 123, "total": 456})()
+        return original(path)
+
+    monkeypatch.setattr(admin_router.shutil, "disk_usage", disk_usage)
+
+    response = admin.get("/admin/system/health")
+
+    assert response.status_code == 200
+    assert response.json()["photo_storage_free_bytes"] == 123
+    assert response.json()["photo_storage_total_bytes"] == 456
+    assert response.json()["photo_storage_low_space"] is True
 
 
 def test_aller_retour_de_la_configuration(admin: TestClient) -> None:

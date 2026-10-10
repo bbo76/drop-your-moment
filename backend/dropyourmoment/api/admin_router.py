@@ -68,30 +68,58 @@ class StorageVolume(BaseModel):
     mode: str
     selected: bool
     ready: bool
+    free_bytes: int | None = None
+    total_bytes: int | None = None
+    active: bool = False
+    writes_in_progress: int = 0
+    low_space: bool = False
+
+
+MIN_STORAGE_FREE_BYTES = 512 * 1024 * 1024
 
 
 @router.get("/storage", response_model=list[StorageVolume])
 def list_storage(runtime: Runtime = Depends(get_runtime)) -> list[StorageVolume]:
     runtime.photo_storage.refresh()
+    active = runtime.photo_storage.status.root
+
+    def volume(root: Path, *, selected: bool) -> StorageVolume:
+        try:
+            usage = shutil.disk_usage(root)
+            free, total = usage.free, usage.total
+        except OSError:
+            free = total = None
+        return StorageVolume(
+            root=str(root),
+            label=root.name,
+            mode="external",
+            selected=selected,
+            ready=(root / "photobooth").is_dir(),
+            free_bytes=free,
+            total_bytes=total,
+            active=runtime.photo_storage.status.mode == "external" and active.parent == root,
+            writes_in_progress=runtime.photo_storage.writes_in_progress,
+            low_space=free is not None and free < MIN_STORAGE_FREE_BYTES,
+        )
+
     sd = StorageVolume(
         root=None,
         label="Carte SD",
         mode="sd",
-        selected=runtime.photo_storage.status.mode == "sd",
+        selected=runtime.photo_storage.selected_root is None,
         ready=True,
+        free_bytes=shutil.disk_usage(runtime.settings.photos_dir).free,
+        total_bytes=shutil.disk_usage(runtime.settings.photos_dir).total,
+        active=runtime.photo_storage.status.mode == "sd",
+        writes_in_progress=runtime.photo_storage.writes_in_progress,
+        low_space=shutil.disk_usage(runtime.settings.photos_dir).free < MIN_STORAGE_FREE_BYTES,
     )
     return [
         sd,
         *[
-            StorageVolume(
-                root=str(root),
-                label=root.name,
-                mode="external",
-                selected=(
-                    runtime.photo_storage.status.mode == "external"
-                    and runtime.photo_storage.status.root.parent == root
-                ),
-                ready=(root / "photobooth").is_dir(),
+            volume(
+                root,
+                selected=(runtime.photo_storage.selected_root == root),
             )
             for root in runtime.photo_storage.available()
         ],
@@ -106,21 +134,63 @@ def select_storage(
         raise HTTPException(
             status.HTTP_409_CONFLICT, detail="une session photo ou impression est en cours"
         )
+    if runtime.photo_storage.writes_in_progress:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail="une écriture photo est en cours")
     root = Path(selection.root).resolve() if selection.root else None
     if root is not None and root not in runtime.photo_storage.available():
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="support externe indisponible")
-    runtime.photo_storage.select(root)
+    try:
+        runtime.photo_storage.select(root)
+    except RuntimeError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     return StorageVolume(
         root=str(root) if root else None,
         label="Carte SD" if root is None else root.name,
         mode="sd" if root is None else "external",
-        selected=(
-            runtime.photo_storage.status.mode == "sd"
-            if root is None
-            else runtime.photo_storage.status.mode == "external"
-            and runtime.photo_storage.status.root.parent == root
-        ),
+        selected=runtime.photo_storage.selected_root == root,
         ready=(root / "photobooth").is_dir() if root else True,
+        active=(runtime.photo_storage.status.mode == ("sd" if root is None else "external")),
+        writes_in_progress=runtime.photo_storage.writes_in_progress,
+        low_space=(
+            shutil.disk_usage(root / "photobooth" if root else runtime.settings.photos_dir).free
+            < MIN_STORAGE_FREE_BYTES
+        ),
+    )
+
+
+@router.post("/storage/prepare", response_model=StorageVolume)
+def prepare_storage(
+    selection: StorageSelection, runtime: Runtime = Depends(get_runtime)
+) -> StorageVolume:
+    if runtime.machine.state is not SessionState.IDLE or runtime.print_flow.job is not None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail="une session photo ou impression est en cours",
+        )
+    if runtime.photo_storage.writes_in_progress:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail="une écriture photo est en cours")
+    root = Path(selection.root).resolve() if selection.root else None
+    if root is not None and root not in runtime.photo_storage.available():
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="support externe indisponible")
+    try:
+        runtime.photo_storage.prepare(root)
+    except OSError as exc:
+        raise HTTPException(
+            status.HTTP_507_INSUFFICIENT_STORAGE,
+            detail=f"Préparation impossible : {exc}",
+        ) from exc
+    return StorageVolume(
+        root=str(root) if root else None,
+        label="Carte SD" if root is None else root.name,
+        mode="sd" if root is None else "external",
+        selected=runtime.photo_storage.selected_root == root,
+        ready=True,
+        active=(runtime.photo_storage.status.mode == ("sd" if root is None else "external")),
+        writes_in_progress=runtime.photo_storage.writes_in_progress,
+        low_space=(
+            shutil.disk_usage(root / "photobooth" if root else runtime.settings.photos_dir).free
+            < MIN_STORAGE_FREE_BYTES
+        ),
     )
 
 
@@ -178,10 +248,13 @@ class AdminHealth(BaseModel):
     # c'est à cette échelle que l'espace restant se lit.
     disk_free_bytes: int
     disk_total_bytes: int
+    photo_storage_free_bytes: int | None = None
+    photo_storage_total_bytes: int | None = None
     photo_storage_mode: str
     photo_storage_label: str
     photo_storage_path: str
     photo_storage_reason: str | None
+    photo_storage_low_space: bool = False
     cpu_percent: float
     memory_used_bytes: int
     memory_total_bytes: int
@@ -231,6 +304,7 @@ def read_health(runtime: Runtime = Depends(get_runtime)) -> AdminHealth:
     caps = runtime.camera.get_capabilities()
     config = runtime.event.config
     usage = shutil.disk_usage(runtime.settings.data_dir)
+    photo_usage = shutil.disk_usage(runtime.photo_storage.sessions_root)
     metrics = read_system_metrics()
     return AdminHealth(
         camera_ok=runtime.camera.is_available(),
@@ -252,6 +326,9 @@ def read_health(runtime: Runtime = Depends(get_runtime)) -> AdminHealth:
         counters=_reading(runtime.counters.read()),
         disk_free_bytes=usage.free,
         disk_total_bytes=usage.total,
+        photo_storage_free_bytes=photo_usage.free,
+        photo_storage_total_bytes=photo_usage.total,
+        photo_storage_low_space=photo_usage.free < MIN_STORAGE_FREE_BYTES,
         photo_storage_mode=runtime.photo_storage.status.mode,
         photo_storage_label=runtime.photo_storage.status.label,
         photo_storage_path=str(runtime.photo_storage.sessions_root),

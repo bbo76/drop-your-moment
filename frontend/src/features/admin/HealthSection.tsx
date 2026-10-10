@@ -21,6 +21,7 @@ import { canReleaseKiosk, releaseKioskCopy } from "./kioskRelease";
  * parce que c'est la page qu'on laisse ouverte pendant un événement. */
 
 const POLL_INTERVAL_MS = 2000;
+const formatBytes = (bytes: number) => `${(bytes / 1024 ** 3).toFixed(1)} Go`;
 export function HealthSection() {
   const [health, setHealth] = useState<AdminHealth | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -34,6 +35,7 @@ export function HealthSection() {
   const [printerFeedback, setPrinterFeedback] = useState<{ error?: string; notice?: string }>({});
   const [storageVolumes, setStorageVolumes] = useState<StorageVolume[]>([]);
   const [storageSaving, setStorageSaving] = useState(false);
+  const [storageFeedback, setStorageFeedback] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -83,8 +85,24 @@ export function HealthSection() {
       await api.selectStorage(root);
       setStorageVolumes(await api.storage());
       setHealth(await api.health());
+      setStorageFeedback(root ? "Destination sélectionnée." : "Les nouvelles photos seront enregistrées sur la carte SD.");
     } catch (cause) {
       setError(String(cause));
+    } finally {
+      setStorageSaving(false);
+    }
+  };
+
+  const prepareStorage = async (root: string | null) => {
+    setStorageSaving(true);
+    setStorageFeedback(null);
+    try {
+      await api.prepareStorage(root);
+      setStorageVolumes(await api.storage());
+      setHealth(await api.health());
+      setStorageFeedback("Support prêt : dossier photobooth vérifié, écriture testée.");
+    } catch (cause) {
+      setStorageFeedback(cause instanceof Error ? cause.message : String(cause));
     } finally {
       setStorageSaving(false);
     }
@@ -182,28 +200,23 @@ export function HealthSection() {
 
       <Card className="mb-6 border-2">
         <CardHeader className="pb-2"><h3 className="text-xl font-semibold">Stockage des photos</h3></CardHeader>
-        <CardContent className="flex flex-wrap items-center justify-between gap-4">
+        <CardContent className="grid gap-4">
           <div>
-            <p className="text-lg font-medium">
-              Destination actuelle : {health.photo_storage_label}
-            </p>
-            <p className="text-sm text-muted-foreground">Dossier : {health.photo_storage_path}</p>
+            <p className="text-lg font-medium">{health.photo_storage_reason ? `Repli sur ${health.photo_storage_label}` : `Destination active : ${health.photo_storage_label}`}</p>
+            <p className="break-all text-sm text-muted-foreground">Dossier : {health.photo_storage_path}</p>
             {health.photo_storage_reason && <p className="text-sm text-destructive">Repli sur la SD : {health.photo_storage_reason}</p>}
           </div>
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Destination des photos">
-            {storageVolumes.map((volume) => (
-              <Button
-                key={volume.root ?? "sd"}
-                tone={volume.selected ? "primary" : "secondary"}
-                aria-pressed={volume.selected}
-                onClick={() => void selectStorage(volume.root)}
-                disabled={storageSaving || volume.selected}
-              >
-                {volume.label}
-              </Button>
-            ))}
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3" role="group" aria-label="Destination des photos">
+            {storageVolumes.map((volume) => <div key={volume.root ?? "sd"} className={`min-w-0 rounded-md border-2 p-3 ${volume.active ? "border-primary" : "border-border"}`}>
+              <div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="break-words font-semibold">{volume.label}</p><p className="break-words text-sm text-muted-foreground">{volume.free_bytes != null && volume.total_bytes != null ? `${formatBytes(volume.free_bytes)} libres / ${formatBytes(volume.total_bytes)}` : "Capacité indisponible"}</p>{volume.low_space && <p className="text-sm text-destructive">Espace faible : moins de 512 Mo disponibles</p>}</div><span className="flex-none text-xs">{volume.active ? "ACTIF" : volume.selected ? "SÉLECTIONNÉ" : "DISPONIBLE"}</span></div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button className={volume.selected ? "" : "!bg-[#ffd400] !text-[#101418] hover:!bg-[#ffe04f]"} aria-pressed={volume.selected} onClick={() => void selectStorage(volume.root)} disabled={storageSaving || volume.selected}>{volume.selected ? "Sélectionné" : "Choisir"}</Button>
+                <Button tone="secondary" onClick={() => void prepareStorage(volume.root)} disabled={storageSaving}>{volume.ready ? "Vérifier" : "Préparer"}</Button>
+              </div>
+            </div>)}
             {!storageVolumes.length && <p className="text-sm text-muted-foreground">Recherche des supports…</p>}
           </div>
+          {storageFeedback && <p role="status" className="text-sm">{storageFeedback}</p>}
         </CardContent>
       </Card>
 

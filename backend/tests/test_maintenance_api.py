@@ -47,6 +47,64 @@ def test_la_session_expire_meme_si_le_frontend_continue_de_sonder(
     assert kiosk.get("/api/maintenance/status").status_code == 401
 
 
+def test_redetection_stockage_est_locale_et_protegee_par_pin(kiosk: TestClient) -> None:
+    assert kiosk.post("/api/maintenance/storage/refresh").status_code == 401
+    _unlock(kiosk)
+
+    response = kiosk.post("/api/maintenance/storage/refresh")
+
+    assert response.status_code == 200
+    assert response.json()["photo_storage_mode"] == "sd"
+
+
+def test_retrait_support_est_refuse_pendant_une_session(
+    kiosk: TestClient, runtime: Runtime
+) -> None:
+    usb = runtime.settings.data_dir.parent / "USB"
+    usb.mkdir()
+    runtime.photo_storage.select(usb)
+    runtime.machine.start()
+    _unlock(kiosk)
+
+    response = kiosk.post("/api/maintenance/storage/eject")
+
+    assert response.status_code == 409
+    assert runtime.photo_storage.status.mode == "external"
+
+
+def test_retrait_support_est_refuse_pendant_une_ecriture(
+    kiosk: TestClient, runtime: Runtime
+) -> None:
+    usb = runtime.settings.data_dir.parent / "USB"
+    usb.mkdir()
+    runtime.photo_storage.select(usb)
+    runtime.photo_storage.begin_write()
+    _unlock(kiosk)
+
+    try:
+        response = kiosk.post("/api/maintenance/storage/eject")
+    finally:
+        runtime.photo_storage.end_write()
+
+    assert response.status_code == 409
+    assert runtime.photo_storage.status.mode == "external"
+
+
+def test_retrait_support_au_repos_bascule_sur_sd_et_confirme(
+    kiosk: TestClient, runtime: Runtime
+) -> None:
+    usb = runtime.settings.data_dir.parent / "USB"
+    usb.mkdir()
+    runtime.photo_storage.select(usb)
+    _unlock(kiosk)
+
+    response = kiosk.post("/api/maintenance/storage/eject")
+
+    assert response.status_code == 200
+    assert runtime.photo_storage.selected_root is None
+    assert response.json()["photo_storage_mode"] == "sd"
+
+
 def test_les_reglages_utiles_s_appliquent_au_kiosque(kiosk: TestClient) -> None:
     _unlock(kiosk)
 
