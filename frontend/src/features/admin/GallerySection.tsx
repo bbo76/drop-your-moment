@@ -12,7 +12,6 @@ import {
   ARCHIVE_URL,
   photoDownloadUrl,
   photoViewUrl,
-  rawPhotoViewUrl,
   thumbnailUrl,
   type GalleryEntry,
   type GalleryPage,
@@ -290,9 +289,6 @@ function Lightbox({
         <div className="flex flex-wrap justify-end gap-3">
           <ShadButton asChild>
             <a href={photoDownloadUrl(entry.session_id)}><Download />Télécharger</a>
-          </ShadButton>
-          <ShadButton asChild variant="outline">
-            <a href={rawPhotoViewUrl(entry.session_id)} target="_blank" rel="noreferrer">Voir le brut</a>
           </ShadButton>
           <AlertDialog open={confirmingDelete} onOpenChange={setConfirmingDelete}>
             <AlertDialogTrigger asChild>

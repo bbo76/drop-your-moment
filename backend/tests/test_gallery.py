@@ -28,9 +28,9 @@ def _sessions(root: Path, count: int, size: tuple[int, int] = (960, 648)) -> lis
     identifiers = []
     for index in range(count):
         session_id = f"{index:012x}"
-        directory = root / session_id
-        directory.mkdir(parents=True)
-        final = directory / "final.jpg"
+        directory = root / "2026-10-10"
+        directory.mkdir(parents=True, exist_ok=True)
+        final = directory / f"{session_id}.jpg"
         Image.new("RGB", size, (index * 7 % 256, 80, 120)).save(final)
         os.utime(final, (FIRST_MTIME + index, FIRST_MTIME + index))
         identifiers.append(session_id)
@@ -64,14 +64,27 @@ def test_pagination_ne_rend_qu_une_tranche(tmp_path: Path) -> None:
 def test_une_session_sans_photo_finale_est_absente(tmp_path: Path) -> None:
     """Une session en cours n'a qu'un `raw.jpg`, et une session refaite n'a plus rien."""
     _sessions(tmp_path, 2)
-    (tmp_path / "encours").mkdir()
-    (tmp_path / "encours" / "raw.jpg").write_bytes(b"pas encore composee")
+    (tmp_path / "2026-10-10" / ".encours").mkdir(parents=True)
+    (tmp_path / "2026-10-10" / ".encours" / "raw.jpg").write_bytes(b"pas encore composee")
     (tmp_path / "vide").mkdir()
 
     total, entries = list_sessions(tmp_path, limit=10)
 
     assert total == 2
     assert {entry.session_id for entry in entries} == {"000000000000", "000000000001"}
+
+
+def test_une_photo_brute_ne_peut_pas_etre_listee_ou_archivee(tmp_path: Path) -> None:
+    hidden = tmp_path / "2026-10-10" / ".session"
+    hidden.mkdir(parents=True)
+    (hidden / "raw.jpg").write_bytes(b"raw")
+    Image.new("RGB", (20, 20)).save(hidden.parent / "20261010-120000-000001.jpg")
+
+    total, entries = list_sessions(tmp_path)
+
+    assert total == 1
+    assert entries[0].session_id == "20261010-120000-000001"
+    assert entries[0].path.name != "raw.jpg"
 
 
 def test_liste_sur_un_dossier_absent(tmp_path: Path) -> None:
@@ -81,7 +94,7 @@ def test_liste_sur_un_dossier_absent(tmp_path: Path) -> None:
 
 def test_la_vignette_est_bien_plus_petite(tmp_path: Path) -> None:
     _sessions(tmp_path, 1, size=(1918, 1296))
-    original = tmp_path / "000000000000" / "final.jpg"
+    original = tmp_path / "2026-10-10" / "000000000000.jpg"
 
     data = thumbnail_jpeg(original)
 
@@ -95,13 +108,14 @@ def test_la_vignette_garde_le_ratio(tmp_path: Path) -> None:
     """Une vignette déformée ferait mal juger un recadrage."""
     _sessions(tmp_path, 1, size=(1480, 1000))
 
-    with Image.open(BytesIO(thumbnail_jpeg(tmp_path / "000000000000" / "final.jpg"))) as vignette:
+    path = tmp_path / "2026-10-10" / "000000000000.jpg"
+    with Image.open(BytesIO(thumbnail_jpeg(path))) as vignette:
         assert abs(vignette.size[0] / vignette.size[1] - 1.48) < 0.01
 
 
 def test_l_archive_se_relit(tmp_path: Path) -> None:
     identifiers = _sessions(tmp_path, 4)
-    photos = [(f"{i}.jpg", tmp_path / i / "final.jpg") for i in identifiers]
+    photos = [(f"{i}.jpg", tmp_path / "2026-10-10" / f"{i}.jpg") for i in identifiers]
 
     data = b"".join(zip_stream(photos))
 
@@ -116,7 +130,7 @@ def test_l_archive_sort_par_morceaux(tmp_path: Path) -> None:
     Un seul morceau signifierait que tout a été assemblé avant d'être rendu.
     """
     identifiers = _sessions(tmp_path, 5)
-    photos = [(f"{i}.jpg", tmp_path / i / "final.jpg") for i in identifiers]
+    photos = [(f"{i}.jpg", tmp_path / "2026-10-10" / f"{i}.jpg") for i in identifiers]
 
     chunks = list(zip_stream(photos))
 
@@ -139,7 +153,7 @@ def test_une_archive_vide_reste_une_archive_valide(tmp_path: Path) -> None:
 
 
 def test_la_galerie_pagine(admin: TestClient, runtime: Runtime) -> None:
-    _sessions(runtime.settings.sessions_dir, 30)
+    _sessions(runtime.photo_storage.sessions_root, 30)
 
     body = admin.get("/admin/gallery", params={"offset": 0, "limit": 12}).json()
 
@@ -158,7 +172,7 @@ def test_la_taille_de_page_est_bornee(admin: TestClient) -> None:
 
 
 def test_vignette_servie_en_jpeg(admin: TestClient, runtime: Runtime) -> None:
-    _sessions(runtime.settings.sessions_dir, 1)
+    _sessions(runtime.photo_storage.sessions_root, 1)
 
     response = admin.get("/admin/gallery/000000000000/thumbnail")
 
@@ -169,7 +183,7 @@ def test_vignette_servie_en_jpeg(admin: TestClient, runtime: Runtime) -> None:
 
 
 def test_telechargement_unitaire_en_piece_jointe(admin: TestClient, runtime: Runtime) -> None:
-    _sessions(runtime.settings.sessions_dir, 1)
+    _sessions(runtime.photo_storage.sessions_root, 1)
 
     response = admin.get("/admin/gallery/000000000000/photo")
 
@@ -180,7 +194,7 @@ def test_telechargement_unitaire_en_piece_jointe(admin: TestClient, runtime: Run
 def test_photo_plein_format_s_affiche_sans_telechargement(
     admin: TestClient, runtime: Runtime
 ) -> None:
-    _sessions(runtime.settings.sessions_dir, 1)
+    _sessions(runtime.photo_storage.sessions_root, 1)
 
     response = admin.get("/admin/gallery/000000000000/view")
 
@@ -190,15 +204,13 @@ def test_photo_plein_format_s_affiche_sans_telechargement(
 
 
 def test_suppression_efface_toute_la_session(admin: TestClient, runtime: Runtime) -> None:
-    _sessions(runtime.settings.sessions_dir, 2)
-    directory = runtime.settings.sessions_dir / "000000000000"
-    (directory / "raw.jpg").write_bytes(b"prise brute")
-    (directory / "artefact.tmp").write_bytes(b"autre artefact")
+    _sessions(runtime.photo_storage.sessions_root, 2)
+    photo = runtime.photo_storage.sessions_root / "2026-10-10" / "000000000000.jpg"
 
     response = admin.delete("/admin/gallery/000000000000")
 
     assert response.status_code == 204
-    assert not directory.exists()
+    assert not photo.exists()
     body = admin.get("/admin/gallery").json()
     assert body["total"] == 1
     assert body["entries"][0]["session_id"] == "000000000001"
@@ -214,7 +226,9 @@ def test_suppression_refuse_la_session_en_cours(
 
     assert response.status_code == 409
     assert "session en cours" in response.json()["detail"]
-    assert (runtime.settings.sessions_dir / session_id / "final.jpg").is_file()
+    assert runtime.machine.session is not None
+    assert runtime.machine.session.final_path is not None
+    assert runtime.machine.session.final_path.is_file()
 
 
 def test_suppression_inconnue_en_404(admin: TestClient) -> None:
@@ -238,7 +252,7 @@ def test_traversee_de_chemin_refusee(admin: TestClient, runtime: Runtime) -> Non
 
 
 def test_l_archive_de_l_evenement_se_telecharge(admin: TestClient, runtime: Runtime) -> None:
-    _sessions(runtime.settings.sessions_dir, 6)
+    _sessions(runtime.photo_storage.sessions_root, 6)
 
     response = admin.get("/admin/gallery/archive.zip")
 
@@ -251,7 +265,7 @@ def test_l_archive_de_l_evenement_se_telecharge(admin: TestClient, runtime: Runt
 
 def test_le_nom_de_l_archive_vient_de_l_evenement(admin: TestClient, runtime: Runtime) -> None:
     """Un fichier qui atterrit dans un dossier de téléchargements doit se reconnaître."""
-    _sessions(runtime.settings.sessions_dir, 1)
+    _sessions(runtime.photo_storage.sessions_root, 1)
     config = admin.get("/admin/event-config").json()
     config["event_name"] = "Mariage Camille & Théo"
     admin.put("/admin/event-config", json=config)
@@ -275,5 +289,6 @@ def test_la_photo_du_kiosque_apparait_dans_la_galerie(admin: TestClient, kiosk: 
     body = admin.get("/admin/gallery").json()
 
     assert body["total"] == 1
-    assert body["entries"][0]["session_id"] == session_id
-    assert admin.get(f"/admin/gallery/{session_id}/thumbnail").status_code == 200
+    photo_id = body["entries"][0]["session_id"]
+    assert photo_id != session_id
+    assert admin.get(f"/admin/gallery/{photo_id}/thumbnail").status_code == 200

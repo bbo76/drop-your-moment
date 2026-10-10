@@ -36,6 +36,7 @@ from dropyourmoment.imaging.pipeline import ImagePipeline
 from dropyourmoment.operator_access import OperatorAccess
 from dropyourmoment.storage.counters import CounterStore
 from dropyourmoment.storage.maintenance_pin import MaintenancePinStore
+from dropyourmoment.storage.photo_storage import PhotoStorage
 from dropyourmoment.storage.retention import purge
 from dropyourmoment.system_power import SystemPower
 
@@ -58,6 +59,7 @@ class Runtime:
     maintenance_pin: MaintenancePinStore = field(init=False)
     operator_access: OperatorAccess = field(init=False)
     hotspot: Hotspot = field(init=False)
+    photo_storage: PhotoStorage = field(init=False)
     _maintenance_token: str | None = field(default=None, init=False, repr=False)
     _maintenance_expires_at: float = field(default=0.0, init=False, repr=False)
 
@@ -68,6 +70,11 @@ class Runtime:
             )
         self.pipeline = ImagePipeline(self.event)
         self.counters = CounterStore(self.settings.data_dir)
+        self.photo_storage = PhotoStorage(
+            self.settings.photos_dir,
+            self.settings.removable_storage_root,
+            self.settings.data_dir,
+        )
         self.maintenance_pin = MaintenancePinStore(
             self.settings.data_dir, self.settings.maintenance_pin
         )
@@ -156,14 +163,24 @@ class Runtime:
     def purge_sessions(self) -> None:
         """Applique la politique de rétention, en épargnant la session en cours."""
         session = self.machine.session
+        if session and session.raw_path:
+            session.raw_path.unlink(missing_ok=True)
+            if session.raw_path.parent.name.startswith("."):
+                try:
+                    session.raw_path.parent.rmdir()
+                except OSError:
+                    pass
+            session.raw_path = None
         purge(
-            self.settings.sessions_dir,
+            self.photo_storage.sessions_root,
             self.settings.retention_policy(),
-            keep_ids={session.id} if session is not None else set(),
+            keep_ids={session.final_path.stem} if session and session.final_path else set(),
         )
 
     def start(self) -> None:
-        self.settings.sessions_dir.mkdir(parents=True, exist_ok=True)
+        self._purge_temporary_raw_files()
+        self.photo_storage.refresh()
+        self.photo_storage.sessions_root.mkdir(parents=True, exist_ok=True)
         self.settings.event_dir.mkdir(parents=True, exist_ok=True)
         self.purge_sessions()
         self.camera.start()
@@ -171,6 +188,19 @@ class Runtime:
             self.hotspot.restore()
         except (OSError, RuntimeError, subprocess.SubprocessError):
             logger.exception("impossible de restaurer le hotspot demandé")
+
+    def _purge_temporary_raw_files(self) -> None:
+        for raw in self.settings.sessions_dir.rglob("raw.jpg"):
+            raw.unlink(missing_ok=True)
+        for directory in sorted(
+            (path for path in self.settings.sessions_dir.rglob(".*") if path.is_dir()),
+            key=lambda path: len(path.parts),
+            reverse=True,
+        ):
+            try:
+                directory.rmdir()
+            except OSError:
+                pass
 
     def stop(self) -> None:
         self.system_power.cancel_pending()

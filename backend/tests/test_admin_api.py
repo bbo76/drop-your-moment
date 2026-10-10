@@ -47,6 +47,66 @@ def test_le_portail_exige_le_code_quand_l_acces_operateur_est_actif(
     assert admin.get("/admin/event-config").status_code == 200
 
 
+def test_le_stockage_sd_et_le_support_externe_sont_selectables(
+    admin: TestClient, runtime: Runtime, tmp_path
+) -> None:
+    usb = tmp_path / "Photos USB"
+    usb.mkdir()
+    runtime.photo_storage.available = lambda: [usb]  # type: ignore[method-assign]
+
+    volumes = admin.get("/admin/storage").json()
+
+    assert [(item["label"], item["selected"]) for item in volumes] == [
+        ("Carte SD", True),
+        ("Photos USB", False),
+    ]
+    selected = admin.post("/admin/storage/select", json={"root": str(usb)})
+
+    assert selected.status_code == 200
+    assert selected.json()["selected"] is True
+    assert selected.json()["label"] == "Photos USB"
+    assert runtime.photo_storage.sessions_root == usb / "photobooth"
+    assert admin.get("/admin/storage").json()[0]["selected"] is False
+
+
+def test_support_externe_indisponible_revient_sur_sd(
+    admin: TestClient, runtime: Runtime, tmp_path
+) -> None:
+    usb = tmp_path / "Photos USB"
+    usb.mkdir()
+    runtime.photo_storage.available = lambda: [usb]  # type: ignore[method-assign]
+    assert admin.post("/admin/storage/select", json={"root": str(usb)}).status_code == 200
+    (usb / "photobooth").rmdir()
+    usb.rmdir()
+
+    health = admin.get("/admin/system/health").json()
+
+    assert health["photo_storage_mode"] == "sd"
+    assert health["photo_storage_label"] == "Carte SD"
+    assert health["photo_storage_reason"] == "support sélectionné indisponible"
+
+
+def test_changement_de_stockage_est_refuse_pendant_une_session(
+    admin: TestClient, kiosk: TestClient, runtime: Runtime, tmp_path
+) -> None:
+    usb = tmp_path / "Photos USB"
+    usb.mkdir()
+    runtime.photo_storage.available = lambda: [usb]  # type: ignore[method-assign]
+    kiosk.post("/api/session")
+
+    response = admin.post("/admin/storage/select", json={"root": str(usb)})
+
+    assert response.status_code == 409
+
+
+def test_un_support_non_disponible_ne_peut_pas_etre_selectionne(
+    admin: TestClient,
+) -> None:
+    response = admin.post("/admin/storage/select", json={"root": "/not-mounted"})
+
+    assert response.status_code == 404
+
+
 def test_aller_retour_de_la_configuration(admin: TestClient) -> None:
     config = admin.get("/admin/event-config").json()
     config["event_name"] = "Mariage Camille & Théo"
@@ -59,7 +119,9 @@ def test_aller_retour_de_la_configuration(admin: TestClient) -> None:
     config["capture_paused"] = True
     config["pause_message"] = "On recharge les sourires."
 
-    assert admin.put("/admin/event-config", json=config).status_code == 200
+    response = admin.put("/admin/event-config", json=config)
+
+    assert response.status_code == 200
 
     relu = admin.get("/admin/event-config").json()
     assert relu["event_name"] == "Mariage Camille & Théo"
@@ -77,7 +139,9 @@ def test_un_reglage_rapide_necrase_pas_les_autres_champs(admin: TestClient) -> N
     config = admin.get("/admin/event-config").json()
     config["event_name"] = "Événement concurrent"
     config["copies_per_print"] = 2
-    assert admin.put("/admin/event-config", json=config).status_code == 200
+    response = admin.put("/admin/event-config", json=config)
+
+    assert response.status_code == 200
 
     assert response.json()["event_name"] == "Événement concurrent"
     assert response.json()["copies_per_print"] == 2

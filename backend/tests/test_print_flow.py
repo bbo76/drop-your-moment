@@ -7,6 +7,7 @@ que le flux doit encaisser sans que la machine à états s'égare.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
@@ -19,7 +20,6 @@ from dropyourmoment.core.session import SessionState, StateTimeouts
 from dropyourmoment.hardware.printer.base import JobState, PrinterDriver, PrintJob
 from dropyourmoment.hardware.printer.null_driver import NullPrinterDriver
 from dropyourmoment.runtime import Runtime
-from dropyourmoment.storage.paths import final_path, raw_path
 
 
 class FakePrinterDriver(PrinterDriver):
@@ -138,9 +138,7 @@ def test_le_delai_residuel_ne_redemarre_pas_a_chaque_poll(
     assert kiosk.get("/api/status").json()["state"] == SessionState.DONE
 
 
-def test_un_job_bloque_finit_en_erreur_apres_timeout(
-    kiosk: TestClient, runtime: Runtime
-) -> None:
+def test_un_job_bloque_finit_en_erreur_apres_timeout(kiosk: TestClient, runtime: Runtime) -> None:
     now = [100.0]
     runtime.print_flow._job_timeout_s = 30.0
     runtime.print_flow._clock = lambda: now[0]
@@ -162,7 +160,8 @@ def test_le_tirage_transmet_le_fichier_fige(
 
     kiosk.post(f"/api/session/{session_id}/print")
 
-    assert printer.printed == [(final_path(runtime.settings.sessions_dir, session_id), 1)]
+    assert runtime.machine.session is not None
+    assert printer.printed == [(runtime.machine.session.final_path, 1)]
 
 
 def test_le_visiteur_choisit_le_nombre_d_exemplaires(
@@ -173,7 +172,8 @@ def test_le_visiteur_choisit_le_nombre_d_exemplaires(
     body = kiosk.post(f"/api/session/{session_id}/print", json={"copies": 3}).json()
 
     assert body["output_copies"] == 3
-    assert printer.printed == [(final_path(runtime.settings.sessions_dir, session_id), 3)]
+    assert runtime.machine.session is not None
+    assert printer.printed == [(runtime.machine.session.final_path, 3)]
     assert runtime.counters.read().prints_total == 3
 
 
@@ -235,12 +235,13 @@ def test_le_bac_cp1500_refuse_un_dix_neuvieme_tirage(
 def test_le_tirage_conserve_les_fichiers(kiosk: TestClient, runtime: Runtime) -> None:
     """Contrairement à « refaire » : une photo tirée appartient à la galerie."""
     session_id = capture(kiosk)
-    root = runtime.settings.sessions_dir
+    session = runtime.machine.session
+    assert session is not None
 
     kiosk.post(f"/api/session/{session_id}/print")
 
-    assert raw_path(root, session_id).is_file()
-    assert final_path(root, session_id).is_file()
+    assert session.raw_path is None
+    assert session.final_path is not None and session.final_path.is_file()
 
 
 def test_enregistrer_conserve_la_photo_sans_imprimer(
@@ -253,7 +254,9 @@ def test_enregistrer_conserve_la_photo_sans_imprimer(
     assert body["state"] == SessionState.DONE
     assert body["output_mode"] == "save"
     assert printer.printed == []
-    assert final_path(runtime.settings.sessions_dir, session_id).is_file()
+    assert runtime.machine.session is not None
+    assert runtime.machine.session.final_path is not None
+    assert runtime.machine.session.final_path.is_file()
 
 
 def test_la_confirmation_prepare_automatiquement_une_nouvelle_photo(
@@ -333,15 +336,19 @@ def test_l_annulation_pendant_le_tirage_oublie_le_job(
 
 def test_la_purge_suit_un_tirage_termine(kiosk: TestClient, runtime: Runtime) -> None:
     """La rétention se déclenche pendant que le visiteur regarde sa confirmation."""
-    ancienne = runtime.settings.sessions_dir / "ancienne-session"
+    ancienne = runtime.photo_storage.sessions_root / "2026-09-01" / "ancienne-session"
     ancienne.mkdir(parents=True)
-    (ancienne / "final.jpg").write_bytes(b"x")
+    photo_ancienne = ancienne / "ancienne.jpg"
+    photo_ancienne.write_bytes(b"x")
+    os.utime(photo_ancienne, (0, 0))
     runtime.settings.retention_max_age_days = 0.0
 
     session_id = capture(kiosk)
     kiosk.post(f"/api/session/{session_id}/print")
 
     assert not ancienne.exists()
-    assert final_path(runtime.settings.sessions_dir, session_id).is_file(), (
+    assert runtime.machine.session is not None
+    assert runtime.machine.session.final_path is not None
+    assert runtime.machine.session.final_path.is_file(), (
         "la session qui vient d'être tirée est épargnée"
     )

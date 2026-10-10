@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import shutil
 import subprocess
 from typing import Literal
 
@@ -363,7 +362,7 @@ def read_gallery(
     limit: int = Query(8, ge=1, le=24),
     runtime: Runtime = Depends(_authorized),
 ) -> GalleryPage:
-    total, entries = list_sessions(runtime.settings.sessions_dir, offset=offset, limit=limit)
+    total, entries = list_sessions(runtime.photo_storage.sessions_root, offset=offset, limit=limit)
     return GalleryPage(total=total, entries=entries)
 
 
@@ -413,5 +412,9 @@ def delete_gallery_photo(session_id: str, runtime: Runtime = Depends(_authorized
             status.HTTP_409_CONFLICT,
             detail="attendez la fin de l'impression avant de supprimer cette photo",
         )
-    shutil.rmtree(path.parent)
+    path.unlink()
+    try:
+        path.parent.rmdir()
+    except OSError:
+        pass
     return Response(status_code=status.HTTP_204_NO_CONTENT)

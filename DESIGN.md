@@ -334,6 +334,13 @@ reste un formulaire court et étroit, centré sur le remplacement du PIN. Les su
 champs, boutons, badges, séparateurs et alertes reprennent directement les composants et
 rôles sémantiques shadcn plutôt que des couleurs administratives isolées.
 
+La carte « Stockage des photos » du diagnostic affiche la destination active, son chemin
+`photobooth` et, si nécessaire, la raison du repli. Des boutons nommés avec le volume réel
+(ou « Carte SD ») sélectionnent explicitement la destination; le contrôle est désactivé
+pendant une session ou une impression. Les photos finales sont organisées par date et
+horodatage; les prises brutes restent temporaires sur la SD et ne figurent jamais dans la
+galerie.
+
 Le portail d'administration utilise une seule URL et choisit sa présentation selon la
 largeur disponible : mobile sous 768 px, desktop à partir de 768 px, avec bascule réactive
 au redimensionnement. Il ne propose ni sélecteur de vue ni gestion multi-borne. La

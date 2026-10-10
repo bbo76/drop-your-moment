@@ -16,6 +16,7 @@ millisecondes et évite une seconde compression JPEG.
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 
 from PIL import Image
@@ -61,4 +62,6 @@ class ImagePipeline:
 
 def save_jpeg(image: Image.Image, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    image.save(path, format="JPEG", quality=JPEG_QUALITY, optimize=True)
+    temporary = path.with_name(f".{path.stem}.tmp.jpg")
+    image.save(temporary, format="JPEG", quality=JPEG_QUALITY, optimize=True)
+    os.replace(temporary, path)

@@ -202,6 +202,10 @@ export interface AdminHealth {
   counters: CounterReading;
   disk_free_bytes: number;
   disk_total_bytes: number;
+  photo_storage_mode: "sd" | "external";
+  photo_storage_label: string;
+  photo_storage_path: string;
+  photo_storage_reason: string | null;
   cpu_percent: number;
   memory_used_bytes: number;
   memory_total_bytes: number;
@@ -218,6 +222,14 @@ export interface PrinterConfiguration {
   printer_name: string | null;
   available_printers: string[];
   cups_error: string | null;
+}
+
+export interface StorageVolume {
+  root: string | null;
+  label: string;
+  mode: "sd" | "external";
+  selected: boolean;
+  ready: boolean;
 }
 
 /** Un index de caméra qui s'ouvre, et la taille que le pilote y annonce. */
@@ -331,6 +343,8 @@ const post = <T>(path: string, body?: unknown) =>
   });
 
 export const api = {
+  storage: () => request<StorageVolume[]>("/admin/storage"),
+  selectStorage: (root: string | null) => post<StorageVolume>("/admin/storage/select", { root }),
   operatorAuthStatus: () => request<OperatorAuthStatus>("/admin/auth/status"),
   operatorLogin: async (code: string) => {
     const path = "/admin/auth/login";
@@ -520,7 +534,6 @@ export const overlayUrl = (revision: number) => `/admin/overlay?v=${revision}`;
 export const thumbnailUrl = (sessionId: string) => `/admin/gallery/${sessionId}/thumbnail`;
 export const photoDownloadUrl = (sessionId: string) => `/admin/gallery/${sessionId}/photo`;
 export const photoViewUrl = (sessionId: string) => `/admin/gallery/${sessionId}/view`;
-export const rawPhotoViewUrl = (sessionId: string) => `/admin/gallery/${sessionId}/raw`;
 export const maintenanceThumbnailUrl = (sessionId: string) =>
   `/api/maintenance/gallery/${sessionId}/thumbnail`;
 export const maintenancePhotoUrl = (sessionId: string) =>

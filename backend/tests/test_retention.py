@@ -21,12 +21,12 @@ def sessions_root(tmp_path: Path) -> Path:
 
 
 def make_session(root: Path, session_id: str, age_days: float, size: int = 1024) -> Path:
-    directory = root / session_id
-    directory.mkdir()
-    (directory / "final.jpg").write_bytes(b"x" * size)
+    photo = root / "2026-08-01" / f"{session_id}.jpg"
+    photo.parent.mkdir(parents=True, exist_ok=True)
+    photo.write_bytes(b"x" * size)
     stamp = (NOW - timedelta(days=age_days)).timestamp()
-    os.utime(directory, (stamp, stamp))
-    return directory
+    os.utime(photo, (stamp, stamp))
+    return photo
 
 
 def test_purge_par_age(sessions_root: Path) -> None:
@@ -36,7 +36,7 @@ def test_purge_par_age(sessions_root: Path) -> None:
     removed = purge(sessions_root, RetentionPolicy(max_age_days=30, max_total_bytes=10**9), now=NOW)
 
     assert removed == ["vieille"]
-    assert (sessions_root / "recente").is_dir()
+    assert (sessions_root / "2026-08-01" / "recente.jpg").is_file()
 
 
 def test_purge_par_plafond_d_espace(sessions_root: Path) -> None:
@@ -63,7 +63,7 @@ def test_la_session_en_cours_est_epargnee(sessions_root: Path) -> None:
     )
 
     assert removed == []
-    assert (sessions_root / "en-cours").is_dir()
+    assert (sessions_root / "2026-08-01" / "en-cours.jpg").is_file()
 
 
 def test_un_repertoire_absent_ne_fait_pas_echouer(tmp_path: Path) -> None:

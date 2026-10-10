@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Activity, Camera, Clock3, Database, Printer, Wrench } from "lucide-react";
 
-import { api, type AdminHealth, type CameraScan, type PrinterConfiguration } from "@/api/client";
+import { api, type AdminHealth, type CameraScan, type PrinterConfiguration, type StorageVolume } from "@/api/client";
 import { PowerControls } from "./PowerControls";
 import { Button, Feedback, Row, Section } from "./ui";
 import { canReleaseKiosk, releaseKioskCopy } from "./kioskRelease";
@@ -32,6 +32,8 @@ export function HealthSection() {
   const [printerChoice, setPrinterChoice] = useState("null");
   const [printerSaving, setPrinterSaving] = useState(false);
   const [printerFeedback, setPrinterFeedback] = useState<{ error?: string; notice?: string }>({});
+  const [storageVolumes, setStorageVolumes] = useState<StorageVolume[]>([]);
+  const [storageSaving, setStorageSaving] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -56,6 +58,37 @@ export function HealthSection() {
       clearTimeout(timer);
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadStorage = async () => {
+      try {
+        const volumes = await api.storage();
+        if (!cancelled) setStorageVolumes(volumes);
+      } catch {
+        if (!cancelled) setStorageVolumes([]);
+      }
+    };
+    void loadStorage();
+    const timer = setInterval(loadStorage, POLL_INTERVAL_MS * 3);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, []);
+
+  const selectStorage = async (root: string | null) => {
+    setStorageSaving(true);
+    try {
+      await api.selectStorage(root);
+      setStorageVolumes(await api.storage());
+      setHealth(await api.health());
+    } catch (cause) {
+      setError(String(cause));
+    } finally {
+      setStorageSaving(false);
+    }
+  };
 
   useEffect(() => {
     api.printerConfig().then((config) => {
@@ -146,6 +179,33 @@ export function HealthSection() {
           <AlertDescription>Une personne a déverrouillé l’écran de la borne et intervient sur place.</AlertDescription>
         </Alert>
       )}
+
+      <Card className="mb-6 border-2">
+        <CardHeader className="pb-2"><h3 className="text-xl font-semibold">Stockage des photos</h3></CardHeader>
+        <CardContent className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="text-lg font-medium">
+              Destination actuelle : {health.photo_storage_label}
+            </p>
+            <p className="text-sm text-muted-foreground">Dossier : {health.photo_storage_path}</p>
+            {health.photo_storage_reason && <p className="text-sm text-destructive">Repli sur la SD : {health.photo_storage_reason}</p>}
+          </div>
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Destination des photos">
+            {storageVolumes.map((volume) => (
+              <Button
+                key={volume.root ?? "sd"}
+                tone={volume.selected ? "primary" : "secondary"}
+                aria-pressed={volume.selected}
+                onClick={() => void selectStorage(volume.root)}
+                disabled={storageSaving || volume.selected}
+              >
+                {volume.label}
+              </Button>
+            ))}
+            {!storageVolumes.length && <p className="text-sm text-muted-foreground">Recherche des supports…</p>}
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
         <Group
