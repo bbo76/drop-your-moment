@@ -75,9 +75,9 @@ export function PreviewScreen({
     remainingSeconds <= RETURN_HINT_THRESHOLD_S;
 
   return (
-    <main className="relative flex h-full overflow-hidden bg-ink">
+    <main className="relative h-full overflow-hidden bg-ink">
       <div
-        className="relative h-full shrink-0 overflow-hidden bg-black"
+        className="absolute inset-y-0 left-1/2 h-full -translate-x-1/2 overflow-hidden bg-black"
         // Ce rectangle est le fichier final : `object-cover` reproduit exactement le
         // recadrage central du pipeline, puis l'overlay en épouse les quatre bords.
         style={{ aspectRatio: printAspectRatio }}
@@ -93,13 +93,13 @@ export function PreviewScreen({
       </div>
 
       {phase.kind === "waiting" && (
-        <div className="absolute inset-x-6 bottom-3 z-20 grid grid-cols-[1fr_auto_1fr] items-end">
+        <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-end gap-6">
           <fieldset className="relative justify-self-start">
             <legend className="sr-only">Durée du minuteur</legend>
             <div
               id="shot-timer-options"
               aria-hidden={!timerOpen}
-              className={`absolute bottom-16 left-0 grid grid-cols-3 gap-1.5 transition-[opacity,transform] duration-180 ease-out motion-reduce:transition-none ${
+              className={`absolute bottom-16 left-1/2 grid -translate-x-1/2 grid-cols-3 gap-1.5 transition-[opacity,transform] duration-180 ease-out motion-reduce:transition-none ${
                 timerOpen
                   ? "translate-y-0 opacity-100"
                   : "pointer-events-none translate-y-2 opacity-0"
@@ -140,9 +140,20 @@ export function PreviewScreen({
           </fieldset>
           <button
             type="button"
+            aria-label="Prendre la photo"
+            onClick={() => {
+              void onPrepareCapture();
+              setPhase({ kind: "counting", value: shotTimerSeconds });
+            }}
+            className="grid size-24 cursor-pointer place-items-center rounded-full border-4 border-ink bg-signal text-signal-ink transition-transform duration-150 active:scale-[0.94]"
+          >
+            <Camera aria-hidden="true" className="size-11" strokeWidth={2.25} />
+          </button>
+          <button
+            type="button"
             aria-label="Retour à l'accueil"
             onClick={onCancel}
-            className="col-start-3 grid size-14 cursor-pointer place-items-center justify-self-end rounded-full border-2 border-edge bg-surface text-body transition-[background-color,color,transform] duration-150 active:scale-[0.97]"
+            className="grid size-14 cursor-pointer place-items-center rounded-full border-2 border-edge bg-surface text-body transition-[background-color,color,transform] duration-150 active:scale-[0.97]"
           >
             <Home aria-hidden="true" className="size-7" strokeWidth={2.25} />
           </button>
@@ -151,19 +162,6 @@ export function PreviewScreen({
 
       {phase.kind === "waiting" && (
         <>
-          <div className="absolute bottom-3 left-1/2 z-20 -translate-x-1/2">
-            <button
-              type="button"
-              aria-label="Prendre la photo"
-              onClick={() => {
-                void onPrepareCapture();
-                setPhase({ kind: "counting", value: shotTimerSeconds });
-              }}
-              className="grid size-24 cursor-pointer place-items-center rounded-full border-4 border-ink bg-signal text-signal-ink transition-transform duration-150 active:scale-[0.94]"
-            >
-              <Camera aria-hidden="true" className="size-11" strokeWidth={2.25} />
-            </button>
-          </div>
 
           {showReturnHint && (
             <p className="absolute top-3 left-1/2 z-20 -translate-x-1/2 rounded-panel bg-ink px-5 py-2 text-base font-medium text-body">
