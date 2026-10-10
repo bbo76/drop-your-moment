@@ -147,7 +147,6 @@ export function App() {
             overlayUrl={event.overlay_url}
             remainingSeconds={session.remaining_seconds}
             defaultShotTimerSeconds={event.default_shot_timer_seconds}
-            screenFlashEnabled={event.screen_flash_enabled}
             onPrepareCapture={prepareCapture}
             onCapture={capture}
             onCancel={cancel}

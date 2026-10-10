@@ -143,7 +143,6 @@ class QuickEventConfigChange(BaseModel):
 
     copies_per_print: int | None = Field(default=None, ge=1, le=10)
     default_shot_timer_seconds: Literal[3, 5, 10] | None = None
-    screen_flash_enabled: bool | None = None
     capture_paused: bool | None = None
     pause_message: str | None = Field(default=None, min_length=1, max_length=120)
 

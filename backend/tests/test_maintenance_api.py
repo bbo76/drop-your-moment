@@ -54,7 +54,6 @@ def test_les_reglages_utiles_s_appliquent_au_kiosque(kiosk: TestClient) -> None:
         "/api/maintenance/settings",
         json={
             "default_shot_timer_seconds": 10,
-            "screen_flash_enabled": False,
             "accent_color": "#8b5cf6",
             "launch_font": "prestigious",
         },
@@ -62,7 +61,6 @@ def test_les_reglages_utiles_s_appliquent_au_kiosque(kiosk: TestClient) -> None:
 
     assert response.status_code == 200
     assert kiosk.get("/api/event").json()["default_shot_timer_seconds"] == 10
-    assert kiosk.get("/api/event").json()["screen_flash_enabled"] is False
     assert kiosk.get("/api/event").json()["accent_color"] == "#8b5cf6"
     assert kiosk.get("/api/event").json()["launch_font"] == "prestigious"
 

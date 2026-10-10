@@ -1,11 +1,7 @@
 import assert from "node:assert/strict";
 import { mock } from "node:test";
 
-import {
-  captureAfterScreenFlash,
-  scheduleCountdownStep,
-  type CapturePhase,
-} from "./captureTiming.ts";
+import { scheduleCountdownStep, type CapturePhase } from "./captureTiming.ts";
 
 mock.timers.enable({ apis: ["setTimeout"] });
 
@@ -31,37 +27,12 @@ assert.deepEqual(phase, { kind: "counting", value: 1 });
 mock.timers.tick(999);
 assert.equal(captures, 0);
 mock.timers.tick(1);
+assert.deepEqual(phase, { kind: "counting", value: 0 });
+mock.timers.tick(999);
+assert.equal(captures, 0);
+mock.timers.tick(1);
 assert.deepEqual(phase, { kind: "capturing" });
 assert.equal(captures, 1);
 cancel();
 
-let exposed = false;
-let completed = false;
-const result = captureAfterScreenFlash(true, async () => {
-  exposed = true;
-  return "photo";
-}).then((value) => {
-  completed = true;
-  return value;
-});
-
-mock.timers.tick(299);
-await Promise.resolve();
-assert.equal(exposed, false);
-mock.timers.tick(1);
-await Promise.resolve();
-await Promise.resolve();
-assert.equal(exposed, true);
-assert.equal(completed, false);
-mock.timers.tick(149);
-await Promise.resolve();
-assert.equal(completed, false);
-mock.timers.tick(1);
-assert.equal(await result, "photo");
-
 mock.timers.reset();
-
-assert.equal(
-  await captureAfterScreenFlash(false, async () => "sans flash"),
-  "sans flash",
-);

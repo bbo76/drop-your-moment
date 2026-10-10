@@ -25,7 +25,6 @@ const snapshot = {
   },
   settings: {
     default_shot_timer_seconds: 3,
-    screen_flash_enabled: true,
     accent_color: "#ffd400",
     launch_font: "modern",
   },

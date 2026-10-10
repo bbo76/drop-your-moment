@@ -89,7 +89,6 @@ class EventInfo(BaseModel):
     print_aspect_ratio: float
     overlay_url: str | None
     default_shot_timer_seconds: int
-    screen_flash_enabled: bool
     capture_paused: bool
     pause_message: str
 
@@ -189,7 +188,6 @@ def read_event(runtime: Runtime = Depends(get_runtime)) -> EventInfo:
         print_aspect_ratio=config.print_format.aspect_ratio,
         overlay_url=_overlay_url(runtime),
         default_shot_timer_seconds=config.default_shot_timer_seconds,
-        screen_flash_enabled=config.screen_flash_enabled,
         capture_paused=config.capture_paused,
         pause_message=config.pause_message,
     )

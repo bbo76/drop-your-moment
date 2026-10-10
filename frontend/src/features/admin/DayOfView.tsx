@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Activity, Camera, Check, Database, Pause, PlugZap, Printer, RotateCcw, SlidersHorizontal, Thermometer, TriangleAlert, Wifi, Zap } from "lucide-react";
+import { Activity, Camera, Check, Database, Pause, PlugZap, Printer, RotateCcw, SlidersHorizontal, Thermometer, TriangleAlert, Wifi } from "lucide-react";
 
 import { Button as ShadButton } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -269,7 +269,7 @@ export function DayOfView() {
             <span className="grid text-left">
               <strong className="flex items-center gap-2 text-lg"><SlidersHorizontal className="size-5" aria-hidden="true" />Réglages rapides</strong>
               <small className="text-muted-foreground">
-                {config ? `Minuteur ${config.default_shot_timer_seconds} s · Flash ${config.screen_flash_enabled ? "activé" : "désactivé"}` : "Lecture des réglages…"}
+                {config ? `Minuteur ${config.default_shot_timer_seconds} s` : "Lecture des réglages…"}
               </small>
             </span>
           </AccordionTrigger>
@@ -286,10 +286,6 @@ export function DayOfView() {
                     ))}
                   </div>
                 </fieldset>
-                <button type="button" disabled={working === "settings"} aria-pressed={config.screen_flash_enabled} onClick={() => saveQuickSetting({ screen_flash_enabled: !config.screen_flash_enabled })} className="flex min-h-14 items-center gap-3 rounded-lg border px-4 text-left disabled:opacity-50 aria-pressed:bg-muted">
-                  <Zap className="size-5" fill={config.screen_flash_enabled ? "currentColor" : "none"} aria-hidden="true" />
-                  <span className="grid"><strong>Flash d’appoint</strong><small className="text-muted-foreground">{config.screen_flash_enabled ? "Activé" : "Désactivé"}</small></span>
-                </button>
               </>
             ) : <Skeleton className="h-40 rounded-lg" />}
           </AccordionContent>

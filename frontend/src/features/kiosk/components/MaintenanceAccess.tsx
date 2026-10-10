@@ -78,7 +78,7 @@ function MaintenancePanel({ onExpired, onExit, debugFailure }: { onExpired: () =
         <MaintenanceTile icon="health" title="Santé" detail={diagnostics.healthDetail} attention={diagnostics.healthNeedsAttention} onClick={() => setView("health")} />
         <MaintenanceTile icon="print" title="Impression" detail={diagnostics.printingDetail} attention={diagnostics.printingNeedsAttention} onClick={() => setView("printing")} />
         <MaintenanceTile icon="gallery" title="Galerie" detail="Voir toutes les photos" onClick={() => setView("gallery")} />
-        <MaintenanceTile icon="settings" title="Réglages borne" detail={`${KIOSK_FONTS.find((font) => font.value === settings.launch_font)?.label ?? "Apparence"} · flash ${settings.screen_flash_enabled ? "activé" : "coupé"}`} onClick={() => setView("settings")} />
+        <MaintenanceTile icon="settings" title="Réglages borne" detail={KIOSK_FONTS.find((font) => font.value === settings.launch_font)?.label ?? "Apparence"} onClick={() => setView("settings")} />
         <MaintenanceTile icon="network" title="Réseau" detail={snapshot.wifi.mode === "hotspot" ? `${snapshot.hotspot.client_count} appareil(s) · ${snapshot.hotspot.ssid}` : snapshot.wifi.mode === "client" ? `Wi-Fi · ${snapshot.wifi.ssid}` : "Hors ligne"} attention={!snapshot.wifi.available} onClick={() => setView("network")} />
         <MaintenanceTile icon="journal" title="Journaux" detail="Comprendre un incident" onClick={() => setView("journal")} />
       </div>
