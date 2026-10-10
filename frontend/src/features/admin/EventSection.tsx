@@ -440,7 +440,7 @@ export function EventSection() {
             <DialogTitle>Overlay de l’événement</DialogTitle>
             <DialogDescription>Aperçu du fichier PNG actuel.</DialogDescription>
           </DialogHeader>
-          <div className="grid min-h-0 place-items-center overflow-auto rounded-lg border border-border bg-[repeating-conic-gradient(#333846_0_25%,transparent_0_50%)] bg-[length:20px_20px] p-4">
+          <div className="grid min-h-0 place-items-center overflow-auto rounded-lg border border-border bg-[repeating-conic-gradient(#333846_0_25%,transparent_0_50%)] bg-[length:20px_20px]">
             <img
               src={overlayUrl(overlayRevision)}
               alt="Overlay de l’événement agrandi"
