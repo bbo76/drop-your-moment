@@ -76,14 +76,30 @@ export function PreviewScreen({
 
   return (
     <main className="relative flex h-full overflow-hidden bg-ink">
-      <aside className="relative z-10 flex min-w-17 flex-1 items-end justify-center bg-ink pb-3">
-        {phase.kind === "waiting" && (
-          <fieldset className="relative">
+      <div
+        className="relative h-full shrink-0 overflow-hidden bg-black"
+        // Ce rectangle est le fichier final : `object-cover` reproduit exactement le
+        // recadrage central du pipeline, puis l'overlay en épouse les quatre bords.
+        style={{ aspectRatio: printAspectRatio }}
+      >
+        <img ref={preview} src={streamUrl} alt="" className="block h-full w-full object-cover" />
+        <FramingGuide overlayUrl={overlayUrl} />
+
+        {phase.kind === "counting" && (
+          <div className="pointer-events-none absolute inset-0 grid place-content-center">
+            <CountdownNumber value={phase.value} />
+          </div>
+        )}
+      </div>
+
+      {phase.kind === "waiting" && (
+        <div className="absolute inset-x-6 bottom-3 z-20 grid grid-cols-[1fr_auto_1fr] items-end">
+          <fieldset className="relative justify-self-start">
             <legend className="sr-only">Durée du minuteur</legend>
             <div
               id="shot-timer-options"
               aria-hidden={!timerOpen}
-              className={`absolute bottom-16 left-1/2 grid -translate-x-1/2 gap-1.5 transition-[opacity,transform] duration-180 ease-out motion-reduce:transition-none ${
+              className={`absolute bottom-16 left-0 grid grid-cols-3 gap-1.5 transition-[opacity,transform] duration-180 ease-out motion-reduce:transition-none ${
                 timerOpen
                   ? "translate-y-0 opacity-100"
                   : "pointer-events-none translate-y-2 opacity-0"
@@ -122,37 +138,16 @@ export function PreviewScreen({
               <Timer aria-hidden="true" className="size-7" strokeWidth={2.25} />
             </button>
           </fieldset>
-        )}
-      </aside>
-
-      <div
-        className="relative h-full shrink-0 overflow-hidden bg-black"
-        // Ce rectangle est le fichier final : `object-cover` reproduit exactement le
-        // recadrage central du pipeline, puis l'overlay en épouse les quatre bords.
-        style={{ aspectRatio: printAspectRatio }}
-      >
-        <img ref={preview} src={streamUrl} alt="" className="block h-full w-full object-cover" />
-        <FramingGuide overlayUrl={overlayUrl} />
-
-        {phase.kind === "counting" && (
-          <div className="pointer-events-none absolute inset-0 grid place-content-center">
-            <CountdownNumber value={phase.value} />
-          </div>
-        )}
-      </div>
-
-      <aside className="relative z-10 flex min-w-17 flex-1 items-end justify-center bg-ink pb-3">
-        {phase.kind === "waiting" && (
           <button
             type="button"
             aria-label="Retour à l'accueil"
             onClick={onCancel}
-            className="grid size-14 cursor-pointer place-items-center rounded-full border-2 border-edge bg-surface text-body transition-[background-color,color,transform] duration-150 active:scale-[0.97]"
+            className="col-start-3 grid size-14 cursor-pointer place-items-center justify-self-end rounded-full border-2 border-edge bg-surface text-body transition-[background-color,color,transform] duration-150 active:scale-[0.97]"
           >
             <Home aria-hidden="true" className="size-7" strokeWidth={2.25} />
           </button>
-        )}
-      </aside>
+        </div>
+      )}
 
       {phase.kind === "waiting" && (
         <>
