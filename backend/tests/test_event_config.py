@@ -28,8 +28,7 @@ def test_config_absente_cree_les_valeurs_par_defaut(tmp_path: Path) -> None:
     assert event.config.launch_message == "Bienvenue"
     assert event.config.launch_font == "modern"
     assert event.config.accent_color == "#ffd400"
-    assert event.config.default_shot_timer_seconds == 3
-    assert event.config.screen_flash_enabled is True
+    assert event.config.default_shot_timer_seconds == 5
     assert event.config.capture_paused is False
     assert event.config.pause_message == "Je recharge les sourires…"
     assert store.config_path.is_file()
@@ -58,7 +57,6 @@ def test_config_relue_a_l_identique(tmp_path: Path) -> None:
             available_filters=[FilterName.ORIGINAL, FilterName.BW_STUDIO],
             copies_per_print=2,
             default_shot_timer_seconds=10,
-            screen_flash_enabled=False,
             capture_paused=True,
             pause_message="Le gâteau arrive, on reprend juste après.",
         )
@@ -73,7 +71,6 @@ def test_config_relue_a_l_identique(tmp_path: Path) -> None:
     assert event.config.available_filters == [FilterName.ORIGINAL, FilterName.BW_STUDIO]
     assert event.config.copies_per_print == 2
     assert event.config.default_shot_timer_seconds == 10
-    assert event.config.screen_flash_enabled is False
     assert event.config.capture_paused is True
     assert event.config.pause_message == "Le gâteau arrive, on reprend juste après."
 
@@ -99,7 +96,6 @@ def test_ancienne_duree_de_flash_ne_casse_pas_la_configuration(tmp_path: Path) -
 
     assert event.config.event_name == "Ancien événement"
     assert event.config.launch_message == "Ancien événement"
-    assert event.config.screen_flash_enabled is True
 
 
 def test_ancien_filtre_noir_et_blanc_devient_le_rendu_studio() -> None:

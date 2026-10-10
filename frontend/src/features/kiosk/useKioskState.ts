@@ -7,7 +7,6 @@ import {
   type SessionStatus,
   type SystemStatus,
 } from "@/api/client";
-import { captureAfterScreenFlash } from "./captureTiming";
 
 const POLL_INTERVAL_MS = 500;
 const MAX_OFFLINE_POLL_INTERVAL_MS = 8_000;
@@ -46,9 +45,6 @@ export function useKioskState(): KioskState {
   // Lus dans la boucle sans la faire redémarrer à chaque changement d'état.
   const systemRef = useRef<SystemStatus | null>(null);
   const eventRef = useRef<EventInfo | null>(null);
-  // Le backend termine la capture avant la fin éventuelle du flash logiciel. Pendant
-  // cet intervalle, le polling ne doit pas appliquer l'état `review`, sinon React
-  // démonte PreviewScreen et fait disparaître le flash au prochain tick (500 ms).
   const captureInFlightRef = useRef(false);
 
   // L'identifiant de session vient du serveur ; les actions le relisent ici pour éviter
@@ -149,10 +145,7 @@ export function useKioskState(): KioskState {
     if (!id) return;
     captureInFlightRef.current = true;
     try {
-      const screenFlashEnabled = eventRef.current?.screen_flash_enabled ?? true;
-      // Le flash précède l'exposition de 300 ms, puis reste visible 150 ms après la
-      // réponse afin que la dalle éclaire réellement la scène sans disparaître trop tôt.
-      const status = await captureAfterScreenFlash(screenFlashEnabled, () => api.capture(id));
+      const status = await api.capture(id);
       setSession(status);
     } catch (error) {
       console.warn(error);

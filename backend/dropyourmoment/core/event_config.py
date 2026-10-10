@@ -67,12 +67,9 @@ class EventConfig(BaseModel):
     )
     print_format: PrintFormat = Field(default_factory=lambda: POSTCARD_LANDSCAPE.model_copy())
     copies_per_print: int = Field(default=1, ge=1, le=10)
-    # Durée présélectionnée sur la borne. Les visiteurs peuvent la changer pour leur
-    # prise, mais seules ces trois valeurs gardent l'interface prévisible et tactile.
-    default_shot_timer_seconds: Literal[3, 5, 10] = 3
-    # Éclairage d'appoint produit par l'écran. À désactiver si la borne utilise un flash
-    # physique ou si la lumière blanche gêne la scénographie.
-    screen_flash_enabled: bool = True
+    # Durée présélectionnée sur la borne. Le choix reste réservé à l'organisateur afin de
+    # garder l'écran invité lisible et prévisible.
+    default_shot_timer_seconds: Literal[3, 5, 10] = 5
     # Pause opérationnelle : une session déjà ouverte se termine, mais l'accueil refuse
     # les suivantes jusqu'à la reprise. Le message reste celui de l'événement.
     capture_paused: bool = False

@@ -107,7 +107,7 @@ def test_info_evenement_separee_du_materiel(kiosk: TestClient) -> None:
 
     assert body["print_aspect_ratio"] == POSTCARD_LANDSCAPE.aspect_ratio
     assert body["available_filters"] == ["original", "bw_studio", "sepia"]
-    assert body["default_shot_timer_seconds"] == 3
+    assert body["default_shot_timer_seconds"] == 5
     assert body["overlay_url"] is None
     assert body["event_name"]
     assert body["capture_paused"] is False

@@ -75,7 +75,6 @@ export interface EventConfigPayload {
   print_format: PrintFormatPayload;
   copies_per_print: number;
   default_shot_timer_seconds: ShotTimerSeconds;
-  screen_flash_enabled: boolean;
   capture_paused: boolean;
   pause_message: string;
 }
@@ -92,7 +91,6 @@ export interface EventInfo {
   /** PNG composé sur la zone conservée du retour live, déjà versionné par le backend. */
   overlay_url: string | null;
   default_shot_timer_seconds: ShotTimerSeconds;
-  screen_flash_enabled: boolean;
   capture_paused: boolean;
   pause_message: string;
 }
@@ -127,7 +125,6 @@ export interface CounterReading {
 
 export interface MaintenanceSettings {
   default_shot_timer_seconds: ShotTimerSeconds;
-  screen_flash_enabled: boolean;
   accent_color: string;
   launch_font: LaunchFont;
 }

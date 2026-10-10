@@ -44,7 +44,6 @@ class PinAttempt(BaseModel):
 
 class MaintenanceSettings(BaseModel):
     default_shot_timer_seconds: Literal[3, 5, 10]
-    screen_flash_enabled: bool
     accent_color: str = Field(pattern=r"^#[0-9a-fA-F]{6}$")
     launch_font: LaunchFont
 
@@ -145,7 +144,6 @@ def maintenance_status(runtime: Runtime = Depends(_authorized)) -> MaintenanceSn
         health=read_health(runtime),
         settings=MaintenanceSettings(
             default_shot_timer_seconds=config.default_shot_timer_seconds,
-            screen_flash_enabled=config.screen_flash_enabled,
             accent_color=config.accent_color,
             launch_font=config.launch_font,
         ),
