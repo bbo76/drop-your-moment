@@ -67,9 +67,15 @@ export function PreviewScreen({
     remainingSeconds <= RETURN_HINT_THRESHOLD_S;
 
   return (
-    <main className={`relative h-full overflow-hidden bg-ink ${phase.kind === "counting" ? "countdown-breath" : ""}`}>
+    <main className="relative h-full overflow-hidden bg-ink">
+      <img
+        src={streamUrl}
+        alt=""
+        aria-hidden="true"
+        className="absolute inset-0 h-full w-full scale-[1.08] object-cover blur-[18px] saturate-[0.78] opacity-80"
+      />
       <div
-        className="absolute inset-y-0 left-1/2 h-full -translate-x-1/2 overflow-hidden bg-black"
+        className="absolute inset-y-0 left-1/2 z-10 h-full -translate-x-1/2 overflow-hidden bg-black"
         // Ce rectangle est le fichier final : `object-cover` reproduit exactement le
         // recadrage central du pipeline, puis l'overlay en épouse les quatre bords.
         style={{ aspectRatio: printAspectRatio }}
@@ -91,28 +97,25 @@ export function PreviewScreen({
 
       {phase.kind === "waiting" && (
         <>
-          <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-end gap-6">
-            <span aria-hidden="true" className="size-14" />
-            <button
-              type="button"
-              aria-label="Prendre la photo"
-              onClick={() => {
-                void onPrepareCapture();
-                setPhase({ kind: "counting", value: defaultShotTimerSeconds });
-              }}
-              className="grid size-24 cursor-pointer place-items-center rounded-full border-4 border-ink bg-signal text-signal-ink transition-transform duration-150 active:scale-[0.94]"
-            >
-              <Camera aria-hidden="true" className="size-11" strokeWidth={2.25} />
-            </button>
-            <button
-              type="button"
-              aria-label="Retour à l'accueil"
-              onClick={onCancel}
-              className="grid size-14 cursor-pointer place-items-center rounded-full border-2 border-edge bg-surface text-body transition-[background-color,color,transform] duration-150 active:scale-[0.97]"
-            >
-              <Home aria-hidden="true" className="size-7" strokeWidth={2.25} />
-            </button>
-          </div>
+          <button
+            type="button"
+            aria-label="Prendre la photo"
+            onClick={() => {
+              void onPrepareCapture();
+              setPhase({ kind: "counting", value: defaultShotTimerSeconds });
+            }}
+            className="absolute bottom-3 left-1/2 z-20 grid size-24 -translate-x-1/2 cursor-pointer place-items-center rounded-full border-4 border-ink bg-signal text-signal-ink transition-transform duration-150 active:scale-[0.94]"
+          >
+            <Camera aria-hidden="true" className="size-11" strokeWidth={2.25} />
+          </button>
+          <button
+            type="button"
+            aria-label="Retour à l'accueil"
+            onClick={onCancel}
+            className="absolute right-6 top-5 z-20 grid size-14 cursor-pointer place-items-center rounded-full border-2 border-edge/90 bg-ink/70 text-body backdrop-blur-sm transition-[background-color,color,transform] duration-150 active:scale-[0.97]"
+          >
+            <Home aria-hidden="true" className="size-7" strokeWidth={2.25} />
+          </button>
         </>
       )}
 
