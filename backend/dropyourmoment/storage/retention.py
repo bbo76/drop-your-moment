@@ -1,30 +1,14 @@
-"""Purge des sessions anciennes.
-
-Deux raisons chiffrées, et donc deux garde-fous distincts :
-
-- **l'âge** : environ 2 Go par événement, qui n'ont pas à s'accumuler indéfiniment ;
-- **le plafond d'espace** : deux événements chargés dans la même semaine rempliraient la
-  carte SD sans qu'aucune session n'ait atteint l'âge limite.
-
-L'âge est ce qu'un opérateur comprend et règle ; le plafond est le filet qui évite le
-disque plein en pleine soirée. Un seul des deux laisserait un trou : sans plafond on se
-remplit vite, sans âge on supprime des photos le jour même d'un gros événement.
-
-L'horloge est injectée, comme celle de la machine à états : sinon un test d'âge demanderait
-d'attendre.
-"""
+"""Rétention des photos finales, par âge et par espace total."""
 
 from __future__ import annotations
 
 import logging
-import shutil
 from collections.abc import Collection
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
-
 BYTES_PER_GB = 1024**3
 
 
@@ -35,7 +19,7 @@ class RetentionPolicy:
 
     @classmethod
     def from_gb(cls, max_age_days: float, max_total_gb: float) -> RetentionPolicy:
-        return cls(max_age_days=max_age_days, max_total_bytes=int(max_total_gb * BYTES_PER_GB))
+        return cls(max_age_days, int(max_total_gb * BYTES_PER_GB))
 
 
 @dataclass(frozen=True)
@@ -43,6 +27,7 @@ class _Candidate:
     path: Path
     modified_at: float
     size: int
+    identity: str
 
 
 def purge(
@@ -51,61 +36,61 @@ def purge(
     keep_ids: Collection[str] = (),
     now: datetime | None = None,
 ) -> list[str]:
-    """Supprime les sessions trop vieilles, puis les plus anciennes si le total déborde.
-
-    Rend les identifiants supprimés. `keep_ids` protège la session en cours : on ne purge
-    jamais sous les pieds d'un visiteur, même si l'horloge ou le plafond le réclament.
-    """
     if not sessions_root.is_dir():
         return []
-
     protected = set(keep_ids)
     reference = (now or datetime.now(UTC)).timestamp()
-    age_limit = policy.max_age_days * 86400.0
-
-    # Triés du plus ancien au plus récent : c'est l'ordre de suppression des deux passes.
+    age_limit = policy.max_age_days * 86400
     candidates = sorted(
         (
-            _Candidate(path=entry, modified_at=entry.stat().st_mtime, size=_directory_size(entry))
-            for entry in sessions_root.iterdir()
-            if entry.is_dir() and entry.name not in protected
+            _Candidate(
+                path=file,
+                modified_at=file.stat().st_mtime,
+                size=file.stat().st_size,
+                identity=(file.parent.name if file.stem == "final" else file.stem),
+            )
+            for file in sessions_root.rglob("*.jpg")
+            if file.name != "raw.jpg" and not any(p.name.startswith(".") for p in file.parents)
         ),
-        key=lambda candidate: candidate.modified_at,
+        key=lambda item: item.modified_at,
     )
-    total = sum(candidate.size for candidate in candidates)
-
+    total = sum(item.size for item in candidates)
     removed: list[str] = []
     freed = 0
     survivors: list[_Candidate] = []
-
-    for candidate in candidates:
-        if reference - candidate.modified_at > age_limit:
-            _remove(candidate, "âge")
-            removed.append(candidate.path.name)
-            freed += candidate.size
+    for item in candidates:
+        if item.identity not in protected and reference - item.modified_at > age_limit:
+            _remove(item)
+            removed.append(item.identity)
+            freed += item.size
         else:
-            survivors.append(candidate)
-
-    for candidate in survivors:
+            survivors.append(item)
+    for item in survivors:
         if total - freed <= policy.max_total_bytes:
             break
-        _remove(candidate, "plafond d'espace")
-        removed.append(candidate.path.name)
-        freed += candidate.size
-
+        if item.identity in protected:
+            continue
+        _remove(item)
+        removed.append(item.identity)
+        freed += item.size
+    for directory in sorted(
+        (p for p in sessions_root.rglob("*") if p.is_dir()),
+        key=lambda p: len(p.parts),
+        reverse=True,
+    ):
+        try:
+            directory.rmdir()
+        except OSError:
+            pass
     if removed:
         logger.info(
-            "rétention : %d session(s) supprimée(s), %.1f Mo libérés",
+            "rétention : %d photo(s) supprimée(s), %.1f Mo libérés",
             len(removed),
-            freed / 1024 / 1024,
+            freed / 2**20,
         )
     return removed
 
 
-def _remove(candidate: _Candidate, reason: str) -> None:
-    logger.info("rétention : suppression de %s (%s)", candidate.path.name, reason)
-    shutil.rmtree(candidate.path, ignore_errors=True)
-
-
-def _directory_size(directory: Path) -> int:
-    return sum(entry.stat().st_size for entry in directory.rglob("*") if entry.is_file())
+def _remove(candidate: _Candidate) -> None:
+    logger.info("rétention : suppression de %s", candidate.path)
+    candidate.path.unlink(missing_ok=True)

@@ -63,6 +63,7 @@ class Settings(BaseSettings):
     print_job_timeout_s: float = 120.0
 
     data_dir: Path = REPO_ROOT / "data"
+    removable_storage_root: Path | None = None
 
     # Rétention : deux garde-fous distincts, l'âge pour ce que l'opérateur règle, le
     # plafond pour éviter le disque plein en pleine soirée (~2 Go par événement).
@@ -110,6 +111,10 @@ class Settings(BaseSettings):
     @property
     def sessions_dir(self) -> Path:
         return self.data_dir / "sessions"
+
+    @property
+    def photos_dir(self) -> Path:
+        return self.data_dir / "photobooth"
 
     @property
     def event_dir(self) -> Path:

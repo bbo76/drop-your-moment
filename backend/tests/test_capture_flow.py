@@ -14,7 +14,6 @@ from dropyourmoment.core.event_config import EventConfig
 from dropyourmoment.core.session import SessionState
 from dropyourmoment.imaging.filters import FilterName
 from dropyourmoment.runtime import Runtime
-from dropyourmoment.storage.paths import final_path, raw_path, session_dir
 
 
 def assert_color_close(
@@ -52,9 +51,15 @@ def test_capture_ecrit_la_prise_brute_et_l_image_finale(
 
     kiosk.post(f"/api/session/{session_id}/capture")
 
-    root = runtime.settings.sessions_dir
-    assert raw_path(root, session_id).is_file()
-    assert final_path(root, session_id).is_file()
+    session = runtime.machine.session
+    assert session is not None
+    assert session.raw_path is not None and session.raw_path.is_file()
+    assert session.final_path is not None and session.final_path.is_file()
+    assert session.raw_path.is_relative_to(runtime.settings.sessions_dir)
+    assert session.final_path.parent.name == session.photo_date
+    assert session.final_path.parent.parent.name == "photobooth"
+    assert session.final_path.stem == session.photo_name
+    assert session.id not in str(session.final_path)
 
 
 def test_l_image_finale_est_recadree_au_format_de_sortie(
@@ -64,7 +69,8 @@ def test_l_image_finale_est_recadree_au_format_de_sortie(
 
     kiosk.post(f"/api/session/{session_id}/capture")
 
-    with Image.open(final_path(runtime.settings.sessions_dir, session_id)) as final:
+    assert runtime.machine.session is not None
+    with Image.open(runtime.machine.session.final_path) as final:
         ratio = final.size[0] / final.size[1]
     assert ratio == pytest.approx(runtime.event.aspect_ratio, abs=1e-3)
 
@@ -101,7 +107,10 @@ def test_capture_sur_une_session_perimee(kiosk: TestClient) -> None:
 def test_choix_de_filtre_change_l_image(kiosk: TestClient, runtime: Runtime) -> None:
     body = start_and_capture(kiosk)
     session_id = body["session_id"]
-    before = final_path(runtime.settings.sessions_dir, session_id).read_bytes()
+    session = runtime.machine.session
+    assert session is not None and session.final_path is not None
+    before_path = session.final_path
+    before = before_path.read_bytes()
 
     after_body = kiosk.post(
         f"/api/session/{session_id}/filter", json={"name": FilterName.BW_STUDIO}
@@ -109,7 +118,10 @@ def test_choix_de_filtre_change_l_image(kiosk: TestClient, runtime: Runtime) -> 
 
     assert after_body["selected_filter"] == FilterName.BW_STUDIO
     assert after_body["state"] == SessionState.REVIEW
-    after = final_path(runtime.settings.sessions_dir, session_id).read_bytes()
+    session = runtime.machine.session
+    assert session is not None and session.final_path is not None
+    after = session.final_path.read_bytes()
+    assert before_path == session.final_path
     assert before != after
 
 
@@ -126,7 +138,9 @@ def test_l_url_de_la_photo_change_a_chaque_composition(kiosk: TestClient) -> Non
 def test_aller_retour_entre_filtres(kiosk: TestClient, runtime: Runtime) -> None:
     body = start_and_capture(kiosk)
     session_id = body["session_id"]
-    path = final_path(runtime.settings.sessions_dir, session_id)
+    assert runtime.machine.session is not None
+    path = runtime.machine.session.final_path
+    assert path is not None
 
     kiosk.post(f"/api/session/{session_id}/filter", json={"name": FilterName.SEPIA})
     sepia_first = path.read_bytes()
@@ -176,9 +190,11 @@ def test_refaire_efface_les_fichiers(kiosk: TestClient, runtime: Runtime) -> Non
 
     kiosk.post(f"/api/session/{session_id}/retake")
 
-    assert not raw_path(root, session_id).exists()
-    assert not final_path(root, session_id).exists()
-    assert not session_dir(root, session_id).exists(), "le dossier vide est retiré"
+    assert runtime.machine.session is not None
+    assert runtime.machine.session.raw_path is None
+    assert runtime.machine.session.final_path is None
+    assert not any(runtime.photo_storage.sessions_root.rglob("*.jpg"))
+    assert not any(root.rglob("raw.jpg"))
 
 
 def test_recapture_apres_refaire(kiosk: TestClient) -> None:
@@ -218,8 +234,10 @@ def test_l_overlay_configure_est_applique(kiosk: TestClient, runtime: Runtime) -
     runtime.event_store.save_config(EventConfig(overlay_file="cadre.png"))
     runtime.reload_event()
 
-    body = start_and_capture(kiosk)
+    start_and_capture(kiosk)
 
-    with Image.open(final_path(runtime.settings.sessions_dir, body["session_id"])) as final:
+    assert runtime.machine.session is not None
+    assert runtime.machine.session.final_path is not None
+    with Image.open(runtime.machine.session.final_path) as final:
         width, height = final.size
         assert_color_close(final.getpixel((width // 2, height // 20)), (255, 0, 255))

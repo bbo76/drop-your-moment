@@ -46,7 +46,6 @@ from dropyourmoment.runtime import Runtime
 from dropyourmoment.storage.atomic import write_atomic
 from dropyourmoment.storage.counters import PAPER_CASSETTE_CAPACITY, Counters
 from dropyourmoment.storage.gallery import GalleryEntry, list_sessions, thumbnail_jpeg, zip_stream
-from dropyourmoment.storage.paths import FINAL_NAME
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +56,72 @@ router = APIRouter(prefix="/admin")
 # centaines de mégaoctets à Pillow — un overlay de carte postale en pèse moins de deux.
 MAX_OVERLAY_BYTES = 20 * 1024 * 1024
 REMOTE_POWER_DELAY_SECONDS = 30
+
+
+class StorageSelection(BaseModel):
+    root: str | None = None
+
+
+class StorageVolume(BaseModel):
+    root: str | None
+    label: str
+    mode: str
+    selected: bool
+    ready: bool
+
+
+@router.get("/storage", response_model=list[StorageVolume])
+def list_storage(runtime: Runtime = Depends(get_runtime)) -> list[StorageVolume]:
+    runtime.photo_storage.refresh()
+    sd = StorageVolume(
+        root=None,
+        label="Carte SD",
+        mode="sd",
+        selected=runtime.photo_storage.status.mode == "sd",
+        ready=True,
+    )
+    return [
+        sd,
+        *[
+            StorageVolume(
+                root=str(root),
+                label=root.name,
+                mode="external",
+                selected=(
+                    runtime.photo_storage.status.mode == "external"
+                    and runtime.photo_storage.status.root.parent == root
+                ),
+                ready=(root / "photobooth").is_dir(),
+            )
+            for root in runtime.photo_storage.available()
+        ],
+    ]
+
+
+@router.post("/storage/select", response_model=StorageVolume)
+def select_storage(
+    selection: StorageSelection, runtime: Runtime = Depends(get_runtime)
+) -> StorageVolume:
+    if runtime.machine.state is not SessionState.IDLE or runtime.print_flow.job is not None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, detail="une session photo ou impression est en cours"
+        )
+    root = Path(selection.root).resolve() if selection.root else None
+    if root is not None and root not in runtime.photo_storage.available():
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="support externe indisponible")
+    runtime.photo_storage.select(root)
+    return StorageVolume(
+        root=str(root) if root else None,
+        label="Carte SD" if root is None else root.name,
+        mode="sd" if root is None else "external",
+        selected=(
+            runtime.photo_storage.status.mode == "sd"
+            if root is None
+            else runtime.photo_storage.status.mode == "external"
+            and runtime.photo_storage.status.root.parent == root
+        ),
+        ready=(root / "photobooth").is_dir() if root else True,
+    )
 
 
 class CounterReading(BaseModel):
@@ -113,6 +178,10 @@ class AdminHealth(BaseModel):
     # c'est à cette échelle que l'espace restant se lit.
     disk_free_bytes: int
     disk_total_bytes: int
+    photo_storage_mode: str
+    photo_storage_label: str
+    photo_storage_path: str
+    photo_storage_reason: str | None
     cpu_percent: float
     memory_used_bytes: int
     memory_total_bytes: int
@@ -156,6 +225,9 @@ def read_health(runtime: Runtime = Depends(get_runtime)) -> AdminHealth:
     passage coûterait des centaines d'appels `stat` toutes les deux secondes sur une carte
     SD. `disk_usage` est un seul `statvfs`, et il répond à la même question.
     """
+    # Un disque peut être branché après le démarrage du backend : le health admin est
+    # déjà sondé périodiquement, donc c'est le point naturel pour rafraîchir la destination.
+    runtime.photo_storage.refresh()
     caps = runtime.camera.get_capabilities()
     config = runtime.event.config
     usage = shutil.disk_usage(runtime.settings.data_dir)
@@ -180,6 +252,10 @@ def read_health(runtime: Runtime = Depends(get_runtime)) -> AdminHealth:
         counters=_reading(runtime.counters.read()),
         disk_free_bytes=usage.free,
         disk_total_bytes=usage.total,
+        photo_storage_mode=runtime.photo_storage.status.mode,
+        photo_storage_label=runtime.photo_storage.status.label,
+        photo_storage_path=str(runtime.photo_storage.sessions_root),
+        photo_storage_reason=runtime.photo_storage.status.reason,
         cpu_percent=metrics.cpu_percent,
         memory_used_bytes=metrics.memory_used_bytes,
         memory_total_bytes=metrics.memory_total_bytes,
@@ -554,7 +630,7 @@ def read_gallery(
     limit: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
     runtime: Runtime = Depends(get_runtime),
 ) -> GalleryPage:
-    total, entries = list_sessions(runtime.settings.sessions_dir, offset=offset, limit=limit)
+    total, entries = list_sessions(runtime.photo_storage.sessions_root, offset=offset, limit=limit)
     return GalleryPage(total=total, entries=entries)
 
 
@@ -569,11 +645,8 @@ def download_archive(runtime: Runtime = Depends(get_runtime)) -> StreamingRespon
     l'événement. C'est précisément pour pouvoir la servir entière sans la construire que
     `zip_stream` existe.
     """
-    _, entries = list_sessions(runtime.settings.sessions_dir, offset=0, limit=_ALL)
-    photos = [
-        (entry.archive_name, runtime.settings.sessions_dir / entry.session_id / FINAL_NAME)
-        for entry in entries
-    ]
+    _, entries = list_sessions(runtime.photo_storage.sessions_root, offset=0, limit=_ALL)
+    photos = [(entry.archive_name, entry.path) for entry in entries]
     name = f"{_slug(runtime.event.config.event_name)}.zip"
     logger.info("archive demandée : %d photo(s), %s", len(photos), name)
     return StreamingResponse(
@@ -615,15 +688,6 @@ def view_photo(session_id: str, runtime: Runtime = Depends(get_runtime)) -> File
     )
 
 
-@router.get("/gallery/{session_id}/raw")
-def view_raw_photo(session_id: str, runtime: Runtime = Depends(get_runtime)) -> FileResponse:
-    """Capture caméra non composée, réservée au diagnostic opérateur."""
-    path = _photo_path(runtime, session_id).with_name("raw.jpg")
-    if not path.is_file():
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="capture brute introuvable")
-    return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "no-store"})
-
-
 @router.delete("/gallery/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_photo(session_id: str, runtime: Runtime = Depends(get_runtime)) -> Response:
     """Supprime définitivement toute la session associée à une photo.
@@ -638,9 +702,10 @@ def delete_photo(session_id: str, runtime: Runtime = Depends(get_runtime)) -> Re
             detail="impossible de supprimer la session en cours",
         )
 
-    directory = _photo_path(runtime, session_id).parent
+    path = _photo_path(runtime, session_id)
     try:
-        shutil.rmtree(directory)
+        path.unlink()
+        _remove_empty_parent(path.parent, runtime.photo_storage.sessions_root)
     except FileNotFoundError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="photo introuvable") from None
     logger.info("session %s supprimée depuis la galerie", session_id)
@@ -660,11 +725,21 @@ def _photo_path(runtime: Runtime, session_id: str) -> Path:
     ou un lien symbolique doivent tous mener au même refus. `resolve()` avant la
     comparaison est ce qui couvre toutes les routes d'un coup.
     """
-    root = runtime.settings.sessions_dir.resolve()
-    path = (root / session_id / FINAL_NAME).resolve()
-    if not path.is_relative_to(root) or not path.is_file():
+    root = runtime.photo_storage.sessions_root.resolve()
+    _, entries = list_sessions(root, offset=0, limit=_ALL)
+    match = next((entry.path for entry in entries if entry.session_id == session_id), None)
+    if match is None or not match.resolve().is_relative_to(root) or not match.is_file():
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="photo introuvable")
-    return path
+    return match
+
+
+def _remove_empty_parent(directory: Path, root: Path) -> None:
+    while directory != root and directory.is_relative_to(root):
+        try:
+            directory.rmdir()
+        except OSError:
+            break
+        directory = directory.parent
 
 
 def _slug(name: str) -> str:

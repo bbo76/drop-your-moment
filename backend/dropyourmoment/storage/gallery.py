@@ -13,33 +13,27 @@ from __future__ import annotations
 
 import zipfile
 from collections.abc import Iterable, Iterator
-from dataclasses import dataclass
-from datetime import datetime
 from io import BytesIO
 from pathlib import Path
 
 from PIL import Image
-
-from dropyourmoment.storage.paths import FINAL_NAME
+from pydantic import BaseModel, Field
 
 THUMBNAIL_BOX = (320, 320)
 THUMBNAIL_QUALITY = 80
 
 
-@dataclass(frozen=True)
-class GalleryEntry:
+class GalleryEntry(BaseModel):
     session_id: str
     # `mtime` de `final.jpg`, donc la dernière composition. Un changement de filtre le
     # réécrit : c'est bien « quand cette photo a pris sa forme finale ».
     captured_at: float
     size_bytes: int
+    path: Path = Field(exclude=True)
 
     @property
     def archive_name(self) -> str:
-        """Nom dans l'archive : horodaté d'abord, pour que l'ordre alphabétique soit
-        l'ordre chronologique. Un identifiant de session seul est opaque."""
-        stamp = datetime.fromtimestamp(self.captured_at).strftime("%Y%m%d-%H%M%S")
-        return f"{stamp}_{self.session_id}.jpg"
+        return f"{self.session_id}.jpg"
 
 
 def list_sessions(
@@ -60,16 +54,19 @@ def list_sessions(
         return 0, []
 
     entries: list[GalleryEntry] = []
-    for directory in sessions_root.iterdir():
-        final = directory / FINAL_NAME
-        if not directory.is_dir() or not final.is_file():
+    for final in sessions_root.rglob("*.jpg"):
+        if final.name == "raw.jpg" or any(part.name.startswith(".") for part in final.parents):
+            continue
+        directory = final.parent
+        if not directory.is_dir():
             continue
         stat = final.stat()
         entries.append(
             GalleryEntry(
-                session_id=directory.name,
+                session_id=final.stem,
                 captured_at=stat.st_mtime,
                 size_bytes=stat.st_size,
+                path=final,
             )
         )
 

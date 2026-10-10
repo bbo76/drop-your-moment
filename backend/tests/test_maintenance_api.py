@@ -104,7 +104,7 @@ def test_la_galerie_locale_est_protegee_et_liste_les_photos(kiosk: TestClient) -
 
 
 def test_la_galerie_locale_peut_reimprimer_une_photo(kiosk: TestClient, runtime: Runtime) -> None:
-    path = final_path(runtime.settings.sessions_dir, "photo-test")
+    path = final_path(runtime.photo_storage.sessions_root, "photo-test")
     path.parent.mkdir(parents=True)
     Image.new("RGB", (20, 20)).save(path)
     _unlock(kiosk)
@@ -118,7 +118,7 @@ def test_la_galerie_locale_peut_reimprimer_une_photo(kiosk: TestClient, runtime:
 
 
 def test_la_galerie_locale_supprime_une_photo(kiosk: TestClient, runtime: Runtime) -> None:
-    path = final_path(runtime.settings.sessions_dir, "photo-test")
+    path = final_path(runtime.photo_storage.sessions_root, "photo-test")
     path.parent.mkdir(parents=True)
     Image.new("RGB", (20, 20)).save(path)
     _unlock(kiosk)

@@ -109,6 +109,8 @@ class Session:
     selected_filter: str | None = None
     output_mode: str | None = None
     output_copies: int = 0
+    photo_date: str | None = None
+    photo_name: str | None = None
 
     # Incrémenté à chaque recomposition. Le frontend s'en sert comme paramètre
     # anti-cache : sans lui, changer de filtre laisserait le navigateur réafficher
@@ -174,6 +176,8 @@ class SessionMachine:
         assert self._session is not None
         self._session.raw_path = None
         self._session.final_path = None
+        self._session.photo_date = None
+        self._session.photo_name = None
         self._session.selected_filter = None
         self._session.output_mode = None
         self._session.output_copies = 0

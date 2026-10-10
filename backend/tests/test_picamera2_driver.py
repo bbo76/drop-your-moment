@@ -34,6 +34,9 @@ def test_la_qualite_mjpeg_est_passee_a_start_recording(monkeypatch) -> None:
         def start_recording(self, encoder: object, output: object, **options: object) -> None:
             calls.update(encoder=encoder, output=output, options=options)
 
+        def set_controls(self, controls: object) -> None:
+            calls["controls"] = controls
+
     picamera2 = ModuleType("picamera2")
     picamera2.Picamera2 = FakePicamera2  # type: ignore[attr-defined]
     encoders = ModuleType("picamera2.encoders")
@@ -41,7 +44,15 @@ def test_la_qualite_mjpeg_est_passee_a_start_recording(monkeypatch) -> None:
     encoders.Quality = FakeQuality  # type: ignore[attr-defined]
     outputs = ModuleType("picamera2.outputs")
     outputs.FileOutput = FakeFileOutput  # type: ignore[attr-defined]
+    libcamera = ModuleType("libcamera")
 
+    class FakeControls:
+        class AfModeEnum:
+            Continuous = "continuous"
+
+    libcamera.controls = FakeControls  # type: ignore[attr-defined]
+
+    monkeypatch.setitem(sys.modules, "libcamera", libcamera)
     monkeypatch.setitem(sys.modules, "picamera2", picamera2)
     monkeypatch.setitem(sys.modules, "picamera2.encoders", encoders)
     monkeypatch.setitem(sys.modules, "picamera2.outputs", outputs)

@@ -13,6 +13,7 @@ from __future__ import annotations
 import logging
 import shutil
 from collections.abc import Iterator
+from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -100,7 +101,9 @@ def _status(runtime: Runtime) -> SessionStatus:
     # job qui se termine fait entrer en DONE, dont le timeout ne doit courir qu'à partir
     # de là.
     runtime.print_flow.poll()
-    machine.tick()
+    previous = machine.session
+    if machine.tick() and previous is not None and machine.session is None:
+        _remove_temporary_raw(previous)
     session = machine.session
     return SessionStatus(
         state=machine.state,
@@ -235,6 +238,13 @@ def start_session(runtime: Runtime = Depends(get_runtime)) -> SessionStatus:
             status.HTTP_409_CONFLICT,
             detail="les prises de photo sont temporairement en pause",
         )
+    if runtime.machine.session is not None:
+        previous = runtime.machine.session
+        _remove_temporary_raw(previous)
+        if previous.final_path is not None:
+            previous.final_path.unlink(missing_ok=True)
+            previous.final_path = None
+        runtime.machine.reset()
     session = runtime.machine.start()
     logger.info("session %s démarrée", session.id)
     return _status(runtime)
@@ -242,6 +252,8 @@ def start_session(runtime: Runtime = Depends(get_runtime)) -> SessionStatus:
 
 @router.post("/session/cancel", response_model=SessionStatus)
 def cancel_session(runtime: Runtime = Depends(get_runtime)) -> SessionStatus:
+    if runtime.machine.session is not None:
+        _remove_temporary_raw(runtime.machine.session)
     runtime.machine.reset()
     return _status(runtime)
 
@@ -254,7 +266,11 @@ def capture(session_id: str, runtime: Runtime = Depends(get_runtime)) -> Session
     review d'afficher quelque chose sans aller-retour supplémentaire.
     """
     session = _require_session(runtime, session_id)
-    destination = raw_path(runtime.settings.sessions_dir, session.id)
+    captured_at = datetime.now()
+    session.photo_date = captured_at.strftime("%Y-%m-%d")
+    session.photo_name = captured_at.strftime("%Y%m%d-%H%M%S-%f")
+    # Le pipeline et les artefacts de session restent sur la SD.
+    destination = raw_path(runtime.settings.sessions_dir, session.id, session.photo_date)
 
     try:
         runtime.camera.capture_still(destination)
@@ -320,6 +336,10 @@ def retake(session_id: str, runtime: Runtime = Depends(get_runtime)) -> SessionS
     dont le visiteur ne voulait pas n'a pas à traîner dans la galerie de l'événement.
     """
     session = _require_session(runtime, session_id)
+    _remove_temporary_raw(session)
+    if session.final_path is not None:
+        session.final_path.unlink(missing_ok=True)
+        session.final_path = None
     _purge(runtime, session)
 
     try:
@@ -437,20 +457,38 @@ def _compose(runtime: Runtime, session: Session, filter_name: FilterName) -> Non
         runtime.machine.fail(str(exc))
         return
 
-    destination = final_path(runtime.settings.sessions_dir, session.id)
+    previous_destination = session.final_path
+    root = runtime.photo_storage.ensure_destination()
+    destination = final_path(root, session.id, session.photo_date, session.photo_name)
+    if session.final_path is not None and session.final_path.parent.parent == root:
+        destination = session.final_path
     save_jpeg(image, destination)
+    if previous_destination is not None and previous_destination != destination:
+        previous_destination.unlink(missing_ok=True)
     session.final_path = destination
     session.selected_filter = filter_name
     session.photo_revision += 1
 
 
 def _purge(runtime: Runtime, session: Session) -> None:
-    directory = session_dir(runtime.settings.sessions_dir, session.id)
+    directory = session_dir(runtime.settings.sessions_dir, session.id, session.photo_date)
     for path in (session.raw_path, session.final_path):
         if path is not None:
             path.unlink(missing_ok=True)
     if directory.is_dir() and not any(directory.iterdir()):
         directory.rmdir()
+
+
+def _remove_temporary_raw(session: Session) -> None:
+    if session.raw_path is None:
+        return
+    session.raw_path.unlink(missing_ok=True)
+    temporary_dir = session.raw_path.parent
+    try:
+        temporary_dir.rmdir()
+    except OSError:
+        pass
+    session.raw_path = None
 
 
 def _mjpeg_frames(runtime: Runtime) -> Iterator[bytes]:
