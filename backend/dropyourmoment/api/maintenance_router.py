@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import subprocess
 from typing import Literal
 
@@ -156,6 +157,29 @@ def maintenance_status(runtime: Runtime = Depends(_authorized)) -> MaintenanceSn
         hotspot=_hotspot_status(runtime),
         wifi=WifiStatus.model_validate(runtime.hotspot.wifi_status()),
     )
+
+
+@router.post("/storage/refresh", response_model=AdminHealth)
+def refresh_storage(runtime: Runtime = Depends(_authorized)) -> AdminHealth:
+    """Redétection locale de secours; pas de sélection ni de migration depuis le kiosque."""
+    runtime.photo_storage.refresh()
+    return read_health(runtime)
+
+
+@router.post("/storage/eject", response_model=AdminHealth)
+def safe_remove_storage(runtime: Runtime = Depends(_authorized)) -> AdminHealth:
+    """Désactive la destination externe après vérification qu'aucune écriture n'est active."""
+    if runtime.machine.state is not SessionState.IDLE or runtime.print_flow.job is not None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail="attendez la fin de la session ou du tirage",
+        )
+    if runtime.photo_storage.writes_in_progress:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail="une écriture photo est en cours")
+    runtime.photo_storage.select(None)
+    if hasattr(os, "sync"):
+        os.sync()
+    return read_health(runtime)
 
 
 @router.post("/print/cancel", status_code=status.HTTP_204_NO_CONTENT)

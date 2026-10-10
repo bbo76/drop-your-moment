@@ -460,11 +460,34 @@ def _compose(runtime: Runtime, session: Session, filter_name: FilterName) -> Non
     previous_destination = session.final_path
     root = runtime.photo_storage.ensure_destination()
     destination = final_path(root, session.id, session.photo_date, session.photo_name)
-    if session.final_path is not None and session.final_path.parent.parent == root:
+    if (
+        session.final_path is not None
+        and session.final_path.parent.parent == root
+        and root == runtime.photo_storage.status.root
+    ):
         destination = session.final_path
-    save_jpeg(image, destination)
+    runtime.photo_storage.begin_write()
+    try:
+        # La destination peut disparaître après détection, entre la composition et le
+        # commit atomique. Dans ce cas on publie le JPG final sur SD, jamais le RAW.
+        save_jpeg(image, destination)
+    except OSError as exc:
+        if destination.parent.parent == runtime.settings.sessions_dir:
+            runtime.machine.fail(f"impossible d’enregistrer la photo sur la carte SD : {exc}")
+            return
+        logger.warning("écriture photo externe échouée, repli SD : %s", exc)
+        if destination.parent.parent != runtime.settings.sessions_dir:
+            destination = final_path(
+                runtime.settings.sessions_dir, session.id, session.photo_date, session.photo_name
+            )
+            save_jpeg(image, destination)
+    finally:
+        runtime.photo_storage.end_write()
     if previous_destination is not None and previous_destination != destination:
-        previous_destination.unlink(missing_ok=True)
+        try:
+            previous_destination.unlink(missing_ok=True)
+        except OSError:
+            logger.warning("ancienne version photo non supprimée (support inaccessible)")
     session.final_path = destination
     session.selected_filter = filter_name
     session.photo_revision += 1

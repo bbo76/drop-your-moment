@@ -55,12 +55,14 @@ export function Button({
   disabled,
   type = "button",
   tone = "primary",
+  className = "",
 }: {
   children: ReactNode;
   onClick?: () => void;
   disabled?: boolean;
   type?: "button" | "submit";
   tone?: "primary" | "secondary" | "warning";
+  className?: string;
 }) {
   const variant = {
     primary: "default",
@@ -74,7 +76,7 @@ export function Button({
       disabled={disabled}
       variant={variant}
       size="lg"
-      className="min-h-11 px-4"
+      className={`min-h-11 px-4 ${className}`}
     >
       {children}
     </ShadButton>

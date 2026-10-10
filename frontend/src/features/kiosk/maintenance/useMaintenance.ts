@@ -152,6 +152,7 @@ export function useMaintenance(debugFailure: DebugFailure, onExpired: () => void
   return {
     snapshot,
     error,
+    refresh: load,
     saving: saving || debugFailure !== "none",
     printNotice,
     markPrintStarted: (copies: number) => {

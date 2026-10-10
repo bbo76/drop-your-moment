@@ -1,11 +1,17 @@
 import { Camera, HardDrive, PlugZap, Thermometer, type LucideIcon } from "lucide-react";
+import { useState } from "react";
 
 import type { MaintenanceSnapshot } from "@/api/client";
 import { ProgressMeter, WarningMark } from "./MaintenanceUi";
+import { api } from "@/api/client";
 
-export function MaintenanceHealthView({ snapshot }: { snapshot: MaintenanceSnapshot }) {
+export function MaintenanceHealthView({ snapshot, onRefresh }: { snapshot: MaintenanceSnapshot; onRefresh: () => Promise<void> }) {
+  const [storageAction, setStorageAction] = useState<"refresh" | "eject" | null>(null);
+  const [storageMessage, setStorageMessage] = useState<string | null>(null);
   const { health } = snapshot;
-  const freeRatio = health.disk_free_bytes / health.disk_total_bytes;
+  const storageFree = health.photo_storage_free_bytes ?? health.disk_free_bytes;
+  const storageTotal = health.photo_storage_total_bytes ?? health.disk_total_bytes;
+  const freeRatio = storageTotal ? storageFree / storageTotal : 0;
   const freePercent = Math.round(freeRatio * 100);
   const storageReady = freeRatio > 0.1;
   return (
@@ -18,7 +24,7 @@ export function MaintenanceHealthView({ snapshot }: { snapshot: MaintenanceSnaps
         </div>
         <div className="grid min-h-0 grid-cols-[3.5rem_minmax(0,1fr)] items-center gap-4 border-t-2 border-edge p-5">
           <HealthIcon name="storage" />
-          <div className="min-w-0"><div className="flex items-baseline justify-between gap-4"><div><p className="text-lg font-medium text-muted">Stockage</p><p className={`text-3xl font-bold tabular-nums ${storageReady ? "" : "text-warn"}`}>{freePercent} % libre</p></div><p className="text-right text-lg font-bold tabular-nums">{gigabytes(health.disk_free_bytes)} <span className="font-normal text-muted">sur {gigabytes(health.disk_total_bytes)}</span></p></div><ProgressMeter value={freePercent} warning={!storageReady} ariaLabel="Espace de stockage libre" className="mt-2.5 h-3" /><p className="mt-2 text-base text-muted">{storageReady ? "Espace suffisant pour les prochaines photos" : "Libérez de l’espace avant de poursuivre"}</p></div>
+          <div className="min-w-0"><div className="flex items-baseline justify-between gap-4"><div><p className="text-lg font-medium text-muted">Stockage · {health.photo_storage_label}</p><p className={`text-3xl font-bold tabular-nums ${storageReady ? "" : "text-warn"}`}>{freePercent} % libre</p></div><p className="text-right text-lg font-bold tabular-nums">{gigabytes(storageFree)} <span className="font-normal text-muted">sur {gigabytes(storageTotal)}</span></p></div><ProgressMeter value={freePercent} warning={!storageReady} ariaLabel="Espace de stockage libre" className="mt-2.5 h-3" /><p className="mt-2 text-base text-muted">{health.photo_storage_reason ? `Repli SD : ${health.photo_storage_reason}` : health.photo_storage_low_space ? "Espace faible : moins de 512 Mo disponibles" : storageReady ? `Destination active : ${health.photo_storage_path}` : "Espace presque épuisé"}</p><div className="mt-3 flex flex-wrap gap-2"><button type="button" disabled={storageAction !== null} onClick={() => void storageRequest("refresh")} className="min-h-11 rounded-panel border-2 border-edge px-3 text-base font-semibold">{storageAction === "refresh" ? "Détection…" : "Relancer la détection"}</button><button type="button" disabled={storageAction !== null || health.photo_storage_mode !== "external"} onClick={() => void storageRequest("eject")} className="min-h-11 rounded-panel border-2 border-edge px-3 text-base font-semibold">{storageAction === "eject" ? "Sécurisation…" : "Préparer le retrait"}</button></div>{storageMessage && <p role="status" className="mt-2 text-sm text-muted">{storageMessage}</p>}</div>
         </div>
       </div>
       <div className="flex min-h-0 flex-col rounded-[0.65rem] bg-surface p-5">
@@ -27,6 +33,21 @@ export function MaintenanceHealthView({ snapshot }: { snapshot: MaintenanceSnaps
       </div>
     </section>
   );
+
+  async function storageRequest(action: "refresh" | "eject") {
+    setStorageAction(action);
+    setStorageMessage(null);
+    try {
+      if (action === "refresh") await api.refreshMaintenanceStorage();
+      else await api.ejectMaintenanceStorage();
+      await onRefresh();
+      setStorageMessage(action === "eject" ? "Écritures terminées. Vous pouvez retirer le support." : "Détection terminée.");
+    } catch (cause) {
+      setStorageMessage(cause instanceof Error ? cause.message : "Action impossible.");
+    } finally {
+      setStorageAction(null);
+    }
+  }
 }
 
 function HealthIcon({ name }: { name: "camera" | "storage" | "temperature" | "power" }) {

@@ -202,10 +202,13 @@ export interface AdminHealth {
   counters: CounterReading;
   disk_free_bytes: number;
   disk_total_bytes: number;
+  photo_storage_free_bytes?: number;
+  photo_storage_total_bytes?: number;
   photo_storage_mode: "sd" | "external";
   photo_storage_label: string;
   photo_storage_path: string;
   photo_storage_reason: string | null;
+  photo_storage_low_space?: boolean;
   cpu_percent: number;
   memory_used_bytes: number;
   memory_total_bytes: number;
@@ -230,6 +233,11 @@ export interface StorageVolume {
   mode: "sd" | "external";
   selected: boolean;
   ready: boolean;
+  free_bytes?: number | null;
+  total_bytes?: number | null;
+  active?: boolean;
+  writes_in_progress?: number;
+  low_space?: boolean;
 }
 
 /** Un index de caméra qui s'ouvre, et la taille que le pilote y annonce. */
@@ -345,6 +353,7 @@ const post = <T>(path: string, body?: unknown) =>
 export const api = {
   storage: () => request<StorageVolume[]>("/admin/storage"),
   selectStorage: (root: string | null) => post<StorageVolume>("/admin/storage/select", { root }),
+  prepareStorage: (root: string | null) => post<StorageVolume>("/admin/storage/prepare", { root }),
   operatorAuthStatus: () => request<OperatorAuthStatus>("/admin/auth/status"),
   operatorLogin: async (code: string) => {
     const path = "/admin/auth/login";
@@ -388,6 +397,8 @@ export const api = {
     if (!response.ok) throw new Error(await errorMessage(response, "/api/maintenance/lock"));
   },
   maintenanceStatus: () => request<MaintenanceSnapshot>("/api/maintenance/status"),
+  refreshMaintenanceStorage: () => post<AdminHealth>("/api/maintenance/storage/refresh"),
+  ejectMaintenanceStorage: () => post<AdminHealth>("/api/maintenance/storage/eject"),
   cancelMaintenancePrint: () => post<void>("/api/maintenance/print/cancel"),
   maintenanceJournal: (query: JournalQuery = {}) =>
     request<JournalPage>(`/api/maintenance/journal?${journalQuery(query)}`),
