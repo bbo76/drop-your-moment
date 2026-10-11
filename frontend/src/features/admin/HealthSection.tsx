@@ -108,6 +108,20 @@ export function HealthSection() {
     }
   };
 
+  const mountStorage = async (device: string) => {
+    setStorageSaving(true);
+    setStorageFeedback(null);
+    try {
+      await api.mountStorage(device);
+      setStorageVolumes(await api.storage());
+      setStorageFeedback("Clé montée. Vous pouvez maintenant la préparer ou la choisir comme destination.");
+    } catch (cause) {
+      setStorageFeedback(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setStorageSaving(false);
+    }
+  };
+
   useEffect(() => {
     api.printerConfig().then((config) => {
       setPrinterConfig(config);
@@ -207,11 +221,13 @@ export function HealthSection() {
             {health.photo_storage_reason && <p className="text-sm text-destructive">Repli sur la SD : {health.photo_storage_reason}</p>}
           </div>
           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3" role="group" aria-label="Destination des photos">
-            {storageVolumes.map((volume) => <div key={volume.root ?? "sd"} className={`min-w-0 rounded-md border-2 p-3 ${volume.active ? "border-primary" : "border-border"}`}>
+            {storageVolumes.map((volume) => <div key={volume.device ?? volume.root ?? "sd"} className={`min-w-0 rounded-md border-2 p-3 ${volume.active ? "border-primary" : "border-border"}`}>
               <div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="break-words font-semibold">{volume.label}</p><p className="break-words text-sm text-muted-foreground">{volume.free_bytes != null && volume.total_bytes != null ? `${formatBytes(volume.free_bytes)} libres / ${formatBytes(volume.total_bytes)}` : "Capacité indisponible"}</p>{volume.low_space && <p className="text-sm text-destructive">Espace faible : moins de 512 Mo disponibles</p>}</div><span className="flex-none text-xs">{volume.active ? "ACTIF" : volume.selected ? "SÉLECTIONNÉ" : "DISPONIBLE"}</span></div>
               <div className="mt-3 flex flex-wrap gap-2">
-                <Button className={volume.selected ? "" : "!bg-[#ffd400] !text-[#101418] hover:!bg-[#ffe04f]"} aria-pressed={volume.selected} onClick={() => void selectStorage(volume.root)} disabled={storageSaving || volume.selected}>{volume.selected ? "Sélectionné" : "Choisir"}</Button>
-                <Button tone="secondary" onClick={() => void prepareStorage(volume.root)} disabled={storageSaving}>{volume.ready ? "Vérifier" : "Préparer"}</Button>
+                {!volume.mounted && volume.device ? <Button onClick={() => void mountStorage(volume.device!)} disabled={storageSaving}>Monter</Button> : <>
+                  <Button className={volume.selected ? "" : "!bg-[#ffd400] !text-[#101418] hover:!bg-[#ffe04f]"} aria-pressed={volume.selected} onClick={() => void selectStorage(volume.root)} disabled={storageSaving || volume.selected}>{volume.selected ? "Sélectionné" : "Choisir"}</Button>
+                  <Button tone="secondary" onClick={() => void prepareStorage(volume.root)} disabled={storageSaving}>{volume.ready ? "Vérifier" : "Préparer"}</Button>
+                </>}
               </div>
             </div>)}
             {!storageVolumes.length && <p className="text-sm text-muted-foreground">Recherche des supports…</p>}

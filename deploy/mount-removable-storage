@@ -1,0 +1,35 @@
+#!/bin/sh
+set -eu
+
+device=${1:-}
+case "$device" in
+    /dev/sd[a-z][0-9]*|/dev/mmcblk[0-9]p[0-9]*|/dev/nvme[0-9]n[0-9]p[0-9]*) ;;
+    *) echo "Périphérique invalide" >&2; exit 2 ;;
+esac
+[ "$#" -eq 1 ] || { echo "Un seul périphérique est attendu" >&2; exit 2; }
+[ -b "$device" ] || { echo "Partition indisponible" >&2; exit 1; }
+
+type=$(lsblk -dn -o TYPE "$device" | tr -d '[:space:]')
+parent=$(lsblk -dn -o PKNAME "$device" | tr -d '[:space:]')
+filesystem=$(lsblk -dn -o FSTYPE "$device" | tr -d '[:space:]')
+[ "$type" = part ] && [ -n "$parent" ] || { echo "Une partition est requise" >&2; exit 1; }
+[ "$(lsblk -dn -o TRAN "/dev/$parent" | tr -d '[:space:]')" = usb ] || {
+    echo "Le support n'est pas USB" >&2
+    exit 1
+}
+case "$filesystem" in
+    exfat|vfat) ;;
+    *) echo "Format non pris en charge : ${filesystem:-inconnu}" >&2; exit 1 ;;
+esac
+
+name=${device##*/}
+target="/mnt/dym-storage/$name"
+if findmnt -rn -S "$device" >/dev/null; then
+    findmnt -rn -S "$device" -o TARGET | head -n 1
+    exit 0
+fi
+install -d -m 755 "$target"
+uid=$(id -u photobooth)
+gid=$(id -g photobooth)
+mount -t "$filesystem" -o "nodev,nosuid,noexec,uid=$uid,gid=$gid" "$device" "$target"
+printf '%s\n' "$target"

@@ -32,6 +32,7 @@ if ! command -v nmcli >/dev/null 2>&1 \
     sudo "$repo_dir/deploy/install-hotspot.sh"
 fi
 sudo install -m 440 "$repo_dir/deploy/dropyourmoment-sudoers" /etc/sudoers.d/dropyourmoment
+sudo install -m 755 "$repo_dir/deploy/mount-removable-storage" /usr/local/sbin/dym-mount-removable-storage
 sudo install -d -m 755 /etc/polkit-1/rules.d
 sudo install -m 644 "$repo_dir/deploy/49-dropyourmoment-network.rules" /etc/polkit-1/rules.d/49-dropyourmoment-network.rules
 
