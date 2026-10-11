@@ -168,9 +168,7 @@ def _unmounted_usb_partitions() -> list[dict[str, str]]:
         return []
 
     usb_disks = {
-        disk["path"].rsplit("/", 1)[-1]
-        for disk in devices
-        if disk.get("type") == "disk" and disk.get("tran") == "usb"
+        disk["path"] for disk in devices if disk.get("type") == "disk" and disk.get("tran") == "usb"
     }
     return [
         {
