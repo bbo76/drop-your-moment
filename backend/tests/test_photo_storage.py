@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from dropyourmoment.storage import photo_storage
 from dropyourmoment.storage.photo_storage import PhotoStorage
 
 
@@ -83,3 +84,18 @@ def test_destination_cannot_change_during_photo_write(tmp_path: Path) -> None:
         storage.end_write()
 
     assert storage.select(None).mode == "sd"
+
+
+def test_available_finds_a_disk_mounted_below_the_login_directory(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Raspberry Pi OS mounts removable media at /media/<user>/<volume>."""
+    sd = tmp_path / "data" / "sessions"
+    volume = tmp_path / "media" / "photobooth" / "EVENT-USB"
+    volume.mkdir(parents=True)
+    monkeypatch.setattr(photo_storage, "REMOVABLE_MOUNT_BASES", (tmp_path / "media",))
+    monkeypatch.setattr(photo_storage.os.path, "ismount", lambda path: Path(path) == volume)
+
+    storage = PhotoStorage(sd)
+
+    assert storage.available() == [volume]
