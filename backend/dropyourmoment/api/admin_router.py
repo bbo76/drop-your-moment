@@ -156,7 +156,7 @@ def _unmounted_usb_partitions() -> list[dict[str, str]]:
                 "--json",
                 "-p",
                 "-o",
-                "PATH,PKNAME,TYPE,TRAN,FSTYPE,LABEL,MOUNTPOINTS",
+                "PATH,PKNAME,PARTTYPE,TYPE,TRAN,FSTYPE,LABEL,MOUNTPOINTS",
             ],
             check=True,
             capture_output=True,
@@ -179,6 +179,8 @@ def _unmounted_usb_partitions() -> list[dict[str, str]]:
         if partition.get("type") == "part"
         and partition.get("pkname") in usb_disks
         and partition.get("fstype") in {"exfat", "vfat"}
+        and (partition.get("label") or "").casefold() not in {"efi", "system"}
+        and (partition.get("parttype") or "").casefold() != "c12a7328-f81f-11d2-ba4b-00a0c93ec93b"
         and not any(partition.get("mountpoints") or [])
     ]
 
