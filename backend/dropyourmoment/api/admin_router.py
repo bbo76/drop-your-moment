@@ -151,7 +151,13 @@ def _unmounted_usb_partitions() -> list[dict[str, str]]:
     """Retourne les partitions USB FAT/exFAT non montées, sans lancer de montage."""
     try:
         result = subprocess.run(
-            ["lsblk", "--json", "-p", "-o", "PATH,TYPE,TRAN,FSTYPE,LABEL,MOUNTPOINTS"],
+            [
+                "lsblk",
+                "--json",
+                "-p",
+                "-o",
+                "PATH,PKNAME,TYPE,TRAN,FSTYPE,LABEL,MOUNTPOINTS",
+            ],
             check=True,
             capture_output=True,
             text=True,
@@ -161,23 +167,22 @@ def _unmounted_usb_partitions() -> list[dict[str, str]]:
     except (OSError, subprocess.SubprocessError, ValueError):
         return []
 
-    partitions: list[dict[str, str]] = []
-    for disk in devices:
-        if disk.get("tran") != "usb":
-            continue
-        for partition in disk.get("children", []):
-            if (
-                partition.get("type") == "part"
-                and partition.get("fstype") in {"exfat", "vfat"}
-                and not any(partition.get("mountpoints") or [])
-            ):
-                partitions.append(
-                    {
-                        "device": partition["path"],
-                        "label": partition.get("label") or partition["path"].rsplit("/", 1)[-1],
-                    }
-                )
-    return partitions
+    usb_disks = {
+        disk["path"].rsplit("/", 1)[-1]
+        for disk in devices
+        if disk.get("type") == "disk" and disk.get("tran") == "usb"
+    }
+    return [
+        {
+            "device": partition["path"],
+            "label": partition.get("label") or partition["path"].rsplit("/", 1)[-1],
+        }
+        for partition in devices
+        if partition.get("type") == "part"
+        and partition.get("pkname") in usb_disks
+        and partition.get("fstype") in {"exfat", "vfat"}
+        and not any(partition.get("mountpoints") or [])
+    ]
 
 
 @router.post("/storage/mount", response_model=StorageVolume)
