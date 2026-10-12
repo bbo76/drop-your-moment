@@ -51,6 +51,15 @@ export interface SystemStatus {
   preview_size: [number, number];
 }
 
+export interface CameraDiagnostics {
+  driver_name: string;
+  autofocus_state: string | null;
+  lens_position: number | null;
+  focus_fom: number | null;
+  exposure_time_us: number | null;
+  analogue_gain: number | null;
+}
+
 /** Format de sortie, en miroir du modèle `PrintFormat`. Quatre nombres, pas davantage. */
 export interface PrintFormatPayload {
   name: string;
@@ -370,6 +379,7 @@ export const api = {
   },
   status: () => request<SessionStatus>("/api/status"),
   systemStatus: () => request<SystemStatus>("/api/system/status"),
+  cameraDiagnostics: () => request<CameraDiagnostics>("/api/camera/diagnostics"),
   event: () => request<EventInfo>("/api/event"),
 
   startSession: () => post<SessionStatus>("/api/session"),

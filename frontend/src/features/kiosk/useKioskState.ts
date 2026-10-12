@@ -84,7 +84,7 @@ export function useKioskState(): KioskState {
         }
         const status = await api.status();
         if (cancelled) return;
-        if (!captureInFlightRef.current) setSession(status);
+        if (!captureInFlightRef.current || status.state === "idle") setSession(status);
         consecutiveFailures = 0;
         setConnection("online");
       } catch (error) {
@@ -135,6 +135,7 @@ export function useKioskState(): KioskState {
         setSession(await action(id));
       } catch (error) {
         console.warn(error);
+        throw error;
       }
     },
     [],
@@ -149,6 +150,7 @@ export function useKioskState(): KioskState {
       setSession(status);
     } catch (error) {
       console.warn(error);
+      throw error;
     } finally {
       captureInFlightRef.current = false;
     }
@@ -156,12 +158,11 @@ export function useKioskState(): KioskState {
   const prepareCapture = useCallback(async () => {
     const id = sessionIdRef.current;
     if (!id) return;
-    captureInFlightRef.current = true;
     try {
       setSession(await api.prepareCapture(id));
     } catch (error) {
-      captureInFlightRef.current = false;
       console.warn(error);
+      throw error;
     }
   }, []);
   const retake = useCallback(() => withSession(api.retake), [withSession]);

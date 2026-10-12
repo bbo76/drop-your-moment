@@ -557,6 +557,8 @@ def force_kiosk_home(runtime: Runtime = Depends(get_runtime)) -> SessionStatus:
             detail="une impression est en cours ; attendez la fin du tirage",
         )
     runtime.lock_maintenance()
+    if runtime.capture_in_progress and runtime.machine.session is not None:
+        runtime.capture_cancelled_session_id = runtime.machine.session.id
     runtime.machine.reset()
     logger.info("session du kiosque interrompue depuis le portail d’administration")
     return _status(runtime)
@@ -648,6 +650,11 @@ def patch_event_config(
     runtime: Runtime = Depends(get_runtime),
 ) -> EventConfig:
     """Fusionne uniquement les réglages rapides reçus avec la configuration active."""
+    if changes.capture_paused is True and runtime.capture_in_progress:
+        runtime.capture_cancelled_session_id = (
+            runtime.machine.session.id if runtime.machine.session is not None else None
+        )
+        runtime.machine.reset()
     updated = runtime.event.config.model_copy(update=changes.model_dump(exclude_none=True))
     runtime.event_store.save_config(updated)
     runtime.reload_event()

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import logging
 import shutil
+import time
 from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
@@ -23,6 +24,7 @@ from pydantic import BaseModel, Field
 from dropyourmoment.core.errors import CameraError, InvalidTransitionError, PrinterError
 from dropyourmoment.core.event_config import LaunchFont
 from dropyourmoment.core.session import Session, SessionState
+from dropyourmoment.hardware.camera.base import CameraDiagnostics
 from dropyourmoment.hardware.system_metrics import read_system_metrics
 from dropyourmoment.imaging.filters import FilterName
 from dropyourmoment.imaging.pipeline import CompositionError, save_jpeg
@@ -73,6 +75,15 @@ class SystemStatus(BaseModel):
     still_size: tuple[int, int]
 
 
+class CameraDiagnosticsStatus(BaseModel):
+    driver_name: str
+    autofocus_state: str | None = None
+    lens_position: float | None = None
+    focus_fom: float | None = None
+    exposure_time_us: int | None = None
+    analogue_gain: float | None = None
+
+
 class EventInfo(BaseModel):
     """Ce qui dépend de l'événement, non du matériel.
 
@@ -102,7 +113,7 @@ def _status(runtime: Runtime) -> SessionStatus:
     # de là.
     runtime.print_flow.poll()
     previous = machine.session
-    if machine.tick() and previous is not None and machine.session is None:
+    if not runtime.capture_in_progress and machine.tick() and previous is not None and machine.session is None:
         _remove_temporary_raw(previous)
     session = machine.session
     return SessionStatus(
@@ -176,6 +187,13 @@ def read_system_status(runtime: Runtime = Depends(get_runtime)) -> SystemStatus:
         preview_size=caps.preview_size,
         still_size=caps.still_size,
     )
+
+
+@router.get("/camera/diagnostics", response_model=CameraDiagnosticsStatus)
+def read_camera_diagnostics(
+    runtime: Runtime = Depends(get_runtime),
+) -> CameraDiagnosticsStatus:
+    return CameraDiagnosticsStatus(**vars(runtime.camera.get_diagnostics()))
 
 
 @router.get("/event", response_model=EventInfo)
@@ -252,6 +270,8 @@ def start_session(runtime: Runtime = Depends(get_runtime)) -> SessionStatus:
 
 @router.post("/session/cancel", response_model=SessionStatus)
 def cancel_session(runtime: Runtime = Depends(get_runtime)) -> SessionStatus:
+    if runtime.capture_in_progress and runtime.machine.session is not None:
+        runtime.capture_cancelled_session_id = runtime.machine.session.id
     if runtime.machine.session is not None:
         _remove_temporary_raw(runtime.machine.session)
     runtime.machine.reset()
@@ -265,6 +285,18 @@ def capture(session_id: str, runtime: Runtime = Depends(get_runtime)) -> Session
     Composer tout de suite plutôt que d'attendre un choix de filtre permet à l'écran de
     review d'afficher quelque chose sans aller-retour supplémentaire.
     """
+    if not runtime.capture_lock.acquire(blocking=False):
+        raise HTTPException(status.HTTP_409_CONFLICT, detail="une capture est déjà en cours")
+    runtime.capture_in_progress = True
+    try:
+        return _capture(session_id, runtime)
+    finally:
+        runtime.capture_in_progress = False
+        runtime.capture_cancelled_session_id = None
+        runtime.capture_lock.release()
+
+
+def _capture(session_id: str, runtime: Runtime) -> SessionStatus:
     session = _require_session(runtime, session_id)
     captured_at = datetime.now()
     session.photo_date = captured_at.strftime("%Y-%m-%d")
@@ -273,6 +305,8 @@ def capture(session_id: str, runtime: Runtime = Depends(get_runtime)) -> Session
     destination = raw_path(runtime.settings.sessions_dir, session.id, session.photo_date)
 
     try:
+        capture_started_at = time.monotonic()
+        logger.info("capture démarrée pour la session %s", session.id)
         runtime.camera.capture_still(destination)
     except CameraError as exc:
         logger.error("capture échouée pour la session %s : %s", session.id, exc)
@@ -280,12 +314,22 @@ def capture(session_id: str, runtime: Runtime = Depends(get_runtime)) -> Session
         return _status(runtime)
 
     session.raw_path = destination
+    logger.info(
+        "capture caméra terminée pour la session %s en %.2f s",
+        session.id,
+        time.monotonic() - capture_started_at,
+    )
+    if runtime.capture_cancelled_session_id == session_id or runtime.machine.session is not session:
+        _remove_temporary_raw(session)
+        return _status(runtime)
     try:
         runtime.machine.capture()
     except InvalidTransitionError as exc:
         raise HTTPException(status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
+    logger.info("composition photo démarrée pour la session %s", session.id)
     _compose(runtime, session, runtime.default_filter)
+    logger.info("composition photo terminée pour la session %s", session.id)
     return _status(runtime)
 
 
