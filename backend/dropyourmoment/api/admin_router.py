@@ -8,9 +8,11 @@ sans que rien ne le signale.
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 import shutil
+import subprocess
 import unicodedata
 from datetime import datetime
 from io import BytesIO
@@ -73,6 +75,12 @@ class StorageVolume(BaseModel):
     active: bool = False
     writes_in_progress: int = 0
     low_space: bool = False
+    device: str | None = None
+    mounted: bool = True
+
+
+class StorageMount(BaseModel):
+    device: str
 
 
 MIN_STORAGE_FREE_BYTES = 512 * 1024 * 1024
@@ -114,7 +122,7 @@ def list_storage(runtime: Runtime = Depends(get_runtime)) -> list[StorageVolume]
         writes_in_progress=runtime.photo_storage.writes_in_progress,
         low_space=shutil.disk_usage(runtime.settings.photos_dir).free < MIN_STORAGE_FREE_BYTES,
     )
-    return [
+    volumes = [
         sd,
         *[
             volume(
@@ -124,6 +132,117 @@ def list_storage(runtime: Runtime = Depends(get_runtime)) -> list[StorageVolume]
             for root in runtime.photo_storage.available()
         ],
     ]
+    volumes.extend(
+        StorageVolume(
+            root=None,
+            label=device["label"],
+            mode="external",
+            selected=False,
+            ready=False,
+            device=device["device"],
+            mounted=False,
+        )
+        for device in _unmounted_usb_partitions()
+    )
+    return volumes
+
+
+def _unmounted_usb_partitions() -> list[dict[str, str]]:
+    """Retourne les partitions USB FAT/exFAT non montées, sans lancer de montage."""
+    try:
+        result = subprocess.run(
+            [
+                "lsblk",
+                "--json",
+                "-p",
+                "-o",
+                "PATH,PKNAME,PARTTYPE,TYPE,TRAN,FSTYPE,LABEL,MOUNTPOINTS",
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=3,
+        )
+        devices = json.loads(result.stdout).get("blockdevices", [])
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return []
+
+    usb_disks = {
+        disk["path"] for disk in devices if disk.get("type") == "disk" and disk.get("tran") == "usb"
+    }
+    return [
+        {
+            "device": partition["path"],
+            "label": partition.get("label") or partition["path"].rsplit("/", 1)[-1],
+        }
+        for partition in devices
+        if partition.get("type") == "part"
+        and partition.get("pkname") in usb_disks
+        and partition.get("fstype") in {"exfat", "vfat"}
+        and (partition.get("label") or "").casefold() not in {"efi", "system"}
+        and (partition.get("parttype") or "").casefold() != "c12a7328-f81f-11d2-ba4b-00a0c93ec93b"
+        and not any(partition.get("mountpoints") or [])
+    ]
+
+
+@router.post("/storage/mount", response_model=StorageVolume)
+def mount_storage(
+    selection: StorageMount, runtime: Runtime = Depends(get_runtime)
+) -> StorageVolume:
+    if runtime.machine.state is not SessionState.IDLE or runtime.print_flow.job is not None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail="une session photo ou impression est en cours",
+        )
+    if runtime.photo_storage.writes_in_progress:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail="une écriture photo est en cours")
+    candidate = next(
+        (item for item in _unmounted_usb_partitions() if item["device"] == selection.device),
+        None,
+    )
+    if candidate is None:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND, detail="partition USB compatible indisponible"
+        )
+    try:
+        result = subprocess.run(
+            [
+                "/usr/bin/sudo",
+                "-n",
+                "/usr/local/sbin/dym-mount-removable-storage",
+                selection.device,
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        root = Path(result.stdout.strip()).resolve()
+    except (OSError, subprocess.SubprocessError) as exc:
+        logger.warning("montage USB impossible (%s): %s", selection.device, exc)
+        raise HTTPException(
+            status.HTTP_507_INSUFFICIENT_STORAGE, detail="Montage impossible"
+        ) from exc
+    if root not in runtime.photo_storage.available():
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Le support monté est introuvable",
+        )
+    return StorageVolume(
+        root=str(root),
+        label=candidate["label"],
+        mode="external",
+        selected=runtime.photo_storage.selected_root == root,
+        ready=(root / "photobooth").is_dir(),
+        free_bytes=shutil.disk_usage(root).free,
+        total_bytes=shutil.disk_usage(root).total,
+        active=(
+            runtime.photo_storage.status.mode == "external"
+            and runtime.photo_storage.status.root.parent == root
+        ),
+        writes_in_progress=runtime.photo_storage.writes_in_progress,
+        low_space=shutil.disk_usage(root).free < MIN_STORAGE_FREE_BYTES,
+    )
 
 
 @router.post("/storage/select", response_model=StorageVolume)
@@ -438,6 +557,8 @@ def force_kiosk_home(runtime: Runtime = Depends(get_runtime)) -> SessionStatus:
             detail="une impression est en cours ; attendez la fin du tirage",
         )
     runtime.lock_maintenance()
+    if runtime.capture_in_progress and runtime.machine.session is not None:
+        runtime.capture_cancelled_session_id = runtime.machine.session.id
     runtime.machine.reset()
     logger.info("session du kiosque interrompue depuis le portail d’administration")
     return _status(runtime)
@@ -529,6 +650,11 @@ def patch_event_config(
     runtime: Runtime = Depends(get_runtime),
 ) -> EventConfig:
     """Fusionne uniquement les réglages rapides reçus avec la configuration active."""
+    if changes.capture_paused is True and runtime.capture_in_progress:
+        runtime.capture_cancelled_session_id = (
+            runtime.machine.session.id if runtime.machine.session is not None else None
+        )
+        runtime.machine.reset()
     updated = runtime.event.config.model_copy(update=changes.model_dump(exclude_none=True))
     runtime.event_store.save_config(updated)
     runtime.reload_event()

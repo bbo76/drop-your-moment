@@ -34,6 +34,16 @@ class CaptureResult:
     size: tuple[int, int]
 
 
+@dataclass(frozen=True)
+class CameraDiagnostics:
+    driver_name: str
+    autofocus_state: str | None = None
+    lens_position: float | None = None
+    focus_fom: float | None = None
+    exposure_time_us: int | None = None
+    analogue_gain: float | None = None
+
+
 class CameraDriver(ABC):
     """Contrat commun à toutes les caméras.
 
@@ -66,6 +76,9 @@ class CameraDriver(ABC):
 
     @abstractmethod
     def get_capabilities(self) -> CameraCapabilities: ...
+
+    def get_diagnostics(self) -> CameraDiagnostics:
+        return CameraDiagnostics(driver_name=self.get_capabilities().driver_name)
 
     @property
     @abstractmethod

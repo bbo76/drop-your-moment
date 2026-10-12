@@ -51,6 +51,15 @@ export interface SystemStatus {
   preview_size: [number, number];
 }
 
+export interface CameraDiagnostics {
+  driver_name: string;
+  autofocus_state: string | null;
+  lens_position: number | null;
+  focus_fom: number | null;
+  exposure_time_us: number | null;
+  analogue_gain: number | null;
+}
+
 /** Format de sortie, en miroir du modèle `PrintFormat`. Quatre nombres, pas davantage. */
 export interface PrintFormatPayload {
   name: string;
@@ -238,6 +247,8 @@ export interface StorageVolume {
   active?: boolean;
   writes_in_progress?: number;
   low_space?: boolean;
+  device?: string | null;
+  mounted?: boolean;
 }
 
 /** Un index de caméra qui s'ouvre, et la taille que le pilote y annonce. */
@@ -354,6 +365,7 @@ export const api = {
   storage: () => request<StorageVolume[]>("/admin/storage"),
   selectStorage: (root: string | null) => post<StorageVolume>("/admin/storage/select", { root }),
   prepareStorage: (root: string | null) => post<StorageVolume>("/admin/storage/prepare", { root }),
+  mountStorage: (device: string) => post<StorageVolume>("/admin/storage/mount", { device }),
   operatorAuthStatus: () => request<OperatorAuthStatus>("/admin/auth/status"),
   operatorLogin: async (code: string) => {
     const path = "/admin/auth/login";
@@ -367,6 +379,7 @@ export const api = {
   },
   status: () => request<SessionStatus>("/api/status"),
   systemStatus: () => request<SystemStatus>("/api/system/status"),
+  cameraDiagnostics: () => request<CameraDiagnostics>("/api/camera/diagnostics"),
   event: () => request<EventInfo>("/api/event"),
 
   startSession: () => post<SessionStatus>("/api/session"),

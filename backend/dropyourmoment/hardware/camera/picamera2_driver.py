@@ -37,6 +37,7 @@ from picamera2.outputs import FileOutput
 from dropyourmoment.core.errors import CameraCaptureError, CameraNotAvailableError
 from dropyourmoment.hardware.camera.base import (
     CameraCapabilities,
+    CameraDiagnostics,
     CameraDriver,
     CaptureResult,
 )
@@ -93,6 +94,8 @@ class Picamera2Driver(CameraDriver):
         self._camera: Picamera2 | None = None
         self._buffer = _FrameBuffer()
         self._capture_lock = threading.Lock()
+        self._diagnostics_lock = threading.Lock()
+        self._diagnostics = CameraDiagnostics(driver_name="picamera2")
         self._activity = PreviewActivity()
 
     def start(self) -> None:
@@ -108,6 +111,7 @@ class Picamera2Driver(CameraDriver):
                     display=None,
                 )
             )
+            camera.pre_callback = self._record_metadata
             camera.start_recording(
                 MJPEGEncoder(),
                 FileOutput(self._buffer),
@@ -144,6 +148,33 @@ class Picamera2Driver(CameraDriver):
             preview_size=self._preview_size,
             supports_live_preview=True,
         )
+
+    def get_diagnostics(self) -> CameraDiagnostics:
+        with self._diagnostics_lock:
+            return self._diagnostics
+
+    def _record_metadata(self, request: object) -> None:
+        metadata = request.get_metadata()  # type: ignore[attr-defined]
+        af_state = metadata.get("AfState")
+        af_state_name = {0: "idle", 1: "scanning", 2: "focused", 3: "failed"}.get(
+            af_state, f"unknown ({af_state})" if af_state is not None else None
+        )
+
+        def number(key: str) -> float | None:
+            value = metadata.get(key)
+            return float(value) if isinstance(value, (int, float)) else None
+
+        with self._diagnostics_lock:
+            self._diagnostics = CameraDiagnostics(
+                driver_name="picamera2",
+                autofocus_state=af_state_name,
+                lens_position=number("LensPosition"),
+                focus_fom=number("FocusFoM"),
+                exposure_time_us=(
+                    int(value) if (value := number("ExposureTime")) is not None else None
+                ),
+                analogue_gain=number("AnalogueGain"),
+            )
 
     @property
     def active_streams(self) -> int:

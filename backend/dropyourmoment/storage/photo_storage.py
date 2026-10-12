@@ -12,6 +12,7 @@ from pathlib import Path
 
 PHOTO_FOLDER = "photobooth"
 SYSTEM_VOLUME_NAMES = {"Macintosh HD", "Recovery"}
+REMOVABLE_MOUNT_BASES = (Path("/Volumes"), Path("/media"), Path("/run/media"), Path("/mnt"))
 logger = logging.getLogger(__name__)
 
 
@@ -152,18 +153,37 @@ class PhotoStorage:
 
     def available(self) -> list[Path]:
         candidates = [self.removable_root]
-        sd_mount = self.sd_root.resolve()
-        for base in (Path("/Volumes"), Path("/media"), Path("/mnt")):
-            if base.is_dir():
-                candidates.extend(
-                    path
-                    for path in base.iterdir()
-                    if path.is_dir()
-                    and not path.is_symlink()
-                    and path.name not in SYSTEM_VOLUME_NAMES
-                    and path.resolve() != sd_mount
-                )
+        for base in REMOVABLE_MOUNT_BASES:
+            candidates.extend(self._mounted_children(base))
         return list(dict.fromkeys(path.resolve() for path in candidates if path is not None))
+
+    @staticmethod
+    def _mounted_children(base: Path) -> list[Path]:
+        """Liste les volumes montés directement ou sous un répertoire utilisateur.
+
+        Raspberry Pi OS et udisks montent généralement un disque à
+        ``/media/<utilisateur>/<volume>``. macOS et les montages manuels utilisent
+        plutôt le premier niveau. On teste les points de montage pour ne pas prendre
+        les simples dossiers déjà présents sur le disque.
+        """
+        if not base.is_dir():
+            return []
+        volumes: list[Path] = []
+        for child in base.iterdir():
+            if not child.is_dir() or child.is_symlink() or child.name in SYSTEM_VOLUME_NAMES:
+                continue
+            if os.path.ismount(child):
+                volumes.append(child)
+                continue
+            try:
+                volumes.extend(
+                    nested
+                    for nested in child.iterdir()
+                    if nested.is_dir() and not nested.is_symlink() and os.path.ismount(nested)
+                )
+            except OSError:
+                continue
+        return volumes
 
     def ensure_destination(self) -> Path:
         return self.refresh().root

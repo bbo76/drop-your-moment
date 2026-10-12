@@ -13,6 +13,7 @@ import hmac
 import logging
 import secrets
 import subprocess
+import threading
 import time
 from dataclasses import dataclass, field
 
@@ -62,6 +63,9 @@ class Runtime:
     photo_storage: PhotoStorage = field(init=False)
     _maintenance_token: str | None = field(default=None, init=False, repr=False)
     _maintenance_expires_at: float = field(default=0.0, init=False, repr=False)
+    capture_lock: threading.Lock = field(default_factory=threading.Lock, init=False, repr=False)
+    capture_in_progress: bool = field(default=False, init=False, repr=False)
+    capture_cancelled_session_id: str | None = field(default=None, init=False, repr=False)
 
     def __post_init__(self) -> None:
         if self.printer_selection is None:

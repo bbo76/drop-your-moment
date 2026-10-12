@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { Camera, Home } from "lucide-react";
+import { Camera, Crosshair, Home } from "lucide-react";
 
-import { BLANK_PIXEL, previewStreamUrl, type ShotTimerSeconds } from "@/api/client";
+import { api, BLANK_PIXEL, previewStreamUrl, type CameraDiagnostics, type ShotTimerSeconds } from "@/api/client";
 import { scheduleCountdownStep, type CapturePhase } from "../captureTiming";
 import { FramingGuide } from "./FramingGuide";
 
@@ -32,10 +32,16 @@ export function PreviewScreen({
   onCancel,
 }: Props) {
   const [phase, setPhase] = useState<CapturePhase>({ kind: "waiting" });
+  const [preparing, setPreparing] = useState(false);
+  const [captureError, setCaptureError] = useState(false);
+  const [debugOpen, setDebugOpen] = useState(false);
+  const [cameraDiagnostics, setCameraDiagnostics] = useState<CameraDiagnostics | null>(null);
+  const [diagnosticsError, setDiagnosticsError] = useState(false);
 
   // Figé à la première image du composant : recalculer l'URL à chaque rendu redémarrerait
   // le flux MJPEG.
   const [streamUrl] = useState(previewStreamUrl);
+  const blurredPreview = useRef<HTMLImageElement>(null);
   const preview = useRef<HTMLImageElement>(null);
 
   // Le démontage ne ferme pas la connexion, contrairement à ce qu'on pourrait croire.
@@ -44,22 +50,54 @@ export function PreviewScreen({
   // un écran que plus personne ne regarde, la webcam reste retenue, et la page de santé
   // affiche un flux actif à vie — à raison. Il faut annuler la requête explicitement.
   useEffect(() => {
-    const image = preview.current;
+    const blurredImage = blurredPreview.current;
+    const framedImage = preview.current;
     // React StrictMode rejoue setup → cleanup → setup en développement. Le setup doit
     // donc restaurer le flux que le premier cleanup vient volontairement d'annuler.
-    if (image) image.src = streamUrl;
+    if (blurredImage) blurredImage.src = streamUrl;
+    if (framedImage) framedImage.src = streamUrl;
     return () => {
-      if (image) image.src = BLANK_PIXEL;
+      if (blurredImage) blurredImage.src = BLANK_PIXEL;
+      if (framedImage) framedImage.src = BLANK_PIXEL;
     };
   }, [streamUrl]);
 
   useEffect(() => {
     if (phase.kind !== "counting") return;
 
-    return scheduleCountdownStep(phase, setPhase, () => {
-      void onCapture();
+    return scheduleCountdownStep(phase, setPhase, async () => {
+      try {
+        await onCapture();
+      } catch {
+        setCaptureError(true);
+        setPhase({ kind: "waiting" });
+      }
     });
   }, [phase, onCapture]);
+
+  useEffect(() => {
+    if (!debugOpen) return;
+    let active = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const refresh = async () => {
+      try {
+        const fresh = await api.cameraDiagnostics();
+        if (active) {
+          setCameraDiagnostics(fresh);
+          setDiagnosticsError(false);
+        }
+      } catch {
+        if (active) setDiagnosticsError(true);
+      } finally {
+        if (active) timer = setTimeout(refresh, 500);
+      }
+    };
+    void refresh();
+    return () => {
+      active = false;
+      if (timer) clearTimeout(timer);
+    };
+  }, [debugOpen]);
 
   const showReturnHint =
     phase.kind === "waiting" &&
@@ -68,7 +106,35 @@ export function PreviewScreen({
 
   return (
     <main className="relative h-full overflow-hidden bg-ink">
+      <button
+        type="button"
+        aria-label={debugOpen ? "Fermer le diagnostic autofocus" : "Afficher le diagnostic autofocus"}
+        aria-pressed={debugOpen}
+        onClick={() => setDebugOpen((open) => !open)}
+        className="absolute left-6 top-5 z-30 flex h-12 items-center gap-1.5 rounded-panel border-2 border-edge/90 bg-ink/80 px-3 text-body backdrop-blur-sm aria-pressed:border-signal aria-pressed:text-signal"
+      >
+        <Crosshair className="size-5" aria-hidden="true" />
+        <span className="text-sm font-bold">AF</span>
+      </button>
+      {debugOpen && (
+        <aside className="absolute left-6 top-[4.5rem] z-30 w-72 rounded-panel border-2 border-signal/80 bg-ink/95 p-4 text-body shadow-xl" aria-live="polite">
+          <h2 className="text-lg font-bold">Diagnostic autofocus</h2>
+          {diagnosticsError ? <p className="mt-2 text-sm text-warn">Données caméra indisponibles</p> : cameraDiagnostics ? (
+            <dl className="mt-2 grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 text-sm">
+              <dt className="text-muted">Pilote</dt><dd>{cameraDiagnostics.driver_name}</dd>
+              <dt className="text-muted">État AF</dt><dd className="font-semibold">{autofocusLabel(cameraDiagnostics.autofocus_state)}</dd>
+              <dt className="text-muted">Lentille</dt><dd>{cameraDiagnostics.lens_position === null ? "—" : `${cameraDiagnostics.lens_position.toFixed(2)} D`}</dd>
+              <dt className="text-muted">Distance estimée</dt><dd>{cameraDiagnostics.lens_position && cameraDiagnostics.lens_position > 0 ? `~${Math.round(100 / cameraDiagnostics.lens_position)} cm` : "—"}</dd>
+              <dt className="text-muted">Netteté (FoM)</dt><dd>{cameraDiagnostics.focus_fom?.toFixed(0) ?? "—"}</dd>
+              <dt className="text-muted">Exposition</dt><dd>{cameraDiagnostics.exposure_time_us === null ? "—" : `${(cameraDiagnostics.exposure_time_us / 1000).toFixed(1)} ms`}</dd>
+              <dt className="text-muted">Gain</dt><dd>{cameraDiagnostics.analogue_gain?.toFixed(2) ?? "—"}×</dd>
+            </dl>
+          ) : <p className="mt-2 text-sm text-muted">Lecture des métadonnées…</p>}
+          <p className="mt-3 border-t border-edge pt-2 text-xs text-muted">Distance focale estimée à titre indicatif. Note l’état AF et la position quand l’image est nette puis floue.</p>
+        </aside>
+      )}
       <img
+        ref={blurredPreview}
         src={streamUrl}
         alt=""
         aria-hidden="true"
@@ -95,23 +161,49 @@ export function PreviewScreen({
         )}
       </div>
 
+      {phase.kind !== "waiting" && (
+        <button
+          type="button"
+          aria-label="Annuler et revenir à l'accueil"
+          onClick={() => {
+            setPhase({ kind: "waiting" });
+            onCancel();
+          }}
+          className="absolute right-6 top-5 z-20 grid size-14 cursor-pointer place-items-center rounded-full border-2 border-edge/90 bg-ink/70 text-body backdrop-blur-sm"
+        >
+          <Home aria-hidden="true" className="size-7" strokeWidth={2.25} />
+        </button>
+      )}
+
       {phase.kind === "waiting" && (
         <>
           <button
             type="button"
             aria-label="Prendre la photo"
-            onClick={() => {
-              void onPrepareCapture();
-              setPhase({ kind: "counting", value: defaultShotTimerSeconds });
+            disabled={preparing}
+            onClick={async () => {
+              setPreparing(true);
+              setCaptureError(false);
+              try {
+                await onPrepareCapture();
+                setPhase({ kind: "counting", value: defaultShotTimerSeconds });
+              } catch {
+                setCaptureError(true);
+              } finally {
+                setPreparing(false);
+              }
             }}
-            className="absolute bottom-3 left-1/2 z-20 grid size-24 -translate-x-1/2 cursor-pointer place-items-center rounded-full border-4 border-ink bg-signal text-signal-ink transition-transform duration-150 active:scale-[0.94]"
+            className="absolute bottom-3 left-1/2 z-20 grid size-24 -translate-x-1/2 cursor-pointer place-items-center rounded-full border-4 border-ink bg-signal text-signal-ink transition-transform duration-150 active:scale-[0.94] disabled:opacity-50"
           >
             <Camera aria-hidden="true" className="size-11" strokeWidth={2.25} />
           </button>
           <button
             type="button"
             aria-label="Retour à l'accueil"
-            onClick={onCancel}
+            onClick={() => {
+              setPhase({ kind: "waiting" });
+              onCancel();
+            }}
             className="absolute right-6 top-5 z-20 grid size-14 cursor-pointer place-items-center rounded-full border-2 border-edge/90 bg-ink/70 text-body backdrop-blur-sm transition-[background-color,color,transform] duration-150 active:scale-[0.97]"
           >
             <Home aria-hidden="true" className="size-7" strokeWidth={2.25} />
@@ -125,8 +217,18 @@ export function PreviewScreen({
             </p>
       )}
 
+      {captureError && phase.kind === "waiting" && (
+        <p role="alert" className="absolute bottom-28 left-1/2 z-20 -translate-x-1/2 rounded-panel bg-ink px-5 py-2 text-center text-base font-medium text-body">
+          La capture n’a pas pu démarrer. Réessayez ou revenez à l’accueil.
+        </p>
+      )}
+
     </main>
   );
+}
+
+function autofocusLabel(state: string | null) {
+  return ({ idle: "au repos", scanning: "recherche…", focused: "net", failed: "échec" } as Record<string, string>)[state ?? ""] ?? state ?? "—";
 }
 
 function CountdownNumber({ value }: { value: number }) {
