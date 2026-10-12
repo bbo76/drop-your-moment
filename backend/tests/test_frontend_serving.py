@@ -48,6 +48,7 @@ def test_le_kiosque_sert_son_propre_document(built_runtime: Runtime) -> None:
 
     assert response.status_code == 200
     assert "kiosque" in response.text
+    assert response.headers["cache-control"] == "no-store"
 
 
 def test_l_admin_sert_son_propre_document(built_runtime: Runtime) -> None:
@@ -56,6 +57,7 @@ def test_l_admin_sert_son_propre_document(built_runtime: Runtime) -> None:
 
     assert response.status_code == 200
     assert "administration" in response.text, "l'admin ne doit pas servir le kiosque"
+    assert response.headers["cache-control"] == "no-store"
 
 
 def test_l_ancien_point_d_entree_mobile_n_existe_plus(built_runtime: Runtime) -> None:
