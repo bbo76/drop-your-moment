@@ -24,7 +24,6 @@ from pydantic import BaseModel, Field
 from dropyourmoment.core.errors import CameraError, InvalidTransitionError, PrinterError
 from dropyourmoment.core.event_config import LaunchFont
 from dropyourmoment.core.session import Session, SessionState
-from dropyourmoment.hardware.camera.base import CameraDiagnostics
 from dropyourmoment.hardware.system_metrics import read_system_metrics
 from dropyourmoment.imaging.filters import FilterName
 from dropyourmoment.imaging.pipeline import CompositionError, save_jpeg
@@ -113,7 +112,12 @@ def _status(runtime: Runtime) -> SessionStatus:
     # de là.
     runtime.print_flow.poll()
     previous = machine.session
-    if not runtime.capture_in_progress and machine.tick() and previous is not None and machine.session is None:
+    if (
+        not runtime.capture_in_progress
+        and machine.tick()
+        and previous is not None
+        and machine.session is None
+    ):
         _remove_temporary_raw(previous)
     session = machine.session
     return SessionStatus(
