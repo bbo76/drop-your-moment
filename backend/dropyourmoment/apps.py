@@ -73,6 +73,8 @@ def _mount_frontend(app: FastAPI, directory: Path, document: str) -> None:
     # donc la racine renvoie le bon document tandis que le montage sert les assets.
     @app.get("/", include_in_schema=False)
     async def _index() -> FileResponse:
-        return FileResponse(entrypoint)
+        # Le document référence des assets Vite fingerprintés. Ne pas le mettre en cache
+        # évite au kiosk de garder l'ancien bundle après un déploiement et un redémarrage.
+        return FileResponse(entrypoint, headers={"Cache-Control": "no-store"})
 
     app.mount("/", StaticFiles(directory=directory), name="frontend")
