@@ -106,16 +106,19 @@ export function PreviewScreen({
 
   return (
     <main className="relative h-full overflow-hidden bg-ink">
-      <button
-        type="button"
-        aria-label={debugOpen ? "Fermer le diagnostic autofocus" : "Afficher le diagnostic autofocus"}
-        aria-pressed={debugOpen}
-        onClick={() => setDebugOpen((open) => !open)}
-        className="absolute left-6 top-5 z-30 flex h-12 items-center gap-1.5 rounded-panel border-2 border-edge/90 bg-ink/80 px-3 text-body backdrop-blur-sm aria-pressed:border-signal aria-pressed:text-signal"
-      >
-        <Crosshair className="size-5" aria-hidden="true" />
-        <span className="text-sm font-bold">AF</span>
-      </button>
+      <div className="pointer-events-none absolute inset-0 z-100 grid place-items-center">
+        <button
+          type="button"
+          aria-label={debugOpen ? "Fermer le diagnostic autofocus" : "Afficher le diagnostic autofocus"}
+          aria-pressed={debugOpen}
+          onClick={() => setDebugOpen((open) => !open)}
+          style={{ backgroundColor: "#ff0000", color: "#ffffff", borderColor: "#ffffff" }}
+          className="pointer-events-auto flex h-28 min-w-44 items-center justify-center gap-3 rounded-2xl border-4 px-8 text-3xl font-black shadow-2xl"
+        >
+          <Crosshair className="size-9" aria-hidden="true" />
+          <span>AF</span>
+        </button>
+      </div>
       {debugOpen && (
         <aside className="absolute left-6 top-[4.5rem] z-30 w-72 rounded-panel border-2 border-signal/80 bg-ink/95 p-4 text-body shadow-xl" aria-live="polite">
           <h2 className="text-lg font-bold">Diagnostic autofocus</h2>
