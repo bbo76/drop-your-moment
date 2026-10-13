@@ -216,7 +216,7 @@ export function PreviewScreen({
             <CountdownNumber value={0} />
           </div>
         )}
-      </button>
+      </div>
 
       {phase.kind !== "waiting" && (
         <button
