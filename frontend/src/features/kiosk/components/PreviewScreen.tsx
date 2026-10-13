@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from "react";
-import { Camera, Home } from "lucide-react";
+import { Camera, Crosshair, Home } from "lucide-react";
 
 import { api, BLANK_PIXEL, previewStreamUrl, type AutofocusSettings, type ShotTimerSeconds } from "@/api/client";
 import { scheduleCountdownStep, type CapturePhase } from "../captureTiming";
@@ -42,6 +42,7 @@ export function PreviewScreen({
   const [captureError, setCaptureError] = useState(false);
   const [focusWindow, setFocusWindow] = useState<AutofocusSettings["window"] | null>(null);
   const [focusLocked, setFocusLocked] = useState(false);
+  const [focusDimmed, setFocusDimmed] = useState(false);
   const [focusBusy, setFocusBusy] = useState(false);
   const [focusMessage, setFocusMessage] = useState<string | null>(null);
 
@@ -60,6 +61,15 @@ export function PreviewScreen({
     const timeout = setTimeout(() => setFocusMessage(null), 2500);
     return () => clearTimeout(timeout);
   }, [focusMessage]);
+
+  useEffect(() => {
+    if (!focusWindow || focusBusy || focusMessage === "Mise au point…") {
+      setFocusDimmed(false);
+      return;
+    }
+    const timeout = setTimeout(() => setFocusDimmed(true), 1500);
+    return () => clearTimeout(timeout);
+  }, [focusWindow, focusBusy, focusMessage]);
 
   // Le démontage ne ferme pas la connexion, contrairement à ce qu'on pourrait croire.
   // React retire l'`<img>` du DOM, mais Chromium garde la requête
@@ -149,11 +159,13 @@ export function PreviewScreen({
       {focusLocked && phase.kind === "waiting" && (
         <button
           type="button"
+          aria-label="Reprendre l’autofocus continu"
+          title="Reprendre l’autofocus continu"
           disabled={focusBusy}
           onClick={() => void resumeContinuousFocus()}
-          className="absolute left-6 top-5 z-40 flex h-12 items-center rounded-panel border-2 border-edge bg-ink/90 px-3 text-base font-bold text-body disabled:opacity-50"
+          className="absolute left-5 top-4 z-40 grid size-10 place-items-center rounded-full border border-edge/60 bg-ink/60 text-body/80 backdrop-blur-sm transition-colors active:bg-ink/90 disabled:opacity-50"
         >
-          Reprendre l’AF continu
+          <Crosshair aria-hidden="true" className="size-5" />
         </button>
       )}
       <img
@@ -175,9 +187,7 @@ export function PreviewScreen({
         <FramingGuide overlayUrl={overlayUrl} />
         {focusWindow && afWindowStyle && (
           <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden" aria-hidden="true">
-            <div className="absolute rounded-[0.7rem] border-[3px] border-signal bg-signal/10 shadow-[0_0_0_2px_#101418]" style={afWindowStyle}>
-              <span className="absolute left-1/2 top-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-signal shadow-[0_0_0_2px_#101418]" />
-            </div>
+            <div className={`absolute rounded-[0.7rem] border-[3px] border-signal bg-signal/10 shadow-[0_0_0_2px_#101418] transition-opacity duration-700 ${focusDimmed ? "opacity-[0.14]" : "opacity-100"}`} style={afWindowStyle} />
           </div>
         )}
         {focusMessage && phase.kind === "waiting" && (
