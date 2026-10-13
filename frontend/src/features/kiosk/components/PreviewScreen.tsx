@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from "react";
-import { Camera, Crosshair, Home } from "lucide-react";
+import { Camera, Home, X } from "lucide-react";
 
 import { api, BLANK_PIXEL, previewStreamUrl, type AutofocusSettings, type ShotTimerSeconds } from "@/api/client";
 import { scheduleCountdownStep, type CapturePhase } from "../captureTiming";
@@ -196,7 +196,7 @@ export function PreviewScreen({
                   top: afWindowStyle.top,
                 }}
               >
-                <Crosshair aria-hidden="true" className="size-5" />
+                <X aria-hidden="true" className="size-5" strokeWidth={2.5} />
               </button>
             )}
           </div>
