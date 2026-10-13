@@ -36,6 +36,7 @@ from picamera2.outputs import FileOutput
 
 from dropyourmoment.core.errors import CameraCaptureError, CameraNotAvailableError
 from dropyourmoment.hardware.camera.base import (
+    AutofocusSettings,
     CameraCapabilities,
     CameraDiagnostics,
     CameraDriver,
@@ -53,6 +54,7 @@ PREVIEW_QUALITY = Quality.HIGH
 # Les buffers `main` pèsent ~9 Mo chacun en RGB888. La valeur par défaut de picamera2
 # est généreuse ; 4 suffit pour un flux mono-client et économise ~20 Mo sur le Pi.
 BUFFER_COUNT = 4
+SENSOR_SIZE = (4608, 2592)
 
 # Au-delà de cette attente sans nouvelle frame, on considère le flux mort plutôt que de
 # laisser une requête HTTP pendue indéfiniment.
@@ -97,6 +99,7 @@ class Picamera2Driver(CameraDriver):
         self._diagnostics_lock = threading.Lock()
         self._diagnostics = CameraDiagnostics(driver_name="picamera2")
         self._activity = PreviewActivity()
+        self._autofocus_settings = AutofocusSettings()
 
     def start(self) -> None:
         if self._camera is not None:
@@ -121,7 +124,7 @@ class Picamera2Driver(CameraDriver):
             # Le Camera Module 3 (IMX708) reste en autofocus continu pendant l'aperçu
             # et la capture : la distance visiteur varie, et la borne n'a pas de plan
             # focal fixe fiable à imposer.
-            camera.set_controls({"AfMode": controls.AfModeEnum.Continuous})
+            camera.set_controls(self._controls_for_autofocus(self._autofocus_settings))
         except Exception as exc:
             raise CameraNotAvailableError(f"ouverture du capteur impossible : {exc}") from exc
         self._camera = camera
@@ -152,6 +155,55 @@ class Picamera2Driver(CameraDriver):
     def get_diagnostics(self) -> CameraDiagnostics:
         with self._diagnostics_lock:
             return self._diagnostics
+
+    def get_autofocus_settings(self) -> AutofocusSettings:
+        return self._autofocus_settings
+
+    def set_autofocus_settings(self, settings: AutofocusSettings) -> AutofocusSettings:
+        if self._camera is None:
+            raise CameraNotAvailableError(
+                "réglage autofocus demandé alors que la caméra est arrêtée"
+            )
+        self._camera.set_controls(self._controls_for_autofocus(settings))
+        self._autofocus_settings = settings
+        return settings
+
+    def trigger_autofocus(self) -> bool:
+        if self._camera is None:
+            raise CameraNotAvailableError("autofocus demandé alors que la caméra est arrêtée")
+        with self._capture_lock:
+            try:
+                self._camera.set_controls({"AfMode": controls.AfModeEnum.Auto})
+                return bool(self._camera.autofocus_cycle())
+            finally:
+                self._camera.set_controls(self._controls_for_autofocus(self._autofocus_settings))
+
+    @staticmethod
+    def _controls_for_autofocus(settings: AutofocusSettings) -> dict[str, object]:
+        x, y, width, height = settings.window
+        window = (
+            round(x * SENSOR_SIZE[0]),
+            round(y * SENSOR_SIZE[1]),
+            round(width * SENSOR_SIZE[0]),
+            round(height * SENSOR_SIZE[1]),
+        )
+        return {
+            "AfMode": {
+                "continuous": controls.AfModeEnum.Continuous,
+                "auto": controls.AfModeEnum.Auto,
+            }[settings.mode],
+            "AfRange": {
+                "normal": controls.AfRangeEnum.Normal,
+                "macro": controls.AfRangeEnum.Macro,
+                "full": controls.AfRangeEnum.Full,
+            }[settings.range],
+            "AfSpeed": {
+                "normal": controls.AfSpeedEnum.Normal,
+                "fast": controls.AfSpeedEnum.Fast,
+            }[settings.speed],
+            "AfMetering": controls.AfMeteringEnum.Windows,
+            "AfWindows": [window],
+        }
 
     def _record_metadata(self, request: object) -> None:
         metadata = request.get_metadata()  # type: ignore[attr-defined]

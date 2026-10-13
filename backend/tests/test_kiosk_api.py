@@ -71,6 +71,25 @@ def test_statut_systeme_decrit_le_materiel(kiosk: TestClient) -> None:
     assert body["preview_size"] == [640, 360]
 
 
+def test_diagnostic_autofocus_signale_quand_les_reglages_ne_sont_pas_supportes(
+    kiosk: TestClient,
+) -> None:
+    diagnostics = kiosk.get("/api/camera/diagnostics").json()
+
+    assert diagnostics["autofocus_controls_supported"] is False
+    assert diagnostics["autofocus_settings"] is None
+    assert kiosk.post("/api/camera/autofocus/trigger").status_code == 501
+
+
+def test_zone_autofocus_hors_cadre_refusee(kiosk: TestClient) -> None:
+    response = kiosk.post(
+        "/api/camera/autofocus",
+        json={"window": [0.8, 0.2, 0.4, 0.4]},
+    )
+
+    assert response.status_code == 422
+
+
 def test_statut_systeme_signale_un_bac_papier_vide(kiosk: TestClient, runtime: Runtime) -> None:
     runtime.counters.record_prints(18)
 
