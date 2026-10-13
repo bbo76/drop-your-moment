@@ -230,7 +230,11 @@ def read_camera_diagnostics(
     return CameraDiagnosticsStatus(
         **vars(runtime.camera.get_diagnostics()),
         autofocus_controls_supported=autofocus_settings is not None,
-        autofocus_settings=autofocus_settings,
+        autofocus_settings=(
+            CameraAutofocusRequest(**vars(autofocus_settings))
+            if autofocus_settings is not None
+            else None
+        ),
     )
 
 
