@@ -117,20 +117,57 @@ export function PreviewScreen({
         <span className="text-sm font-bold">AF</span>
       </button>
       {debugOpen && (
-        <aside className="absolute left-6 top-[4.5rem] z-30 w-72 rounded-panel border-2 border-signal/80 bg-ink/95 p-4 text-body shadow-xl" aria-live="polite">
-          <h2 className="text-lg font-bold">Diagnostic autofocus</h2>
-          {diagnosticsError ? <p className="mt-2 text-sm text-warn">Données caméra indisponibles</p> : cameraDiagnostics ? (
-            <dl className="mt-2 grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 text-sm">
-              <dt className="text-muted">Pilote</dt><dd>{cameraDiagnostics.driver_name}</dd>
-              <dt className="text-muted">État AF</dt><dd className="font-semibold">{autofocusLabel(cameraDiagnostics.autofocus_state)}</dd>
-              <dt className="text-muted">Lentille</dt><dd>{cameraDiagnostics.lens_position === null ? "—" : `${cameraDiagnostics.lens_position.toFixed(2)} D`}</dd>
-              <dt className="text-muted">Distance estimée</dt><dd>{cameraDiagnostics.lens_position && cameraDiagnostics.lens_position > 0 ? `~${Math.round(100 / cameraDiagnostics.lens_position)} cm` : "—"}</dd>
-              <dt className="text-muted">Netteté (FoM)</dt><dd>{cameraDiagnostics.focus_fom?.toFixed(0) ?? "—"}</dd>
-              <dt className="text-muted">Exposition</dt><dd>{cameraDiagnostics.exposure_time_us === null ? "—" : `${(cameraDiagnostics.exposure_time_us / 1000).toFixed(1)} ms`}</dd>
-              <dt className="text-muted">Gain</dt><dd>{cameraDiagnostics.analogue_gain?.toFixed(2) ?? "—"}×</dd>
-            </dl>
-          ) : <p className="mt-2 text-sm text-muted">Lecture des métadonnées…</p>}
-          <p className="mt-3 border-t border-edge pt-2 text-xs text-muted">Distance focale estimée à titre indicatif. Note l’état AF et la position quand l’image est nette puis floue.</p>
+        <aside
+          className="pointer-events-none absolute inset-0 z-30"
+          aria-label="Diagnostic autofocus"
+          style={{
+            color: "#ffd400",
+            WebkitTextStroke: "1px #101418",
+            paintOrder: "stroke fill",
+            textShadow: "0 2px 4px #000, 0 0 8px #000",
+          }}
+        >
+          {diagnosticsError ? (
+            <p className="absolute left-4 top-1/2 w-[26%] -translate-y-1/2 text-[clamp(1.25rem,2.2vw,1.75rem)] leading-tight font-bold">
+              Diagnostic indisponible
+            </p>
+          ) : cameraDiagnostics ? (
+            <>
+              <dl className="absolute left-4 top-1/2 w-[26%] max-w-[15rem] -translate-y-1/2 space-y-5 text-[clamp(1.25rem,2.2vw,1.75rem)] leading-tight font-bold">
+                <div>
+                  <dt className="text-[0.8em] uppercase">Autofocus</dt>
+                  <dd className="text-[1.25em]">{autofocusLabel(cameraDiagnostics.autofocus_state)}</dd>
+                </div>
+                <div>
+                  <dt className="text-[0.8em] uppercase">Netteté</dt>
+                  <dd className="text-[1.25em]">{cameraDiagnostics.focus_fom?.toFixed(0) ?? "—"}</dd>
+                </div>
+              </dl>
+              <dl className="absolute right-4 top-1/2 w-[26%] max-w-[15rem] -translate-y-1/2 space-y-5 text-right text-[clamp(1.25rem,2.2vw,1.75rem)] leading-tight font-bold">
+                <div>
+                  <dt className="text-[0.8em] uppercase">Distance estimée</dt>
+                  <dd className="text-[1.25em]">
+                    {cameraDiagnostics.lens_position && cameraDiagnostics.lens_position > 0
+                      ? `~${Math.round(100 / cameraDiagnostics.lens_position)} cm`
+                      : "—"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-[0.8em] uppercase">Lentille</dt>
+                  <dd>{cameraDiagnostics.lens_position === null ? "—" : `${cameraDiagnostics.lens_position.toFixed(2)} D`}</dd>
+                  <dd className="text-[0.8em]">
+                    {cameraDiagnostics.exposure_time_us === null ? "—" : `${(cameraDiagnostics.exposure_time_us / 1000).toFixed(1)} ms`}
+                    {" · "}
+                    {cameraDiagnostics.analogue_gain?.toFixed(1) ?? "—"}× gain
+                  </dd>
+                </div>
+              </dl>
+            </>
+          ) : (
+            <p className="absolute left-4 top-1/2 w-[26%] -translate-y-1/2 text-[clamp(1.25rem,2.2vw,1.75rem)] leading-tight font-bold">
+              Lecture autofocus…
+            </p>
+          )}
         </aside>
       )}
       <img
