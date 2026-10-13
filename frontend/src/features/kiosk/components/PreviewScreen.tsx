@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { Camera, Crosshair, Home } from "lucide-react";
+import { Camera, Crosshair, Home, SlidersHorizontal } from "lucide-react";
 
 import { api, BLANK_PIXEL, previewStreamUrl, type CameraDiagnostics, type ShotTimerSeconds } from "@/api/client";
 import { scheduleCountdownStep, type CapturePhase } from "../captureTiming";
+import { AutofocusDebugPanel } from "./AutofocusDebugPanel";
 import { FramingGuide } from "./FramingGuide";
 
 const RETURN_HINT_THRESHOLD_S = 20;
@@ -35,6 +36,7 @@ export function PreviewScreen({
   const [preparing, setPreparing] = useState(false);
   const [captureError, setCaptureError] = useState(false);
   const [debugOpen, setDebugOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [cameraDiagnostics, setCameraDiagnostics] = useState<CameraDiagnostics | null>(null);
   const [diagnosticsError, setDiagnosticsError] = useState(false);
 
@@ -103,6 +105,9 @@ export function PreviewScreen({
     phase.kind === "waiting" &&
     remainingSeconds !== null &&
     remainingSeconds <= RETURN_HINT_THRESHOLD_S;
+  const afWindowStyle = cameraDiagnostics?.autofocus_settings?.window
+    ? displayedAutofocusWindow(cameraDiagnostics.autofocus_settings.window, printAspectRatio)
+    : null;
 
   return (
     <main className="relative h-full overflow-hidden bg-ink">
@@ -170,6 +175,18 @@ export function PreviewScreen({
           )}
         </aside>
       )}
+      {debugOpen && phase.kind === "waiting" && (
+        <button
+          type="button"
+          aria-label={settingsOpen ? "Masquer les réglages autofocus" : "Régler l’autofocus"}
+          aria-expanded={settingsOpen}
+          onClick={() => setSettingsOpen((open) => !open)}
+          className="absolute left-28 top-5 z-40 flex h-12 items-center gap-2 rounded-panel border-2 border-edge bg-ink/90 px-3 text-body"
+        >
+          <SlidersHorizontal className="size-5" aria-hidden="true" />
+          <span className="text-base font-bold">Régler</span>
+        </button>
+      )}
       <img
         ref={blurredPreview}
         src={streamUrl}
@@ -185,6 +202,13 @@ export function PreviewScreen({
       >
         <img ref={preview} src={streamUrl} alt="" className="block h-full w-full object-cover" />
         <FramingGuide overlayUrl={overlayUrl} />
+        {debugOpen && afWindowStyle && (
+          <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden" aria-hidden="true">
+            <div className="absolute border-[3px] border-signal bg-signal/10" style={afWindowStyle}>
+              <span className="absolute -top-8 left-0 rounded-t bg-ink px-2 py-1 text-sm font-bold text-signal">ZONE AF</span>
+            </div>
+          </div>
+        )}
 
         {phase.kind === "counting" && (
           <div className="pointer-events-none absolute inset-0 grid place-content-center">
@@ -197,6 +221,23 @@ export function PreviewScreen({
           </div>
         )}
       </div>
+
+      {debugOpen && settingsOpen && phase.kind === "waiting" && (
+        <AutofocusDebugPanel
+          settings={cameraDiagnostics?.autofocus_settings ?? null}
+          supported={cameraDiagnostics?.autofocus_controls_supported ?? false}
+          onApply={async (settings) => {
+            const applied = await api.setAutofocusSettings(settings);
+            setCameraDiagnostics((current) => current ? { ...current, autofocus_settings: applied } : current);
+          }}
+          onTrigger={async () => {
+            const result = await api.triggerAutofocus();
+            const fresh = await api.cameraDiagnostics();
+            setCameraDiagnostics(fresh);
+            return result.focused;
+          }}
+        />
+      )}
 
       {phase.kind !== "waiting" && (
         <button
@@ -223,6 +264,7 @@ export function PreviewScreen({
               setCaptureError(false);
               try {
                 await onPrepareCapture();
+                setSettingsOpen(false);
                 setPhase({ kind: "counting", value: defaultShotTimerSeconds });
               } catch {
                 setCaptureError(true);
@@ -266,6 +308,23 @@ export function PreviewScreen({
 
 function autofocusLabel(state: string | null) {
   return ({ idle: "au repos", scanning: "recherche…", focused: "net", failed: "échec" } as Record<string, string>)[state ?? ""] ?? state ?? "—";
+}
+
+function displayedAutofocusWindow(
+  [x, y, width, height]: [number, number, number, number],
+  frameAspectRatio: number,
+): CSSProperties {
+  const streamAspectRatio = 16 / 9;
+  const visibleWidth = Math.min(1, frameAspectRatio / streamAspectRatio);
+  const visibleHeight = Math.min(1, streamAspectRatio / frameAspectRatio);
+  const cropX = (1 - visibleWidth) / 2;
+  const cropY = (1 - visibleHeight) / 2;
+  return {
+    left: `${((x - cropX) / visibleWidth) * 100}%`,
+    top: `${((y - cropY) / visibleHeight) * 100}%`,
+    width: `${(width / visibleWidth) * 100}%`,
+    height: `${(height / visibleHeight) * 100}%`,
+  };
 }
 
 function CountdownNumber({ value }: { value: number }) {

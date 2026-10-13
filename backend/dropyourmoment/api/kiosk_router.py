@@ -16,14 +16,16 @@ import time
 from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import FileResponse, StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from dropyourmoment.core.errors import CameraError, InvalidTransitionError, PrinterError
 from dropyourmoment.core.event_config import LaunchFont
 from dropyourmoment.core.session import Session, SessionState
+from dropyourmoment.hardware.camera.base import AutofocusSettings
 from dropyourmoment.hardware.system_metrics import read_system_metrics
 from dropyourmoment.imaging.filters import FilterName
 from dropyourmoment.imaging.pipeline import CompositionError, save_jpeg
@@ -81,6 +83,33 @@ class CameraDiagnosticsStatus(BaseModel):
     focus_fom: float | None = None
     exposure_time_us: int | None = None
     analogue_gain: float | None = None
+    autofocus_controls_supported: bool = False
+    autofocus_settings: CameraAutofocusRequest | None = None
+
+
+class CameraAutofocusRequest(BaseModel):
+    mode: Literal["continuous", "auto"] = "continuous"
+    range: Literal["normal", "macro", "full"] = "normal"
+    speed: Literal["normal", "fast"] = "normal"
+    window: tuple[
+        Annotated[float, Field(ge=0, le=1, allow_inf_nan=False)],
+        Annotated[float, Field(ge=0, le=1, allow_inf_nan=False)],
+        Annotated[float, Field(ge=0, le=1, allow_inf_nan=False)],
+        Annotated[float, Field(ge=0, le=1, allow_inf_nan=False)],
+    ] = Field(default=(1 / 3, 1 / 3, 1 / 3, 1 / 3))
+
+    @model_validator(mode="after")
+    def validate_window(self) -> CameraAutofocusRequest:
+        x, y, width, height = self.window
+        if min(x, y, width, height) < 0 or x + width > 1 or y + height > 1:
+            raise ValueError("la zone autofocus doit rester dans le cadre, entre 0 et 100 %")
+        if width == 0 or height == 0:
+            raise ValueError("la zone autofocus doit avoir une taille positive")
+        return self
+
+
+class AutofocusTriggerStatus(BaseModel):
+    focused: bool
 
 
 class EventInfo(BaseModel):
@@ -197,7 +226,50 @@ def read_system_status(runtime: Runtime = Depends(get_runtime)) -> SystemStatus:
 def read_camera_diagnostics(
     runtime: Runtime = Depends(get_runtime),
 ) -> CameraDiagnosticsStatus:
-    return CameraDiagnosticsStatus(**vars(runtime.camera.get_diagnostics()))
+    autofocus_settings = runtime.camera.get_autofocus_settings()
+    return CameraDiagnosticsStatus(
+        **vars(runtime.camera.get_diagnostics()),
+        autofocus_controls_supported=autofocus_settings is not None,
+        autofocus_settings=autofocus_settings,
+    )
+
+
+@router.post("/camera/autofocus", response_model=CameraAutofocusRequest)
+def configure_camera_autofocus(
+    settings: CameraAutofocusRequest,
+    runtime: Runtime = Depends(get_runtime),
+) -> AutofocusSettings:
+    try:
+        applied = runtime.camera.set_autofocus_settings(
+            AutofocusSettings(
+                mode=settings.mode,
+                range=settings.range,
+                speed=settings.speed,
+                window=settings.window,
+            )
+        )
+        return CameraAutofocusRequest(
+            mode=applied.mode,
+            range=applied.range,
+            speed=applied.speed,
+            window=applied.window,
+        )
+    except NotImplementedError as exc:
+        raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, str(exc)) from exc
+    except CameraError as exc:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(exc)) from exc
+
+
+@router.post("/camera/autofocus/trigger", response_model=AutofocusTriggerStatus)
+def trigger_camera_autofocus(
+    runtime: Runtime = Depends(get_runtime),
+) -> AutofocusTriggerStatus:
+    try:
+        return AutofocusTriggerStatus(focused=runtime.camera.trigger_autofocus())
+    except NotImplementedError as exc:
+        raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, str(exc)) from exc
+    except CameraError as exc:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(exc)) from exc
 
 
 @router.get("/event", response_model=EventInfo)

@@ -58,6 +58,15 @@ export interface CameraDiagnostics {
   focus_fom: number | null;
   exposure_time_us: number | null;
   analogue_gain: number | null;
+  autofocus_controls_supported: boolean;
+  autofocus_settings: AutofocusSettings | null;
+}
+
+export interface AutofocusSettings {
+  mode: "continuous" | "auto";
+  range: "normal" | "macro" | "full";
+  speed: "normal" | "fast";
+  window: [number, number, number, number];
 }
 
 /** Format de sortie, en miroir du modèle `PrintFormat`. Quatre nombres, pas davantage. */
@@ -380,6 +389,9 @@ export const api = {
   status: () => request<SessionStatus>("/api/status"),
   systemStatus: () => request<SystemStatus>("/api/system/status"),
   cameraDiagnostics: () => request<CameraDiagnostics>("/api/camera/diagnostics"),
+  setAutofocusSettings: (settings: AutofocusSettings) =>
+    post<AutofocusSettings>("/api/camera/autofocus", settings),
+  triggerAutofocus: () => post<{ focused: boolean }>("/api/camera/autofocus/trigger"),
   event: () => request<EventInfo>("/api/event"),
 
   startSession: () => post<SessionStatus>("/api/session"),

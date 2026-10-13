@@ -35,6 +35,15 @@ class CaptureResult:
 
 
 @dataclass(frozen=True)
+class AutofocusSettings:
+    mode: str = "continuous"
+    range: str = "normal"
+    speed: str = "normal"
+    # Normalized against the full sensor, not the preview stream dimensions.
+    window: tuple[float, float, float, float] = (1 / 3, 1 / 3, 1 / 3, 1 / 3)
+
+
+@dataclass(frozen=True)
 class CameraDiagnostics:
     driver_name: str
     autofocus_state: str | None = None
@@ -79,6 +88,15 @@ class CameraDriver(ABC):
 
     def get_diagnostics(self) -> CameraDiagnostics:
         return CameraDiagnostics(driver_name=self.get_capabilities().driver_name)
+
+    def get_autofocus_settings(self) -> AutofocusSettings | None:
+        return None
+
+    def set_autofocus_settings(self, settings: AutofocusSettings) -> AutofocusSettings:
+        raise NotImplementedError("réglages autofocus indisponibles pour ce pilote")
+
+    def trigger_autofocus(self) -> bool:
+        raise NotImplementedError("autofocus indisponible pour ce pilote")
 
     @property
     @abstractmethod
