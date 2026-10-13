@@ -177,8 +177,9 @@ export function PreviewScreen({
           className="absolute inset-0 z-10 cursor-pointer bg-transparent p-0 disabled:cursor-default"
         />
         {focusWindow && afWindowStyle && (
-          <div className="pointer-events-none absolute inset-0 z-20 overflow-visible" aria-hidden="true">
+          <div className="pointer-events-none absolute inset-0 z-20 overflow-visible">
             <div
+              aria-hidden="true"
               className={`absolute rounded-[0.7rem] border-[3px] border-signal bg-signal/10 shadow-[0_0_0_2px_#101418] transition-opacity duration-700 ${focusDimmed ? "opacity-[0.14]" : "opacity-100"}`}
               style={afWindowStyle}
             />
