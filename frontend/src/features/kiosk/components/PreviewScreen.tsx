@@ -1,12 +1,17 @@
-import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { Camera, Crosshair, Home, SlidersHorizontal } from "lucide-react";
+import { useEffect, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from "react";
+import { Camera, Home } from "lucide-react";
 
-import { api, BLANK_PIXEL, previewStreamUrl, type CameraDiagnostics, type ShotTimerSeconds } from "@/api/client";
+import { api, BLANK_PIXEL, previewStreamUrl, type AutofocusSettings, type ShotTimerSeconds } from "@/api/client";
 import { scheduleCountdownStep, type CapturePhase } from "../captureTiming";
-import { AutofocusDebugPanel } from "./AutofocusDebugPanel";
 import { FramingGuide } from "./FramingGuide";
 
 const RETURN_HINT_THRESHOLD_S = 20;
+const DEFAULT_AUTOFOCUS_SETTINGS: AutofocusSettings = {
+  mode: "continuous",
+  range: "normal",
+  speed: "fast",
+  window: [1 / 3, 1 / 3, 1 / 3, 1 / 3],
+};
 interface Props {
   printAspectRatio: number;
   overlayUrl: string | null;
@@ -35,16 +40,26 @@ export function PreviewScreen({
   const [phase, setPhase] = useState<CapturePhase>({ kind: "waiting" });
   const [preparing, setPreparing] = useState(false);
   const [captureError, setCaptureError] = useState(false);
-  const [debugOpen, setDebugOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [cameraDiagnostics, setCameraDiagnostics] = useState<CameraDiagnostics | null>(null);
-  const [diagnosticsError, setDiagnosticsError] = useState(false);
+  const [focusWindow, setFocusWindow] = useState<AutofocusSettings["window"] | null>(null);
+  const [focusLocked, setFocusLocked] = useState(false);
+  const [focusBusy, setFocusBusy] = useState(false);
+  const [focusMessage, setFocusMessage] = useState<string | null>(null);
 
   // Figé à la première image du composant : recalculer l'URL à chaque rendu redémarrerait
   // le flux MJPEG.
   const [streamUrl] = useState(previewStreamUrl);
   const blurredPreview = useRef<HTMLImageElement>(null);
   const preview = useRef<HTMLImageElement>(null);
+
+  useEffect(() => {
+    void api.setAutofocusSettings(DEFAULT_AUTOFOCUS_SETTINGS).catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    if (!focusMessage || focusMessage === "Mise au point…") return;
+    const timeout = setTimeout(() => setFocusMessage(null), 2500);
+    return () => clearTimeout(timeout);
+  }, [focusMessage]);
 
   // Le démontage ne ferme pas la connexion, contrairement à ce qu'on pourrait croire.
   // React retire l'`<img>` du DOM, mais Chromium garde la requête
@@ -77,126 +92,68 @@ export function PreviewScreen({
     });
   }, [phase, onCapture]);
 
-  useEffect(() => {
-    if (!debugOpen) return;
-    let active = true;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const refresh = async () => {
-      try {
-        const fresh = await api.cameraDiagnostics();
-        if (active) {
-          setCameraDiagnostics(fresh);
-          setDiagnosticsError(false);
-        }
-      } catch {
-        if (active) setDiagnosticsError(true);
-      } finally {
-        if (active) timer = setTimeout(refresh, 500);
-      }
-    };
-    void refresh();
-    return () => {
-      active = false;
-      if (timer) clearTimeout(timer);
-    };
-  }, [debugOpen]);
-
-  useEffect(() => {
-    if (!debugOpen) return;
-
-    const keepPreviewOpen = () => {
-      void onPrepareCapture().catch(() => undefined);
-    };
-    keepPreviewOpen();
-    const timer = window.setInterval(keepPreviewOpen, 20_000);
-    return () => window.clearInterval(timer);
-  }, [debugOpen, onPrepareCapture]);
-
   const showReturnHint =
-    !debugOpen &&
     phase.kind === "waiting" &&
     remainingSeconds !== null &&
     remainingSeconds <= RETURN_HINT_THRESHOLD_S;
-  const afWindowStyle = cameraDiagnostics?.autofocus_settings?.window
-    ? displayedAutofocusWindow(cameraDiagnostics.autofocus_settings.window, printAspectRatio)
+  const afWindowStyle = focusWindow
+    ? displayedAutofocusWindow(focusWindow, printAspectRatio)
     : null;
+
+  const focusAtTouch = async (event: ReactMouseEvent<HTMLButtonElement>) => {
+    if (phase.kind !== "waiting" || focusBusy) return;
+    const window = autofocusWindowAtPoint(
+      event.clientX,
+      event.clientY,
+      event.currentTarget.getBoundingClientRect(),
+      printAspectRatio,
+    );
+    const settings: AutofocusSettings = {
+      mode: "auto",
+      range: "normal",
+      speed: "fast",
+      window,
+    };
+    setFocusWindow(window);
+    setFocusBusy(true);
+    setFocusMessage("Mise au point…");
+    try {
+      await api.setAutofocusSettings(settings);
+      const result = await api.triggerAutofocus();
+      setFocusLocked(result.focused);
+      setFocusMessage(result.focused ? "Mise au point verrouillée" : "Point non confirmé · touchez à nouveau");
+    } catch {
+      setFocusLocked(false);
+      setFocusMessage("Mise au point indisponible · réessayez");
+    } finally {
+      setFocusBusy(false);
+    }
+  };
+
+  const resumeContinuousFocus = async () => {
+    setFocusBusy(true);
+    try {
+      await api.setAutofocusSettings(DEFAULT_AUTOFOCUS_SETTINGS);
+      setFocusLocked(false);
+      setFocusWindow(null);
+      setFocusMessage("Autofocus continu");
+    } catch {
+      setFocusMessage("Impossible de reprendre l’autofocus continu");
+    } finally {
+      setFocusBusy(false);
+    }
+  };
 
   return (
     <main className="relative h-full overflow-hidden bg-ink">
-      <button
-        type="button"
-        aria-label={debugOpen ? "Fermer le diagnostic autofocus" : "Afficher le diagnostic autofocus"}
-        aria-pressed={debugOpen}
-        onClick={() => setDebugOpen((open) => !open)}
-        className="absolute left-6 top-5 z-30 flex h-12 items-center gap-1.5 rounded-panel border-2 border-edge/90 bg-ink/80 px-3 text-body backdrop-blur-sm aria-pressed:border-signal aria-pressed:text-signal"
-      >
-        <Crosshair className="size-5" aria-hidden="true" />
-        <span className="text-sm font-bold">AF</span>
-      </button>
-      {debugOpen && (
-        <aside
-          className="pointer-events-none absolute inset-0 z-30"
-          aria-label="Diagnostic autofocus"
-          style={{
-            color: "#ffd400",
-            WebkitTextStroke: "1px #101418",
-            paintOrder: "stroke fill",
-            textShadow: "0 2px 4px #000, 0 0 8px #000",
-          }}
-        >
-          {diagnosticsError ? (
-            <p className="absolute left-4 top-1/2 w-[26%] -translate-y-1/2 text-[clamp(1.25rem,2.2vw,1.75rem)] leading-tight font-bold">
-              Diagnostic indisponible
-            </p>
-          ) : cameraDiagnostics ? (
-            <>
-              <dl className="absolute left-4 top-1/2 w-[26%] max-w-[15rem] -translate-y-1/2 space-y-5 text-[clamp(1.375rem,2.5vw,1.875rem)] leading-tight font-bold">
-                <div>
-                  <dt className="text-[0.8em] uppercase">Autofocus</dt>
-                  <dd className="text-[1.25em]">{autofocusLabel(cameraDiagnostics.autofocus_state)}</dd>
-                </div>
-                <div>
-                  <dt className="text-[0.8em] uppercase">Netteté</dt>
-                  <dd className="text-[1.25em]">{cameraDiagnostics.focus_fom?.toFixed(0) ?? "—"}</dd>
-                </div>
-              </dl>
-              <dl className="absolute right-4 top-1/2 w-[30%] max-w-[18rem] -translate-y-1/2 space-y-5 text-right text-[clamp(1.5rem,2.8vw,2rem)] leading-tight font-bold">
-                <div>
-                  <dt className="text-[0.8em] uppercase">Distance estimée</dt>
-                  <dd className="text-[1.25em]">
-                    {cameraDiagnostics.lens_position && cameraDiagnostics.lens_position > 0
-                      ? `~${Math.round(100 / cameraDiagnostics.lens_position)} cm`
-                      : "—"}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-[0.8em] uppercase">Lentille</dt>
-                  <dd>{cameraDiagnostics.lens_position === null ? "—" : `${cameraDiagnostics.lens_position.toFixed(2)} D`}</dd>
-                  <dd className="text-[0.8em]">
-                    {cameraDiagnostics.exposure_time_us === null ? "—" : `${(cameraDiagnostics.exposure_time_us / 1000).toFixed(1)} ms`}
-                    {" · "}
-                    {cameraDiagnostics.analogue_gain?.toFixed(1) ?? "—"}× gain
-                  </dd>
-                </div>
-              </dl>
-            </>
-          ) : (
-            <p className="absolute left-4 top-1/2 w-[26%] -translate-y-1/2 text-[clamp(1.25rem,2.2vw,1.75rem)] leading-tight font-bold">
-              Lecture autofocus…
-            </p>
-          )}
-        </aside>
-      )}
-      {debugOpen && phase.kind === "waiting" && (
+      {focusLocked && phase.kind === "waiting" && (
         <button
           type="button"
-          aria-label={settingsOpen ? "Masquer les réglages autofocus" : "Régler l’autofocus"}
-          aria-expanded={settingsOpen}
-          onClick={() => setSettingsOpen((open) => !open)}
-          className="absolute left-28 top-5 z-40 flex h-12 items-center gap-2 rounded-panel border-2 border-edge bg-ink/90 px-3 text-body"
+          disabled={focusBusy}
+          onClick={() => void resumeContinuousFocus()}
+          className="absolute left-6 top-5 z-40 flex h-12 items-center rounded-panel border-2 border-edge bg-ink/90 px-3 text-base font-bold text-body disabled:opacity-50"
         >
-          <SlidersHorizontal className="size-5" aria-hidden="true" />
-          <span className="text-base font-bold">Régler</span>
+          Reprendre l’AF continu
         </button>
       )}
       <img
@@ -206,22 +163,28 @@ export function PreviewScreen({
         aria-hidden="true"
         className="absolute inset-0 h-full w-full scale-[1.08] object-cover blur-[18px] saturate-[0.78] opacity-80"
       />
-      <div
-        className="absolute inset-y-0 left-1/2 z-10 h-full -translate-x-1/2 overflow-hidden bg-black"
-        // Ce rectangle est le fichier final : `object-cover` reproduit exactement le
-        // recadrage central du pipeline, puis l'overlay en épouse les quatre bords.
+      <button
+        type="button"
+        aria-label="Aperçu caméra. Touchez le sujet pour faire la mise au point"
+        disabled={phase.kind !== "waiting" || focusBusy}
+        onClick={(event) => void focusAtTouch(event)}
+        className="absolute inset-y-0 left-1/2 z-10 block h-full -translate-x-1/2 overflow-hidden bg-black p-0 text-left disabled:cursor-default"
         style={{ aspectRatio: printAspectRatio }}
       >
         <img ref={preview} src={streamUrl} alt="" className="block h-full w-full object-cover" />
         <FramingGuide overlayUrl={overlayUrl} />
-        {debugOpen && afWindowStyle && (
+        {focusWindow && afWindowStyle && (
           <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden" aria-hidden="true">
-            <div className="absolute border-[3px] border-signal bg-signal/10" style={afWindowStyle}>
-              <span className="absolute -top-8 left-0 rounded-t bg-ink px-2 py-1 text-sm font-bold text-signal">ZONE AF</span>
+            <div className="absolute rounded-[0.7rem] border-[3px] border-signal bg-signal/10 shadow-[0_0_0_2px_#101418]" style={afWindowStyle}>
+              <span className="absolute left-1/2 top-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-signal shadow-[0_0_0_2px_#101418]" />
             </div>
           </div>
         )}
-
+        {focusMessage && phase.kind === "waiting" && (
+          <p role="status" className="pointer-events-none absolute left-1/2 top-3 z-30 -translate-x-1/2 rounded-panel bg-ink/90 px-4 py-2 text-center text-base font-semibold text-body">
+            {focusMessage}
+          </p>
+        )}
         {phase.kind === "counting" && (
           <div className="pointer-events-none absolute inset-0 grid place-content-center">
             <CountdownNumber value={phase.value} />
@@ -232,24 +195,7 @@ export function PreviewScreen({
             <CountdownNumber value={0} />
           </div>
         )}
-      </div>
-
-      {debugOpen && settingsOpen && phase.kind === "waiting" && (
-        <AutofocusDebugPanel
-          settings={cameraDiagnostics?.autofocus_settings ?? null}
-          supported={cameraDiagnostics?.autofocus_controls_supported ?? false}
-          onApply={async (settings) => {
-            const applied = await api.setAutofocusSettings(settings);
-            setCameraDiagnostics((current) => current ? { ...current, autofocus_settings: applied } : current);
-          }}
-          onTrigger={async () => {
-            const result = await api.triggerAutofocus();
-            const fresh = await api.cameraDiagnostics();
-            setCameraDiagnostics(fresh);
-            return result.focused;
-          }}
-        />
-      )}
+      </button>
 
       {phase.kind !== "waiting" && (
         <button
@@ -276,7 +222,6 @@ export function PreviewScreen({
               setCaptureError(false);
               try {
                 await onPrepareCapture();
-                setSettingsOpen(false);
                 setPhase({ kind: "counting", value: defaultShotTimerSeconds });
               } catch {
                 setCaptureError(true);
@@ -303,7 +248,7 @@ export function PreviewScreen({
       )}
 
       {showReturnHint && (
-            <p className="absolute top-3 left-1/2 z-20 -translate-x-1/2 rounded-panel bg-ink px-5 py-2 text-base font-medium text-body">
+            <p className="pointer-events-none absolute top-3 left-1/2 z-20 -translate-x-1/2 rounded-panel bg-ink px-5 py-2 text-base font-medium text-body">
               Retour à l'accueil dans {Math.ceil(remainingSeconds)} s
             </p>
       )}
@@ -316,10 +261,6 @@ export function PreviewScreen({
 
     </main>
   );
-}
-
-function autofocusLabel(state: string | null) {
-  return ({ idle: "au repos", scanning: "recherche…", focused: "net", failed: "échec" } as Record<string, string>)[state ?? ""] ?? state ?? "—";
 }
 
 function displayedAutofocusWindow(
@@ -339,6 +280,29 @@ function displayedAutofocusWindow(
   };
 }
 
+function autofocusWindowAtPoint(
+  clientX: number,
+  clientY: number,
+  bounds: DOMRect,
+  frameAspectRatio: number,
+): AutofocusSettings["window"] {
+  const streamAspectRatio = 16 / 9;
+  const visibleWidth = Math.min(1, frameAspectRatio / streamAspectRatio);
+  const visibleHeight = Math.min(1, streamAspectRatio / frameAspectRatio);
+  const cropX = (1 - visibleWidth) / 2;
+  const cropY = (1 - visibleHeight) / 2;
+  const windowWidth = visibleWidth * 0.2;
+  const windowHeight = visibleHeight * 0.2;
+  const centerX = cropX + clamp((clientX - bounds.left) / bounds.width, 0, 1) * visibleWidth;
+  const centerY = cropY + clamp((clientY - bounds.top) / bounds.height, 0, 1) * visibleHeight;
+  return [
+    clamp(centerX - windowWidth / 2, 0, 1 - windowWidth),
+    clamp(centerY - windowHeight / 2, 0, 1 - windowHeight),
+    windowWidth,
+    windowHeight,
+  ];
+}
+
 function CountdownNumber({ value }: { value: number }) {
   return (
     <span className="relative grid size-[1.08em] place-items-center overflow-hidden rounded-[0.12em] bg-signal text-[30vmin] leading-none font-black text-signal-ink">
@@ -350,4 +314,8 @@ function CountdownNumber({ value }: { value: number }) {
       <span className="sr-only" aria-live="polite">{value}</span>
     </span>
   );
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
 }
