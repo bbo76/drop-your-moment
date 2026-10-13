@@ -156,18 +156,6 @@ export function PreviewScreen({
 
   return (
     <main className="relative h-full overflow-hidden bg-ink">
-      {focusLocked && phase.kind === "waiting" && (
-        <button
-          type="button"
-          aria-label="Reprendre l’autofocus continu"
-          title="Reprendre l’autofocus continu"
-          disabled={focusBusy}
-          onClick={() => void resumeContinuousFocus()}
-          className="absolute left-5 top-4 z-40 grid size-10 place-items-center rounded-full border border-edge/60 bg-ink/60 text-body/80 backdrop-blur-sm transition-colors active:bg-ink/90 disabled:opacity-50"
-        >
-          <Crosshair aria-hidden="true" className="size-5" />
-        </button>
-      )}
       <img
         ref={blurredPreview}
         src={streamUrl}
@@ -175,19 +163,42 @@ export function PreviewScreen({
         aria-hidden="true"
         className="absolute inset-0 h-full w-full scale-[1.08] object-cover blur-[18px] saturate-[0.78] opacity-80"
       />
-      <button
-        type="button"
-        aria-label="Aperçu caméra. Touchez le sujet pour faire la mise au point"
-        disabled={phase.kind !== "waiting" || focusBusy}
-        onClick={(event) => void focusAtTouch(event)}
-        className="absolute inset-y-0 left-1/2 z-10 block h-full -translate-x-1/2 overflow-hidden bg-black p-0 text-left disabled:cursor-default"
+      <div
+        className="absolute inset-y-0 left-1/2 z-10 h-full -translate-x-1/2 overflow-hidden bg-black"
         style={{ aspectRatio: printAspectRatio }}
       >
         <img ref={preview} src={streamUrl} alt="" className="block h-full w-full object-cover" />
         <FramingGuide overlayUrl={overlayUrl} />
+        <button
+          type="button"
+          aria-label="Aperçu caméra. Touchez le sujet pour faire la mise au point"
+          disabled={phase.kind !== "waiting" || focusBusy}
+          onClick={(event) => void focusAtTouch(event)}
+          className="absolute inset-0 z-10 cursor-pointer bg-transparent p-0 disabled:cursor-default"
+        />
         {focusWindow && afWindowStyle && (
-          <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden" aria-hidden="true">
-            <div className={`absolute rounded-[0.7rem] border-[3px] border-signal bg-signal/10 shadow-[0_0_0_2px_#101418] transition-opacity duration-700 ${focusDimmed ? "opacity-[0.14]" : "opacity-100"}`} style={afWindowStyle} />
+          <div className="pointer-events-none absolute inset-0 z-20 overflow-visible">
+            <div
+              aria-hidden="true"
+              className={`absolute rounded-[0.7rem] border-[3px] border-signal bg-signal/10 shadow-[0_0_0_2px_#101418] transition-opacity duration-700 ${focusDimmed ? "opacity-[0.14]" : "opacity-100"}`}
+              style={afWindowStyle}
+            />
+            {focusLocked && phase.kind === "waiting" && (
+              <button
+                type="button"
+                aria-label="Reprendre l’autofocus continu"
+                title="Reprendre l’autofocus continu"
+                disabled={focusBusy}
+                onClick={() => void resumeContinuousFocus()}
+                className="pointer-events-auto absolute z-30 grid size-9 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-signal/80 bg-ink/90 text-signal shadow-[0_1px_5px_#000] backdrop-blur-sm active:bg-ink disabled:opacity-50"
+                style={{
+                  left: `calc(${afWindowStyle.left} + ${afWindowStyle.width})`,
+                  top: afWindowStyle.top,
+                }}
+              >
+                <Crosshair aria-hidden="true" className="size-5" />
+              </button>
+            )}
           </div>
         )}
         {focusMessage && phase.kind === "waiting" && (
@@ -205,7 +216,7 @@ export function PreviewScreen({
             <CountdownNumber value={0} />
           </div>
         )}
-      </button>
+      </div>
 
       {phase.kind !== "waiting" && (
         <button
