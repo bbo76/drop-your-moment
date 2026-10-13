@@ -12,6 +12,7 @@ from dropyourmoment.api.kiosk_router import MJPEG_BOUNDARY, _mjpeg_frames
 from dropyourmoment.core.event_config import OVERLAY_FILENAME
 from dropyourmoment.core.print_format import POSTCARD_LANDSCAPE
 from dropyourmoment.core.session import SessionState
+from dropyourmoment.hardware.camera.base import AutofocusSettings
 from dropyourmoment.hardware.camera.mock_driver import MockCameraDriver
 from dropyourmoment.runtime import Runtime
 
@@ -79,6 +80,32 @@ def test_diagnostic_autofocus_signale_quand_les_reglages_ne_sont_pas_supportes(
     assert diagnostics["autofocus_controls_supported"] is False
     assert diagnostics["autofocus_settings"] is None
     assert kiosk.post("/api/camera/autofocus/trigger").status_code == 501
+
+
+def test_diagnostic_autofocus_serialize_les_reglages_du_pilote(
+    kiosk: TestClient, runtime: Runtime, monkeypatch
+) -> None:
+    monkeypatch.setattr(
+        runtime.camera,
+        "get_autofocus_settings",
+        lambda: AutofocusSettings(
+            mode="auto",
+            range="normal",
+            speed="fast",
+            window=(0.2, 0.3, 0.4, 0.5),
+        ),
+    )
+
+    response = kiosk.get("/api/camera/diagnostics")
+
+    assert response.status_code == 200
+    assert response.json()["autofocus_controls_supported"] is True
+    assert response.json()["autofocus_settings"] == {
+        "mode": "auto",
+        "range": "normal",
+        "speed": "fast",
+        "window": [0.2, 0.3, 0.4, 0.5],
+    }
 
 
 def test_zone_autofocus_hors_cadre_refusee(kiosk: TestClient) -> None:
