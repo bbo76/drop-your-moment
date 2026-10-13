@@ -81,5 +81,5 @@ def test_la_qualite_mjpeg_est_passee_a_start_recording(monkeypatch) -> None:
         "AfRange": "normal",
         "AfSpeed": "normal",
         "AfMetering": "windows",
-        "AfWindows": [(768, 432, 3072, 1728)],
+        "AfWindows": [(1536, 864, 1536, 864)],
     }
