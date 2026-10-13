@@ -49,6 +49,19 @@ def test_la_qualite_mjpeg_est_passee_a_start_recording(monkeypatch) -> None:
     class FakeControls:
         class AfModeEnum:
             Continuous = "continuous"
+            Auto = "auto"
+
+        class AfRangeEnum:
+            Normal = "normal"
+            Macro = "macro"
+            Full = "full"
+
+        class AfSpeedEnum:
+            Normal = "normal"
+            Fast = "fast"
+
+        class AfMeteringEnum:
+            Windows = "windows"
 
     libcamera.controls = FakeControls  # type: ignore[attr-defined]
 
@@ -63,3 +76,10 @@ def test_la_qualite_mjpeg_est_passee_a_start_recording(monkeypatch) -> None:
 
     assert isinstance(calls["encoder"], FakeMJPEGEncoder)
     assert calls["options"] == {"quality": FakeQuality.HIGH, "name": "lores"}
+    assert calls["controls"] == {
+        "AfMode": "continuous",
+        "AfRange": "normal",
+        "AfSpeed": "normal",
+        "AfMetering": "windows",
+        "AfWindows": [(768, 432, 3072, 1728)],
+    }
