@@ -99,7 +99,19 @@ export function PreviewScreen({
     };
   }, [debugOpen]);
 
+  useEffect(() => {
+    if (!debugOpen) return;
+
+    const keepPreviewOpen = () => {
+      void onPrepareCapture().catch(() => undefined);
+    };
+    keepPreviewOpen();
+    const timer = window.setInterval(keepPreviewOpen, 20_000);
+    return () => window.clearInterval(timer);
+  }, [debugOpen, onPrepareCapture]);
+
   const showReturnHint =
+    !debugOpen &&
     phase.kind === "waiting" &&
     remainingSeconds !== null &&
     remainingSeconds <= RETURN_HINT_THRESHOLD_S;
@@ -133,7 +145,7 @@ export function PreviewScreen({
             </p>
           ) : cameraDiagnostics ? (
             <>
-              <dl className="absolute left-4 top-1/2 w-[26%] max-w-[15rem] -translate-y-1/2 space-y-5 text-[clamp(1.25rem,2.2vw,1.75rem)] leading-tight font-bold">
+              <dl className="absolute left-4 top-1/2 w-[26%] max-w-[15rem] -translate-y-1/2 space-y-5 text-[clamp(1.375rem,2.5vw,1.875rem)] leading-tight font-bold">
                 <div>
                   <dt className="text-[0.8em] uppercase">Autofocus</dt>
                   <dd className="text-[1.25em]">{autofocusLabel(cameraDiagnostics.autofocus_state)}</dd>
@@ -143,7 +155,7 @@ export function PreviewScreen({
                   <dd className="text-[1.25em]">{cameraDiagnostics.focus_fom?.toFixed(0) ?? "—"}</dd>
                 </div>
               </dl>
-              <dl className="absolute right-4 top-1/2 w-[26%] max-w-[15rem] -translate-y-1/2 space-y-5 text-right text-[clamp(1.25rem,2.2vw,1.75rem)] leading-tight font-bold">
+              <dl className="absolute right-4 top-1/2 w-[30%] max-w-[18rem] -translate-y-1/2 space-y-5 text-right text-[clamp(1.5rem,2.8vw,2rem)] leading-tight font-bold">
                 <div>
                   <dt className="text-[0.8em] uppercase">Distance estimée</dt>
                   <dd className="text-[1.25em]">
