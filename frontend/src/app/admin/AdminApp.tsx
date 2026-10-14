@@ -1,11 +1,10 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { CalendarDays, Camera, CircleGauge, HeartPulse, LockKeyhole, Radio, ScrollText } from "lucide-react";
+import { CalendarDays, Camera, CircleGauge, HeartPulse, Radio, ScrollText } from "lucide-react";
 
 import { DashboardOverview } from "@/features/admin/DashboardOverview";
 import { EventSection } from "@/features/admin/EventSection";
 import { GallerySection } from "@/features/admin/GallerySection";
 import { HealthSection } from "@/features/admin/HealthSection";
-import { SecuritySection } from "@/features/admin/SecuritySection";
 import { JournalSection } from "@/features/admin/JournalSection";
 import { DayOfView } from "@/features/admin/DayOfView";
 import {
@@ -137,15 +136,14 @@ function AdminPortal() {
         {view === "gallery" && <GallerySection />}
         {view === "diagnostic" && <HealthSection />}
         {view === "journal" && <JournalSection />}
-        {view === "security" && <SecuritySection />}
         </main>
       </SidebarInset>
     </SidebarProvider>
   );
 }
 
-export type AdminView = "overview" | "event" | "gallery" | "diagnostic" | "journal" | "security";
-type IconName = "overview" | "event" | "gallery" | "diagnostic" | "journal" | "security";
+export type AdminView = "overview" | "event" | "gallery" | "diagnostic" | "journal";
+type IconName = "overview" | "event" | "gallery" | "diagnostic" | "journal";
 
 const NAV_ITEMS: Array<{ id: AdminView; label: string; icon: IconName }> = [
   { id: "overview", label: "Vue d’ensemble", icon: "overview" },
@@ -153,7 +151,6 @@ const NAV_ITEMS: Array<{ id: AdminView; label: string; icon: IconName }> = [
   { id: "gallery", label: "Galerie", icon: "gallery" },
   { id: "diagnostic", label: "Diagnostic", icon: "diagnostic" },
   { id: "journal", label: "Journaux", icon: "journal" },
-  { id: "security", label: "Sécurité", icon: "security" },
 ];
 
 const viewFromHash = (): AdminView => {
@@ -162,6 +159,6 @@ const viewFromHash = (): AdminView => {
 };
 
 const AdminIcon = ({ name }: { name: IconName }) => {
-  const Icon = { overview: CircleGauge, event: CalendarDays, gallery: Camera, diagnostic: HeartPulse, journal: ScrollText, security: LockKeyhole }[name];
+  const Icon = { overview: CircleGauge, event: CalendarDays, gallery: Camera, diagnostic: HeartPulse, journal: ScrollText }[name];
   return <Icon />;
 };

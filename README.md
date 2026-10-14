@@ -87,15 +87,15 @@ le portail PC conserve, lui, un sélecteur de couleur totalement libre. La maint
 referme automatiquement après cinq minutes.
 
 `DYM_MAINTENANCE_PIN` fournit le PIN initial (valeur de développement : `2580`). Il peut
-ensuite être remplacé depuis la section Sécurité du portail complet ; seule son empreinte
+ensuite être remplacé depuis l’onglet Sécurité des réglages sur la borne ; seule son empreinte
 est conservée sur disque. Il protège des manipulations par les invités ; la maintenance
 reste en plus limitée à la socket locale du kiosque et n'est jamais exposée sur le LAN.
 
 ## Portail d'administration
 
-Sur `0.0.0.0:8001`, depuis un appareil du LAN. Lorsque le hotspot est actif, le portail
-exige le code de session à six chiffres affiché dans la maintenance locale. Le code et les
-sessions survivent à un reboot ; couper le hotspot les invalide immédiatement.
+Sur `0.0.0.0:8001`, depuis un appareil du LAN. Le portail exige toujours le code opérateur
+à six chiffres affiché dans la maintenance locale, que la borne soit sur son hotspot ou un
+Wi-Fi client. Le code survit à un reboot ; couper le hotspot invalide les sessions ouvertes.
 
 Le produit pilote une seule borne et ne prévoit pas de gestion multi-borne. Le portail est
 utilisable avant comme pendant l'événement, avec un thème administratif neutre indépendant

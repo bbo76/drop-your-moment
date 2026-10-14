@@ -39,10 +39,27 @@ def test_lecture_de_la_configuration_active(admin: TestClient) -> None:
 def test_le_portail_exige_le_code_quand_l_acces_operateur_est_actif(
     admin: TestClient, runtime: Runtime
 ) -> None:
-    code = runtime.operator_access.activate()
+    code = runtime.operator_access.ensure_active()
+    admin.cookies.clear()
 
     assert admin.get("/admin/event-config").status_code == 401
     assert admin.post("/admin/auth/login", json={"code": "000000"}).status_code == 401
+    assert admin.post("/admin/auth/login", json={"code": code}).status_code == 204
+    assert admin.get("/admin/event-config").status_code == 200
+
+
+def test_le_portail_est_protege_meme_sans_activation_du_hotspot(
+    admin: TestClient, runtime: Runtime
+) -> None:
+    code = runtime.operator_access.ensure_active()
+    runtime.operator_access.deactivate()
+    admin.cookies.clear()
+
+    assert admin.get("/admin/auth/status").json() == {
+        "required": True,
+        "authenticated": False,
+    }
+    assert admin.get("/admin/event-config").status_code == 401
     assert admin.post("/admin/auth/login", json={"code": code}).status_code == 204
     assert admin.get("/admin/event-config").status_code == 200
 
@@ -382,16 +399,21 @@ def test_la_configuration_survit_a_un_redemarrage(admin: TestClient, runtime: Ru
     assert runtime.event_store.load().config.event_name == "Gala"
 
 
-def test_le_portail_remplace_le_pin_sans_l_exposer(admin: TestClient, kiosk: TestClient) -> None:
-    assert admin.put("/admin/maintenance-pin", json={"pin": "7391"}).status_code == 204
+def test_le_kiosque_remplace_le_pin_sans_l_exposer(admin: TestClient, kiosk: TestClient) -> None:
+    assert kiosk.post("/api/maintenance/unlock", json={"pin": "2580"}).status_code == 204
+    assert kiosk.put("/api/maintenance/pin", json={"pin": "7391"}).status_code == 204
+    assert kiosk.get("/api/maintenance/status").status_code == 200
+    assert kiosk.post("/api/maintenance/lock").status_code == 204
 
     assert kiosk.post("/api/maintenance/unlock", json={"pin": "2580"}).status_code == 401
     assert kiosk.post("/api/maintenance/unlock", json={"pin": "7391"}).status_code == 204
+    assert admin.put("/admin/maintenance-pin", json={"pin": "1234"}).status_code == 404
 
 
-def test_le_portail_refuse_un_pin_non_conforme(admin: TestClient) -> None:
+def test_le_kiosque_refuse_un_pin_non_conforme(kiosk: TestClient) -> None:
+    assert kiosk.post("/api/maintenance/unlock", json={"pin": "2580"}).status_code == 204
     for pin in ("123", "12345", "abcd"):
-        assert admin.put("/admin/maintenance-pin", json={"pin": pin}).status_code == 422
+        assert kiosk.put("/api/maintenance/pin", json={"pin": pin}).status_code == 422
 
 
 # --- Téléversement de l'overlay -------------------------------------------------------

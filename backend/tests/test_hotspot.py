@@ -113,12 +113,15 @@ def test_desactivation_coupe_le_reseau_et_invalide_les_acces(tmp_path: Path) -> 
     access = OperatorAccess(tmp_path)
     hotspot, network = configured_hotspot(tmp_path, access)
     hotspot.activate()
+    code = access.code
+    token = access.authenticate(code, "client") if code else None
 
     hotspot.deactivate()
 
     assert not hotspot.desired_active
     assert not hotspot.active()
-    assert access.code is None
+    assert access.code == code
+    assert not access.authorize(token)
     assert network.current_connection == "wifi-maison"
     assert ["/usr/bin/nmcli", "connection", "up", "id", "wifi-maison"] in network.commands
 
@@ -139,6 +142,7 @@ def test_connexion_client_coupe_le_hotspot_et_ne_persiste_pas_le_secret(tmp_path
     access = OperatorAccess(tmp_path)
     hotspot, network = configured_hotspot(tmp_path, access)
     hotspot.activate()
+    code = access.code
 
     hotspot.connect_wifi("Atelier", "secret-client")
 
@@ -148,7 +152,7 @@ def test_connexion_client_coupe_le_hotspot_et_ne_persiste_pas_le_secret(tmp_path
         "ssid": "Atelier",
         "connectivity": "full",
     }
-    assert access.code is None
+    assert access.code == code
     assert "secret-client" not in hotspot.state_path.read_text()
 
 
@@ -268,4 +272,4 @@ def test_arret_volontaire_desactive_le_hotspot_avant_poweroff(
     down_index = next(i for i, command in enumerate(network.commands) if "down" in command)
     assert down_index >= 0
     assert calls == ["poweroff"]
-    assert runtime.operator_access.code is None
+    assert runtime.operator_access.code is not None

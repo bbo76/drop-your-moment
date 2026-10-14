@@ -1,4 +1,4 @@
-"""Accès au portail par code de session, persistant tant que le hotspot reste actif."""
+"""Accès au portail opérateur par code et sessions persistantes."""
 
 from __future__ import annotations
 
@@ -37,6 +37,10 @@ class OperatorAccess:
     def active(self) -> bool:
         return self._code is not None
 
+    def ensure_active(self) -> str:
+        """Garantit qu'un code existe pour protéger le portail même hors hotspot."""
+        return self._code if self._code is not None else self.activate()
+
     @property
     def code(self) -> str | None:
         return self._code
@@ -74,9 +78,10 @@ class OperatorAccess:
         return not self.active or (token is not None and self._token_hash(token) in self._sessions)
 
     def deactivate(self) -> None:
-        self._code = None
-        self._salt = b""
-        self._digest = b""
+        # Le code reste valable hors hotspot ; ce sont seulement les sessions LAN
+        # qui doivent être révoquées lorsque ce réseau temporaire est coupé.
+        if self._code is None:
+            self.ensure_active()
         self._sessions.clear()
         self._attempts.clear()
         self._save()

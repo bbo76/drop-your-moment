@@ -70,6 +70,8 @@ def kiosk(runtime: Runtime) -> Iterator[TestClient]:
 @pytest.fixture
 def admin(runtime: Runtime) -> Iterator[TestClient]:
     with TestClient(build_admin_app(runtime)) as client:
+        code = runtime.operator_access.ensure_active()
+        assert client.post("/admin/auth/login", json={"code": code}).status_code == 204
         yield client
 
 

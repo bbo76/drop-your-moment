@@ -92,8 +92,8 @@ la pression d'un événement. Quatre tuiles séparent le diagnostic caméra / st
 RAM, l'impression (connexion CP1500, bac de 18 feuilles et encre), la galerie complète avec
 retirage et suppression, et les réglages de la borne. La réserve totale de papier, l'overlay
 et le format restent sur le portail complet. Le
-PIN initial vient de l'environnement puis peut être remplacé, sans être exposé, depuis la
-section Sécurité du portail complet.
+PIN initial vient de l'environnement puis peut être remplacé, sans être exposé, depuis
+l'onglet Sécurité des réglages sur la borne.
 
 Cette maintenance n'est montée que sur la socket locale du kiosque. Sa session expire au
 bout de cinq minutes et ramène au parcours invité. Le langage visuel du parcours photo a
@@ -163,11 +163,12 @@ Waveshare 1024×600, le tactile et le démarrage autonome après extinction comp
 Le Raspberry Pi fournit un hotspot local `DYM-PhotoBooth`, sans routage Internet ni mode
 client Wi-Fi simultané. La maintenance locale permet de l'activer et de le désactiver,
 affiche le secret Wi-Fi stable de l'installation, un QR de connexion, l'URL et son QR,
-ainsi qu'un code administrateur aléatoire à six chiffres.
+ainsi qu'un code administrateur aléatoire à six chiffres. Le portail LAN est protégé par ce
+code aussi bien en mode hotspot qu'en connexion Wi-Fi client.
 
 L'état actif, le code et les sessions administratives survivent aux redémarrages et aux
 coupures imprévues. Un arrêt volontaire depuis la maintenance désactive d'abord le hotspot
-et invalide le code et les sessions. Les clients Wi-Fi sont isolés entre eux ; environ cinq
+et invalide les sessions administratives. Les clients Wi-Fi sont isolés entre eux ; environ cinq
 appareils sont supportés sans quota DHCP strict. Le kiosque `:8000` reste inaccessible et
 seul le portail `:8001` est ouvert sur ce réseau.
 

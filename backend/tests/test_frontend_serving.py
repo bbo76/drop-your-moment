@@ -54,6 +54,19 @@ def test_le_kiosque_sert_son_propre_document(built_runtime: Runtime) -> None:
 def test_l_admin_sert_son_propre_document(built_runtime: Runtime) -> None:
     with TestClient(build_admin_app(built_runtime)) as client:
         response = client.get("/")
+        protected = client.get("/admin/system/health")
+        auth = client.get("/admin/auth/status")
+
+    assert response.status_code == 200
+    assert "administration" in response.text, "l'admin ne doit pas servir le kiosque"
+    assert protected.status_code == 401
+    assert auth.json() == {"required": True, "authenticated": False}
+    code = built_runtime.operator_access.code
+    assert code is not None
+
+    with TestClient(build_admin_app(built_runtime)) as client:
+        assert client.post("/admin/auth/login", json={"code": code}).status_code == 204
+        response = client.get("/")
 
     assert response.status_code == 200
     assert "administration" in response.text, "l'admin ne doit pas servir le kiosque"
@@ -62,6 +75,8 @@ def test_l_admin_sert_son_propre_document(built_runtime: Runtime) -> None:
 
 def test_l_ancien_point_d_entree_mobile_n_existe_plus(built_runtime: Runtime) -> None:
     with TestClient(build_admin_app(built_runtime)) as client:
+        code = built_runtime.operator_access.ensure_active()
+        client.post("/admin/auth/login", json={"code": code})
         response = client.get("/mobile.html")
 
     assert response.status_code == 404
@@ -71,6 +86,9 @@ def test_les_assets_partages_sont_servis(built_runtime: Runtime) -> None:
     """Les deux documents référencent le même répertoire d'assets."""
     for build_app in (build_kiosk_app, build_admin_app):
         with TestClient(build_app(built_runtime)) as client:
+            if build_app is build_admin_app:
+                code = built_runtime.operator_access.ensure_active()
+                client.post("/admin/auth/login", json={"code": code})
             response = client.get("/assets/app.css")
 
         assert response.status_code == 200
@@ -83,6 +101,8 @@ def test_l_api_reste_prioritaire_sur_le_frontend(built_runtime: Runtime) -> None
         assert client.get("/api/status").status_code == 200
 
     with TestClient(build_admin_app(built_runtime)) as client:
+        code = built_runtime.operator_access.ensure_active()
+        client.post("/admin/auth/login", json={"code": code})
         assert client.get("/admin/system/health").status_code == 200
 
 

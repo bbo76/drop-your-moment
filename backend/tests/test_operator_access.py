@@ -19,14 +19,16 @@ def test_code_et_session_survivent_au_redemarrage(tmp_path: Path) -> None:
     assert restored.authorize(token)
 
 
-def test_desactivation_invalide_code_et_sessions(tmp_path: Path) -> None:
+def test_desactivation_invalide_les_sessions_sans_effacer_le_code(tmp_path: Path) -> None:
     access = OperatorAccess(tmp_path)
-    token = access.authenticate(access.activate(), "client")
+    code = access.activate()
+    token = access.authenticate(code, "client")
 
     access.deactivate()
 
-    assert access.code is None
-    assert access.authorize(token)  # portail non protégé lorsque le hotspot est coupé
+    assert access.code == code
+    assert not access.authorize(token)
+    assert access.authenticate(code, "client")
 
 
 def test_les_tentatives_sont_limitees(tmp_path: Path) -> None:

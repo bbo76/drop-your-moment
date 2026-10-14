@@ -1,4 +1,4 @@
-"""Authentification du portail opérateur exposé par le hotspot."""
+"""Authentification du portail opérateur exposé sur le réseau local."""
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field
@@ -25,7 +25,7 @@ def auth_status(
     token: str | None = Cookie(default=None, alias=COOKIE_NAME),
 ) -> AuthStatus:
     return AuthStatus(
-        required=runtime.operator_access.active,
+        required=True,
         authenticated=runtime.operator_access.authorize(token),
     )
 
