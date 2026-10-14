@@ -131,9 +131,9 @@ export function App() {
             <PrintNotice system={system} />
             {debugEnabled && <DebugFailureBar value={debugFailure} onChange={setDebugFailure} />}
             <div className="grid min-h-56 max-w-[60vw] place-items-center">
-              <Title font={event.launch_font}>{event.launch_message}</Title>
+              <Title font={event.launch_font} large>{event.launch_message}</Title>
             </div>
-            <PrimaryButton onClick={start} disabled={!system.camera_ok}>
+            <PrimaryButton onClick={start} disabled={!system.camera_ok} large>
               Prendre une photo
             </PrimaryButton>
             {!system.camera_ok && (
