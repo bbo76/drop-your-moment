@@ -123,26 +123,26 @@ export function App() {
         );
       }
       return (
-        <CenteredScreen>
-          {maintenanceButton}
-          <PrintNotice system={system} />
-          {debugEnabled && <DebugFailureBar value={debugFailure} onChange={setDebugFailure} />}
-          <div className="relative grid min-h-56 place-items-center px-16">
-            <svg className="launch-arabesque pointer-events-none absolute inset-0 h-full w-full text-body" viewBox="0 0 800 260" preserveAspectRatio="none" fill="none" aria-hidden="true">
-              <path d="M188 48 C105 10 48 40 62 101 C72 143 132 141 136 103 C139 77 106 68 94 87 C77 114 108 165 175 186 C208 196 236 195 257 188" />
-              <path d="M612 48 C695 10 752 40 738 101 C728 143 668 141 664 103 C661 77 694 68 706 87 C723 114 692 165 625 186 C592 196 564 195 543 188" />
-            </svg>
-            <Title font={event.launch_font}>{event.launch_message}</Title>
-          </div>
-          <PrimaryButton onClick={start} disabled={!system.camera_ok}>
-            Prendre une photo
-          </PrimaryButton>
-          {!system.camera_ok && (
-            <p className="mt-4 rounded-panel bg-warn-bg px-4 py-3 text-sm text-warn">
-              Caméra non détectée — prévenez l'organisateur.
-            </p>
-          )}
-        </CenteredScreen>
+        <div className="relative h-full overflow-hidden">
+          <LaunchArabesque className="top-0 left-0" />
+          <LaunchArabesque className="bottom-0 right-0 rotate-180" />
+          <CenteredScreen>
+            {maintenanceButton}
+            <PrintNotice system={system} />
+            {debugEnabled && <DebugFailureBar value={debugFailure} onChange={setDebugFailure} />}
+            <div className="grid min-h-56 max-w-[60vw] place-items-center">
+              <Title font={event.launch_font}>{event.launch_message}</Title>
+            </div>
+            <PrimaryButton onClick={start} disabled={!system.camera_ok}>
+              Prendre une photo
+            </PrimaryButton>
+            {!system.camera_ok && (
+              <p className="mt-4 rounded-panel bg-warn-bg px-4 py-3 text-sm text-warn">
+                Caméra non détectée — prévenez l'organisateur.
+              </p>
+            )}
+          </CenteredScreen>
+        </div>
       );
 
     case "preview":
@@ -233,5 +233,15 @@ function PrintNotice({ system }: { system: NonNullable<ReturnType<typeof mockSys
       <Printer className="size-5" aria-hidden="true" />
       {message}
     </div>
+  );
+}
+
+function LaunchArabesque({ className }: { className: string }) {
+  return (
+    <svg className={`launch-arabesque pointer-events-none absolute size-52 text-body max-[700px]:hidden ${className}`} viewBox="40 0 230 210" fill="none" aria-hidden="true">
+      <path d="M188 48 C105 10 48 40 62 101 C72 143 132 141 136 103 C139 77 106 68 94 87 C77 114 108 165 175 186 C208 196 236 195 257 188" />
+      <path d="M211 31 C132 1 65 30 69 83 C72 128 120 151 151 119 C176 94 150 62 124 73 C88 88 112 150 162 171 C204 190 237 178 253 155" />
+      <path d="M171 36 C99 13 46 54 66 112 C84 162 143 150 145 111 C147 78 112 65 96 91 C76 124 122 178 181 183 C224 187 249 165 254 145" />
+    </svg>
   );
 }
