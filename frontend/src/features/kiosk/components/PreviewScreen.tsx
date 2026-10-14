@@ -190,7 +190,7 @@ export function PreviewScreen({
                 title="Reprendre l’autofocus continu"
                 disabled={focusBusy}
                 onClick={() => void resumeContinuousFocus()}
-                className="pointer-events-auto absolute z-30 grid size-9 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-signal/80 bg-ink/90 text-signal backdrop-blur-sm active:bg-ink disabled:opacity-50"
+                className={`pointer-events-auto absolute z-30 grid size-9 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-signal/80 bg-ink/90 text-signal backdrop-blur-sm transition-opacity duration-700 ${focusDimmed ? "opacity-[0.14]" : "opacity-100"} active:bg-ink disabled:opacity-50`}
                 style={{
                   left: `calc(${afWindowStyle.left} + ${afWindowStyle.width})`,
                   top: afWindowStyle.top,
