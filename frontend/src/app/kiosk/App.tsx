@@ -238,10 +238,24 @@ function PrintNotice({ system }: { system: NonNullable<ReturnType<typeof mockSys
 
 function LaunchArabesque({ className }: { className: string }) {
   return (
-    <svg className={`launch-arabesque pointer-events-none absolute size-52 text-body max-[700px]:hidden ${className}`} viewBox="40 0 230 210" fill="none" aria-hidden="true">
-      <path d="M188 48 C105 10 48 40 62 101 C72 143 132 141 136 103 C139 77 106 68 94 87 C77 114 108 165 175 186 C208 196 236 195 257 188" />
-      <path d="M211 31 C132 1 65 30 69 83 C72 128 120 151 151 119 C176 94 150 62 124 73 C88 88 112 150 162 171 C204 190 237 178 253 155" />
-      <path d="M171 36 C99 13 46 54 66 112 C84 162 143 150 145 111 C147 78 112 65 96 91 C76 124 122 178 181 183 C224 187 249 165 254 145" />
+    <svg className={`launch-arabesque pointer-events-none absolute size-56 text-body max-[700px]:hidden ${className}`} viewBox="0 0 240 240" fill="none" aria-hidden="true">
+      <path className="arabesque-stem" d="M14 233 C46 206 73 177 84 145 C96 111 99 80 83 52 C71 30 51 25 38 39 C22 56 38 83 58 77 C72 73 74 57 62 52 C53 48 46 55 49 64" />
+      <path className="arabesque-stem" d="M80 160 C55 143 37 118 39 93 C42 66 70 64 86 79 C105 97 98 122 79 126 C62 129 53 112 63 101 C71 93 83 99 81 109" />
+      <path className="arabesque-stem" d="M84 149 C114 137 135 116 134 87 C133 66 111 52 105 33 C99 17 110 8 124 13 C140 19 142 36 131 43 C122 50 113 45 114 36" />
+      <path className="arabesque-stem" d="M84 153 C116 162 153 151 165 126 C178 99 161 79 143 83 C126 87 121 108 134 116 C146 123 157 110 151 100" />
+      <path className="arabesque-fine" d="M38 204 C57 171 57 150 43 136 C25 119 13 138 20 152 C25 161 37 157 38 149 M105 134 C131 117 155 115 178 118 C201 120 212 104 202 87 C195 76 182 78 180 88" />
+      <path className="arabesque-fine" d="M35 85 C13 80 8 59 19 46 M52 82 C37 61 46 34 64 23 M120 133 C139 133 157 140 171 151" />
+      <path className="arabesque-leaf" d="M30 99 C21 94 17 86 19 78 C27 80 32 87 30 99 Z M36 115 C25 113 19 107 17 100 C27 101 34 106 36 115 Z M48 132 C37 132 30 126 27 119 C39 119 46 123 48 132 Z M104 49 C95 41 94 31 98 24 C106 30 109 39 104 49 Z M121 59 C119 48 123 40 131 36 C132 46 129 54 121 59 Z" />
+      <path className="arabesque-leaf" d="M158 133 C166 123 175 120 183 122 C178 131 170 136 158 133 Z M173 147 C183 141 193 142 199 147 C190 153 181 153 173 147 Z M42 172 C30 169 25 161 25 153 C35 156 41 162 42 172 Z" />
+      <g className="arabesque-leaf-variant arabesque-leaf-variant--one">
+        <path d="M28 67 C17 63 13 56 14 48 C24 51 29 58 28 67 Z M160 156 C168 154 173 157 176 163 C168 165 163 162 160 156 Z" />
+      </g>
+      <g className="arabesque-leaf-variant arabesque-leaf-variant--two">
+        <path d="M28 68 C17 67 10 62 8 54 C19 54 26 58 28 68 Z M158 155 C169 148 177 149 183 154 C175 161 167 161 158 155 Z" />
+      </g>
+      <g className="arabesque-leaf-variant arabesque-leaf-variant--three">
+        <path d="M29 69 C19 61 19 53 23 46 C30 52 33 60 29 69 Z M157 154 C165 150 172 152 176 158 C168 162 162 160 157 154 Z" />
+      </g>
     </svg>
   );
 }
