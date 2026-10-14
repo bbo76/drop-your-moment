@@ -90,10 +90,8 @@ class Settings(BaseSettings):
     @field_validator("maintenance_pin")
     @classmethod
     def _maintenance_pin_is_numeric(cls, value: str) -> str:
-        if not value.isdigit() or len(value) not in {4, 6}:
-            raise ValueError(
-                "le PIN de maintenance doit contenir 6 chiffres (ou 4 pour compatibilité)"
-            )
+        if not value.isdigit() or len(value) != 6:
+            raise ValueError("le PIN de maintenance doit contenir 6 chiffres")
         return value
 
     def retention_policy(self) -> RetentionPolicy:

@@ -33,8 +33,8 @@ function PinScreen({ onUnlocked, onCancel }: { onUnlocked: () => void; onCancel:
   const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const submit = useCallback(async (candidate: string) => { setBusy(true); try { await api.unlockMaintenance(candidate); onUnlocked(); } catch { setError("Code incorrect. Poursuivez la saisie si votre PIN comporte six chiffres."); if (candidate.length === PIN_LENGTH) setPin(""); } finally { setBusy(false); } }, [onUnlocked]);
-  const press = (digit: string) => { if (busy || pin.length >= PIN_LENGTH) return; const next = pin + digit; setPin(next); setError(null); if (next.length === 4 || next.length === PIN_LENGTH) void submit(next); };
+  const submit = useCallback(async (candidate: string) => { setBusy(true); try { await api.unlockMaintenance(candidate); onUnlocked(); } catch { setError("Code incorrect. Saisissez à nouveau les six chiffres."); setPin(""); } finally { setBusy(false); } }, [onUnlocked]);
+  const press = (digit: string) => { if (busy || pin.length >= PIN_LENGTH) return; const next = pin + digit; setPin(next); setError(null); if (next.length === PIN_LENGTH) void submit(next); };
   return (
     <main className="grid h-full grid-cols-[1fr_22rem] bg-ink text-body [--color-signal:#d8dee4] [--color-signal-ink:#101418]">
       <section className="flex flex-col justify-between p-10">

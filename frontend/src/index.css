@@ -68,6 +68,24 @@ button {
   -webkit-tap-highlight-color: transparent;
 }
 
+.launch-arabesque path {
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-dasharray: 1000;
+  animation: draw-arabesque 9s ease-in-out infinite;
+}
+
+@keyframes draw-arabesque {
+  0%, 8% { stroke-dashoffset: 1000; opacity: 0; }
+  35%, 75% { stroke-dashoffset: 0; opacity: 0.8; }
+  90%, 100% { stroke-dashoffset: 0; opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .launch-arabesque path { animation: none; stroke-dashoffset: 0; opacity: 0.8; }
+}
+
 input[type="checkbox"],
 input[type="radio"] {
   accent-color: var(--color-signal);
