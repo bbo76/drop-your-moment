@@ -388,7 +388,7 @@ de landing page.
 
 ### Inputs / Fields
 
-Le PIN ne présente pas de champ texte. Quatre points affichent la progression sans révéler le code, et un clavier numérique plein écran déclenche automatiquement la validation au quatrième chiffre. Les touches font au moins 4.5rem de haut ; « Effacer » et « Retour » utilisent une variante transparente dans le même gabarit.
+Le PIN ne présente pas de champ texte. Six points affichent la progression sans révéler le code, et un clavier numérique plein écran déclenche automatiquement la validation au sixième chiffre. Les touches font au moins 4.5rem de haut ; « Effacer » et « Retour » utilisent une variante transparente dans le même gabarit.
 
 ### Status and Choices
 

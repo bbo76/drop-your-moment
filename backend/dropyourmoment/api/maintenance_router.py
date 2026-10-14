@@ -39,11 +39,11 @@ COOKIE_NAME = "dym_maintenance"
 
 
 class PinAttempt(BaseModel):
-    pin: str = Field(pattern=r"^\d{4,8}$")
+    pin: str = Field(pattern=r"^(?:\d{4}|\d{6})$")
 
 
 class MaintenancePinChange(BaseModel):
-    pin: str = Field(pattern=r"^\d{4}$")
+    pin: str = Field(pattern=r"^\d{6}$")
 
 
 class MaintenanceSettings(BaseModel):

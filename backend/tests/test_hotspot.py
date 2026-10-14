@@ -206,7 +206,7 @@ def test_api_locale_pilote_et_compte_les_clients(
     kiosk: TestClient, runtime: Runtime, tmp_path: Path
 ) -> None:
     runtime.hotspot, _ = configured_hotspot(tmp_path, runtime.operator_access)
-    assert kiosk.post("/api/maintenance/unlock", json={"pin": "2580"}).status_code == 204
+    assert kiosk.post("/api/maintenance/unlock", json={"pin": "258025"}).status_code == 204
 
     response = kiosk.post("/api/maintenance/hotspot/activate")
 
@@ -220,7 +220,7 @@ def test_api_wifi_ne_renvoie_jamais_le_mot_de_passe(
     kiosk: TestClient, runtime: Runtime, tmp_path: Path
 ) -> None:
     runtime.hotspot, _ = configured_hotspot(tmp_path, runtime.operator_access)
-    assert kiosk.post("/api/maintenance/unlock", json={"pin": "2580"}).status_code == 204
+    assert kiosk.post("/api/maintenance/unlock", json={"pin": "258025"}).status_code == 204
 
     networks = kiosk.get("/api/maintenance/wifi/scan")
     profiles = kiosk.get("/api/maintenance/wifi/profiles")
@@ -246,7 +246,7 @@ def test_qr_de_developpement_utilisent_l_adresse_du_poste(
 ) -> None:
     runtime.hotspot.available = False
     runtime.settings.hotspot_development_portal_url = "http://192.168.1.42:8001/"
-    assert kiosk.post("/api/maintenance/unlock", json={"pin": "2580"}).status_code == 204
+    assert kiosk.post("/api/maintenance/unlock", json={"pin": "258025"}).status_code == 204
 
     status = kiosk.get("/api/maintenance/status").json()["hotspot"]
     qr = kiosk.get("/api/maintenance/hotspot/qr/portal")
@@ -265,7 +265,7 @@ def test_arret_volontaire_desactive_le_hotspot_avant_poweroff(
     runtime.hotspot.activate()
     calls: list[str] = []
     runtime.system_power = SystemPower(executor=calls.append, available=True)
-    assert kiosk.post("/api/maintenance/unlock", json={"pin": "2580"}).status_code == 204
+    assert kiosk.post("/api/maintenance/unlock", json={"pin": "258025"}).status_code == 204
 
     assert kiosk.post("/api/maintenance/power/poweroff").status_code == 202
 

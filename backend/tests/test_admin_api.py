@@ -305,7 +305,7 @@ def test_l_operateur_distant_peut_liberer_la_borne(
 def test_l_operateur_distant_peut_fermer_la_maintenance(
     admin: TestClient, kiosk: TestClient, runtime: Runtime
 ) -> None:
-    assert kiosk.post("/api/maintenance/unlock", json={"pin": "2580"}).status_code == 204
+    assert kiosk.post("/api/maintenance/unlock", json={"pin": "258025"}).status_code == 204
     assert runtime.maintenance_active is True
 
     response = admin.post("/admin/session/home")
@@ -400,19 +400,19 @@ def test_la_configuration_survit_a_un_redemarrage(admin: TestClient, runtime: Ru
 
 
 def test_le_kiosque_remplace_le_pin_sans_l_exposer(admin: TestClient, kiosk: TestClient) -> None:
-    assert kiosk.post("/api/maintenance/unlock", json={"pin": "2580"}).status_code == 204
-    assert kiosk.put("/api/maintenance/pin", json={"pin": "7391"}).status_code == 204
+    assert kiosk.post("/api/maintenance/unlock", json={"pin": "258025"}).status_code == 204
+    assert kiosk.put("/api/maintenance/pin", json={"pin": "739125"}).status_code == 204
     assert kiosk.get("/api/maintenance/status").status_code == 200
     assert kiosk.post("/api/maintenance/lock").status_code == 204
 
-    assert kiosk.post("/api/maintenance/unlock", json={"pin": "2580"}).status_code == 401
-    assert kiosk.post("/api/maintenance/unlock", json={"pin": "7391"}).status_code == 204
+    assert kiosk.post("/api/maintenance/unlock", json={"pin": "258025"}).status_code == 401
+    assert kiosk.post("/api/maintenance/unlock", json={"pin": "739125"}).status_code == 204
     assert admin.put("/admin/maintenance-pin", json={"pin": "1234"}).status_code == 404
 
 
 def test_le_kiosque_refuse_un_pin_non_conforme(kiosk: TestClient) -> None:
-    assert kiosk.post("/api/maintenance/unlock", json={"pin": "2580"}).status_code == 204
-    for pin in ("123", "12345", "abcd"):
+    assert kiosk.post("/api/maintenance/unlock", json={"pin": "258025"}).status_code == 204
+    for pin in ("123", "1234", "12345", "1234567", "abcdef"):
         assert kiosk.put("/api/maintenance/pin", json={"pin": pin}).status_code == 422
 
 
@@ -643,14 +643,14 @@ def test_la_sante_signale_la_maintenance_locale(
 ) -> None:
     assert admin.get("/admin/system/health").json()["maintenance_active"] is False
 
-    assert kiosk.post("/api/maintenance/unlock", json={"pin": "2580"}).status_code == 204
+    assert kiosk.post("/api/maintenance/unlock", json={"pin": "258025"}).status_code == 204
     assert admin.get("/admin/system/health").json()["maintenance_active"] is True
 
     assert kiosk.post("/api/maintenance/lock").status_code == 204
     assert admin.get("/admin/system/health").json()["maintenance_active"] is False
 
     runtime.settings.maintenance_session_timeout_s = 0
-    assert kiosk.post("/api/maintenance/unlock", json={"pin": "2580"}).status_code == 204
+    assert kiosk.post("/api/maintenance/unlock", json={"pin": "258025"}).status_code == 204
     assert admin.get("/admin/system/health").json()["maintenance_active"] is False
 
 
