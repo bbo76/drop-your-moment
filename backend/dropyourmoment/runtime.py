@@ -83,6 +83,7 @@ class Runtime:
             self.settings.data_dir, self.settings.maintenance_pin
         )
         self.operator_access = OperatorAccess(self.settings.data_dir)
+        self.operator_access.ensure_active()
         self.hotspot = Hotspot(
             data_dir=self.settings.data_dir,
             secret_file=self.settings.hotspot_secret_file,

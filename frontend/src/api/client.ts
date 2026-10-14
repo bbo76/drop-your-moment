@@ -493,8 +493,8 @@ export const api = {
   replaceInk: (capacity: 36 | 54) =>
     post<CounterReading>("/admin/counters/ink/replace", { capacity }),
   reloadAdminCassette: () => post<CounterReading>("/admin/counters/cassette/reload"),
-  replaceMaintenancePin: async (pin: string) => {
-    const path = "/admin/maintenance-pin";
+  changeMaintenancePin: async (pin: string) => {
+    const path = "/api/maintenance/pin";
     const response = await fetch(path, {
       method: "PUT",
       cache: "no-store",

@@ -238,14 +238,14 @@ Les panneaux et contrôles utilisent des rectangles légèrement arrondis : 0.75
 Les six destinations locales utilisent toute la surface disponible en grille 2×3. Chaque tuile associe une icône de maintenance de 4.25rem, un titre très lourd, un résumé opérationnel et un chevron. Toute la tuile est tactile ; aucune petite action secondaire n'y concurrence la destination. Les écrans de détail réutilisent la même barre de titre, un grand bouton Retour et l'état global de la borne.
 
 La tuile Impression porte le résumé des consommables. Réglages borne sépare
-**Apparence**, **Écran & session** et **Alimentation** : l'apparence propose seize teintes événementielles
+**Apparence** et **Écran & session** : l'apparence propose seize teintes événementielles
 ordonnées par proximité colorimétrique sous forme de grands carrés tactiles, ainsi que douze
 fontes du launch screen illustrées par un mot complet. Les noms de couleur restent dans les
 libellés accessibles sans encombrer la grille. Le portail PC reste la surface de réglage avancé pour une couleur
 hexadécimale libre. **Écran & session** regroupe uniquement le flash d’appoint et la durée
-présélectionnée du minuteur. **Alimentation** isole les deux gestes critiques de proximité :
-redémarrer et éteindre. Ils conservent un libellé explicite avec leur pictogramme ; l'arrêt
-utilise le corail d'intervention tandis que le redémarrage reste dans le signal de maintenance.
+présélectionnée du minuteur. Santé regroupe le diagnostic électrique et les gestes de
+récupération de la borne. Redémarrer et éteindre restent des actions distinctes, avec leur
+confirmation explicite ; le corail d'intervention marque l'arrêt complet.
 L’interruption forcée d’une session appartient au portail
 distant : une commande locale pour « libérer » l’écran sur lequel elle s’affiche serait
 une fausse action.
@@ -294,7 +294,7 @@ surveiller, et incident.
 Le portail pilote **une seule borne**. Il ne présente ni flotte, ni client, ni planning,
 ni données commerciales. Le shell desktop utilise un `Sidebar` shadcn repliable en variante
 `inset`. Son en-tête de marque associe le monogramme DY, Drop Your Moment et Administration ;
-son contenu groupe Vue d'ensemble, Événement, Galerie, Diagnostic et Sécurité sous « Gestion
+son contenu groupe Vue d'ensemble, Événement, Galerie, Diagnostic et Journaux sous « Gestion
 de la borne » ; son pied confirme la borne connectée et le réseau local. En mode icône, les
 libellés deviennent des infobulles et le pied conserve son point de connexion.
 
@@ -327,9 +327,9 @@ La configuration desktop conserve le nom et le message de l'événement, l'overl
 filtres, le format, les copies et le minuteur. Couleur et typographie appartiennent à la
 maintenance de la borne ; le flash appartient à la borne et à la présentation mobile. La galerie
 privilégie les vignettes API, la pagination et une lightbox. Le diagnostic regroupe caméra,
-impression, parcours, stockage et ressources dans des cartes de lecture rapide. Journaux
-reste une destination desktop dense et utilitaire, jamais une réduction dans la console mobile. Sécurité
-reste un formulaire court et étroit, centré sur le remplacement du PIN. Les surfaces,
+impression, parcours, stockage et ressources dans des cartes de lecture rapide. Journaux reste
+une destination desktop dense et utilitaire, jamais une réduction dans la console mobile. Le
+remplacement du PIN se fait dans la maintenance locale du kiosque avec un clavier tactile. Les surfaces,
 champs, boutons, badges, séparateurs et alertes reprennent directement les composants et
 rôles sémantiques shadcn plutôt que des couleurs administratives isolées.
 

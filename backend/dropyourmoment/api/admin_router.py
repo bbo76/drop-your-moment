@@ -1,4 +1,4 @@
-"""API du portail d'administration, exposée sur le LAN et protégée quand le hotspot est actif.
+"""API du portail d'administration, exposée sur le LAN et toujours protégée.
 
 Ces routes ne sont montées que sur l'application admin, et l'API du kiosque ne l'est que
 sur la sienne. C'est vérifié par `tests/test_network_isolation.py` : la garantie ne tient
@@ -588,18 +588,6 @@ def schedule_power_action(
         raise HTTPException(status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     logger.warning("action système demandée depuis le portail d’administration : %s", action)
     return PowerTransition(**vars(pending))
-
-
-class MaintenancePinChange(BaseModel):
-    pin: str = Field(pattern=r"^\d{4}$")
-
-
-@router.put("/maintenance-pin", status_code=status.HTTP_204_NO_CONTENT)
-def replace_maintenance_pin(
-    change: MaintenancePinChange, runtime: Runtime = Depends(get_runtime)
-) -> None:
-    """Remplace le PIN local sans jamais exposer sa valeur actuelle au portail."""
-    runtime.replace_maintenance_pin(change.pin)
 
 
 def _reading(counters: Counters) -> CounterReading:

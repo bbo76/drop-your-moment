@@ -409,8 +409,9 @@ donc lui-même le hotspot `DYM-PhotoBooth`, activé explicitement depuis la main
 sans expiration automatique, routage Internet ou mode client Wi-Fi simultané.
 
 Le secret Wi-Fi est stable et propre à l'installation. Un code administrateur aléatoire à
-six chiffres est généré à l'activation ; son empreinte et les sessions survivent aux
-redémarrages tant que le hotspot reste actif. La désactivation invalide code et sessions.
+six chiffres protège le portail dès sa première ouverture, même lorsque la borne rejoint
+un Wi-Fi client. Son empreinte et les sessions survivent aux redémarrages ; la désactivation
+du hotspot invalide les sessions sans effacer le code.
 Un arrêt volontaire depuis la maintenance effectue cette désactivation avant `poweroff` ;
 un reboot ou une coupure imprévue conserve l'état actif.
 

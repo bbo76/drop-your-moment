@@ -34,9 +34,22 @@ def build_admin_app(runtime: Runtime) -> FastAPI:
     @app.middleware("http")
     async def require_operator_session(request: Request, call_next):
         path = request.url.path
+        is_auth_status = path == "/admin/auth/status"
+        runtime.operator_access.ensure_active()
+        if is_auth_status:
+            return JSONResponse(
+                {
+                    "required": True,
+                    "authenticated": runtime.operator_access.authorize(
+                        request.cookies.get(COOKIE_NAME)
+                    ),
+                }
+            )
+        is_login = path == "/admin/auth/login" and request.method == "POST"
+        is_admin_api = path.startswith("/admin/")
         if (
-            path.startswith("/admin/")
-            and not path.startswith("/admin/auth/")
+            is_admin_api
+            and not is_login
             and not runtime.operator_access.authorize(request.cookies.get(COOKIE_NAME))
         ):
             return JSONResponse({"detail": "authentification requise"}, status_code=401)

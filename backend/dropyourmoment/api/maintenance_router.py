@@ -42,6 +42,10 @@ class PinAttempt(BaseModel):
     pin: str = Field(pattern=r"^\d{4,8}$")
 
 
+class MaintenancePinChange(BaseModel):
+    pin: str = Field(pattern=r"^\d{4}$")
+
+
 class MaintenanceSettings(BaseModel):
     default_shot_timer_seconds: Literal[3, 5, 10]
     accent_color: str = Field(pattern=r"^#[0-9a-fA-F]{6}$")
@@ -134,6 +138,31 @@ def unlock(
 def lock(response: Response, runtime: Runtime = Depends(_authorized)) -> None:
     runtime.lock_maintenance()
     response.delete_cookie(COOKIE_NAME, path="/api/maintenance")
+
+
+@router.put("/pin", status_code=status.HTTP_204_NO_CONTENT)
+def replace_maintenance_pin(
+    change: MaintenancePinChange,
+    response: Response,
+    runtime: Runtime = Depends(_authorized),
+) -> None:
+    """Change le PIN depuis une session locale puis la renouvelle pour le kiosque."""
+    runtime.replace_maintenance_pin(change.pin)
+    token = runtime.unlock_maintenance(change.pin)
+    if token is None:  # la valeur vient d'être enregistrée ; garde-fou en cas d'incohérence.
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="impossible de renouveler la session",
+        )
+    response.set_cookie(
+        COOKIE_NAME,
+        token,
+        max_age=int(runtime.settings.maintenance_session_timeout_s),
+        httponly=True,
+        samesite="strict",
+        secure=False,
+        path="/api/maintenance",
+    )
 
 
 @router.get("/status", response_model=MaintenanceSnapshot)

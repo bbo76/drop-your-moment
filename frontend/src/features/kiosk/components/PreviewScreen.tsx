@@ -128,6 +128,7 @@ export function PreviewScreen({
     setFocusBusy(true);
     setFocusMessage("Mise au point…");
     try {
+      await onPrepareCapture();
       await api.setAutofocusSettings(settings);
       const result = await api.triggerAutofocus();
       setFocusLocked(result.focused);
