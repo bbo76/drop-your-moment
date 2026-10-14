@@ -11,9 +11,9 @@ export function CenteredScreen({ children }: { children: ReactNode }) {
   );
 }
 
-export function Title({ children, font = "modern" }: { children: ReactNode; font?: LaunchFont }) {
+export function Title({ children, font = "modern", large = false }: { children: ReactNode; font?: LaunchFont; large?: boolean }) {
   return (
-    <h1 className={`max-w-[14ch] text-balance text-5xl leading-none font-bold tracking-[-0.02em] sm:text-6xl ${LAUNCH_FONT_CLASSES[font]}`}>{children}</h1>
+    <h1 className={`max-w-[14ch] text-balance leading-none font-bold tracking-[-0.02em] ${large ? "text-[3.25rem] sm:text-[4.125rem]" : "text-5xl sm:text-6xl"} ${LAUNCH_FONT_CLASSES[font]}`}>{children}</h1>
   );
 }
 
@@ -31,17 +31,19 @@ export function PrimaryButton({
   children,
   onClick,
   disabled,
+  large = false,
 }: {
   children: ReactNode;
   onClick: () => void;
   disabled?: boolean;
+  large?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="flex min-h-16 cursor-pointer items-center justify-center gap-3 rounded-panel bg-signal px-8 text-xl font-medium text-signal-ink transition-[background-color,color,transform] duration-150 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40"
+      className={`flex cursor-pointer items-center justify-center gap-3 rounded-panel bg-signal font-medium text-signal-ink transition-[background-color,color,transform] duration-150 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40 ${large ? "min-h-18 px-10 text-[1.375rem]" : "min-h-16 px-8 text-xl"}`}
     >
       {children}
     </button>
