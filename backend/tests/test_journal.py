@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import json
+import logging
 import subprocess
 
-from dropyourmoment.journal import read_journal, sanitize
+from dropyourmoment.journal import RoutineAccessFilter, is_routine_access, read_journal, sanitize
 
 
 def test_le_journal_est_classe_borne_et_nettoye() -> None:
@@ -88,3 +89,41 @@ def test_un_gros_journal_reste_borne_et_ignore_une_rotation_incomplete() -> None
     assert len(page.entries) == 50
     assert page.entries[0].message == "événement 900"
     assert page.next_offset == 950
+
+
+def test_les_sondages_reussis_ne_masquent_pas_les_evenements() -> None:
+    messages = [
+        'INFO: 127.0.0.1:53900 - "GET /api/status HTTP/1.1" 200 OK',
+        'INFO: 127.0.0.1:53900 - "GET /api/event HTTP/1.1" 200 OK',
+        'INFO: 127.0.0.1:53900 - "GET /api/system/status HTTP/1.1" 200 OK',
+        'INFO: 127.0.0.1:53900 - "GET /api/status HTTP/1.1" 503 Service Unavailable',
+        "capture terminée",
+    ]
+    records = [
+        {"__REALTIME_TIMESTAMP": str(1_700_000_000_000_000 - index), "MESSAGE": message}
+        for index, message in enumerate(messages)
+    ]
+
+    def run(command: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(command, 0, "\n".join(map(json.dumps, records)), "")
+
+    page = read_journal(limit=10, run=run)
+    assert [entry.message for entry in page.entries] == messages[-2:]
+    assert all(is_routine_access(message) for message in messages[:3])
+    assert not any(is_routine_access(message) for message in messages[-2:])
+
+    access_filter = RoutineAccessFilter()
+
+    def access_record(status: int) -> logging.LogRecord:
+        return logging.LogRecord(
+            "uvicorn.access",
+            logging.INFO,
+            __file__,
+            0,
+            '%s - "%s %s HTTP/%s" %d',
+            ("127.0.0.1:53900", "GET", "/api/status", "1.1", status),
+            None,
+        )
+
+    assert not access_filter.filter(access_record(200))
+    assert access_filter.filter(access_record(503))

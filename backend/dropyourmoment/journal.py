@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 import subprocess
 from collections.abc import Callable
@@ -23,6 +24,19 @@ _KEYED_SECRET = re.compile(
 )
 _BEARER = re.compile(r"(?i)\bBearer\s+[A-Za-z0-9._~+/=-]+")
 _URL_SECRET = re.compile(r"(?i)([?&](?:password|passwd|secret|token|code|pin)=)[^&#\s]+")
+_ROUTINE_ACCESS = re.compile(
+    r"\bGET /(?:api/status|api/event|api/system/status|admin/system/health) "
+    r'HTTP/\d(?:\.\d)?" 2\d\d\b'
+)
+
+
+def is_routine_access(message: str) -> bool:
+    return bool(_ROUTINE_ACCESS.search(message))
+
+
+class RoutineAccessFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        return not is_routine_access(record.getMessage())
 
 
 class JournalEntry(BaseModel):
@@ -89,6 +103,8 @@ def read_journal(
     for line in result.stdout.splitlines():
         try:
             record = json.loads(line)
+            if is_routine_access(str(record["MESSAGE"])):
+                continue
             entry = _entry(record, detail=detail)
         except (json.JSONDecodeError, KeyError, TypeError, ValueError):
             continue
