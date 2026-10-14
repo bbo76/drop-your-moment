@@ -31,12 +31,8 @@ def test_le_statut_est_protege_par_pin(kiosk: TestClient) -> None:
     assert kiosk.get("/api/maintenance/status").status_code == 200
 
 
-def test_un_ancien_pin_quatre_chiffres_reste_utilisable_pour_migration(
-    kiosk: TestClient, runtime: Runtime
-) -> None:
-    runtime.maintenance_pin.replace("2580")
-
-    assert kiosk.post("/api/maintenance/unlock", json={"pin": "2580"}).status_code == 204
+def test_un_pin_quatre_chiffres_est_refuse(kiosk: TestClient) -> None:
+    assert kiosk.post("/api/maintenance/unlock", json={"pin": "2580"}).status_code == 422
 
 
 def test_la_fermeture_invalide_la_session(kiosk: TestClient) -> None:
