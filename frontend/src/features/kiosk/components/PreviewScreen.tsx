@@ -180,7 +180,7 @@ export function PreviewScreen({
           <div className="pointer-events-none absolute inset-0 z-20 overflow-visible">
             <div
               aria-hidden="true"
-              className={`absolute rounded-[0.7rem] border-[3px] border-signal bg-signal/10 shadow-[0_0_0_2px_#101418] transition-opacity duration-700 ${focusDimmed ? "opacity-[0.14]" : "opacity-100"}`}
+              className={`absolute rounded-[0.4rem] border-2 border-signal bg-transparent transition-opacity duration-700 ${focusDimmed ? "opacity-[0.14]" : "opacity-100"}`}
               style={afWindowStyle}
             />
             {focusLocked && phase.kind === "waiting" && (
@@ -190,7 +190,7 @@ export function PreviewScreen({
                 title="Reprendre l’autofocus continu"
                 disabled={focusBusy}
                 onClick={() => void resumeContinuousFocus()}
-                className="pointer-events-auto absolute z-30 grid size-9 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-signal/80 bg-ink/90 text-signal shadow-[0_1px_5px_#000] backdrop-blur-sm active:bg-ink disabled:opacity-50"
+                className="pointer-events-auto absolute z-30 grid size-9 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-signal/80 bg-ink/90 text-signal backdrop-blur-sm active:bg-ink disabled:opacity-50"
                 style={{
                   left: `calc(${afWindowStyle.left} + ${afWindowStyle.width})`,
                   top: afWindowStyle.top,
