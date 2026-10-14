@@ -76,7 +76,7 @@ et sans interrompre une prise de vue.
 ### Maintenance sur la borne
 
 Le bouton outil, présent dans le coin supérieur droit du kiosque, ouvre une maintenance
-tactile protégée par un PIN à quatre chiffres. Les grandes tuiles donnent accès à la
+tactile protégée par un PIN à six chiffres. Les grandes tuiles donnent accès à la
 santé (caméra, stockage, CPU, RAM), à l'impression (connexion CP1500, bac de 18 feuilles
 et cassette d'encre 36/54), à la galerie locale et aux réglages de la borne (flash écran
 et minuteur par défaut), ainsi qu’au réseau opérateur. La galerie charge progressivement toutes les photos et permet
@@ -86,10 +86,12 @@ dix couleurs événementielles présélectionnées et les dix typographies du la
 le portail PC conserve, lui, un sélecteur de couleur totalement libre. La maintenance se
 referme automatiquement après cinq minutes.
 
-`DYM_MAINTENANCE_PIN` fournit le PIN initial (valeur de développement : `2580`). Il peut
+`DYM_MAINTENANCE_PIN` fournit le PIN initial (valeur de développement : `258025`). Il peut
 ensuite être remplacé depuis l’onglet Sécurité des réglages sur la borne ; seule son empreinte
 est conservée sur disque. Il protège des manipulations par les invités ; la maintenance
 reste en plus limitée à la socket locale du kiosque et n'est jamais exposée sur le LAN.
+Un PIN à quatre chiffres déjà enregistré reste accepté pour permettre la mise à niveau;
+remplacez-le par un PIN à six chiffres dans les réglages de la borne.
 
 ## Portail d'administration
 
@@ -254,7 +256,7 @@ Variables d'environnement préfixées `DYM_` (voir
 | `PREVIEW_TIMEOUT_S` | `60` | retour à l'accueil si le visiteur s'éloigne devant l'aperçu |
 | `REVIEW_TIMEOUT_S` | `90` | idem sur l'écran de review |
 | `KIOSK_HOST` / `ADMIN_HOST` | `127.0.0.1` / `0.0.0.0` | adresses de bind |
-| `MAINTENANCE_PIN` | `2580` | PIN à quatre chiffres de la maintenance tactile locale |
+| `MAINTENANCE_PIN` | `258025` | PIN à six chiffres de la maintenance tactile locale |
 | `MAINTENANCE_SESSION_TIMEOUT_S` | `300` | fermeture automatique de la maintenance locale |
 | `HOTSPOT_*` | voir `config.py` | profil NetworkManager, interface, adresse et fichier secret |
 | `RETENTION_MAX_AGE_DAYS` | `30` | âge au-delà duquel une session est purgée |

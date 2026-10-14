@@ -45,7 +45,7 @@ class Settings(BaseSettings):
 
     # Accès de proximité depuis l'écran tactile. La route n'existe que sur la socket
     # locale du kiosque ; le PIN protège surtout contre les manipulations des invités.
-    maintenance_pin: str = "2580"
+    maintenance_pin: str = "258025"
     maintenance_session_timeout_s: float = 300.0
 
     # Validés sur la borne 7 pouces : une minute laisse le temps de se placer et régler le
@@ -90,8 +90,10 @@ class Settings(BaseSettings):
     @field_validator("maintenance_pin")
     @classmethod
     def _maintenance_pin_is_numeric(cls, value: str) -> str:
-        if not value.isdigit() or len(value) != 4:
-            raise ValueError("le PIN de maintenance doit contenir exactement 4 chiffres")
+        if not value.isdigit() or len(value) not in {4, 6}:
+            raise ValueError(
+                "le PIN de maintenance doit contenir 6 chiffres (ou 4 pour compatibilité)"
+            )
         return value
 
     def retention_policy(self) -> RetentionPolicy:

@@ -13,7 +13,7 @@ from dropyourmoment.storage.paths import final_path
 from dropyourmoment.system_power import SystemPower
 
 
-def _unlock(kiosk: TestClient, pin: str = "2580") -> None:
+def _unlock(kiosk: TestClient, pin: str = "258025") -> None:
     assert kiosk.post("/api/maintenance/unlock", json={"pin": pin}).status_code == 204
 
 
@@ -24,11 +24,19 @@ def printer() -> PrinterDriver:
 
 def test_le_statut_est_protege_par_pin(kiosk: TestClient) -> None:
     assert kiosk.get("/api/maintenance/status").status_code == 401
-    assert kiosk.post("/api/maintenance/unlock", json={"pin": "0000"}).status_code == 401
+    assert kiosk.post("/api/maintenance/unlock", json={"pin": "000000"}).status_code == 401
 
     _unlock(kiosk)
 
     assert kiosk.get("/api/maintenance/status").status_code == 200
+
+
+def test_un_ancien_pin_quatre_chiffres_reste_utilisable_pour_migration(
+    kiosk: TestClient, runtime: Runtime
+) -> None:
+    runtime.maintenance_pin.replace("2580")
+
+    assert kiosk.post("/api/maintenance/unlock", json={"pin": "2580"}).status_code == 204
 
 
 def test_la_fermeture_invalide_la_session(kiosk: TestClient) -> None:
@@ -196,7 +204,7 @@ def test_le_stock_total_ne_se_regle_plus_dans_la_maintenance(kiosk: TestClient) 
 def test_les_routes_de_maintenance_ne_sont_pas_sur_le_portail_lan(
     admin: TestClient,
 ) -> None:
-    assert admin.post("/api/maintenance/unlock", json={"pin": "2580"}).status_code == 404
+    assert admin.post("/api/maintenance/unlock", json={"pin": "258025"}).status_code == 404
 
 
 def test_les_actions_systeme_sont_protegees_et_simulees(
