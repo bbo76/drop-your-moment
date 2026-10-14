@@ -68,26 +68,46 @@ button {
   -webkit-tap-highlight-color: transparent;
 }
 
-.launch-arabesque path {
+.launch-arabesque .arabesque-stem,
+.launch-arabesque .arabesque-fine {
   stroke: currentColor;
-  stroke-width: 2.5;
   stroke-linecap: round;
-  stroke-dasharray: 600;
-  animation: draw-arabesque 27s ease-in-out infinite;
+  stroke-dasharray: 700;
+  animation: draw-arabesque 9s ease-in-out infinite;
 }
 
-.launch-arabesque path:nth-child(2) { animation-delay: -18s; }
-.launch-arabesque path:nth-child(3) { animation-delay: -9s; }
+.launch-arabesque .arabesque-stem { stroke-width: 3.5; }
+.launch-arabesque .arabesque-fine { stroke-width: 1.35; }
+.launch-arabesque .arabesque-leaf,
+.launch-arabesque .arabesque-leaf-variant { fill: currentColor; animation: reveal-arabesque-leaves 9s ease-in-out infinite; }
+.launch-arabesque .arabesque-leaf-variant { animation: cycle-arabesque-leaves 27s linear infinite; }
+.launch-arabesque .arabesque-leaf-variant--two { animation-delay: -18s; }
+.launch-arabesque .arabesque-leaf-variant--three { animation-delay: -9s; }
 
 @keyframes draw-arabesque {
-  0%, 2% { stroke-dashoffset: 600; opacity: 0; }
-  12%, 24% { stroke-dashoffset: 0; opacity: 0.8; }
-  32%, 100% { stroke-dashoffset: 0; opacity: 0; }
+  0%, 5% { stroke-dashoffset: 700; opacity: 0; }
+  36%, 78% { stroke-dashoffset: 0; opacity: 0.9; }
+  95%, 100% { stroke-dashoffset: 0; opacity: 0; }
+}
+
+@keyframes reveal-arabesque-leaves {
+  0%, 28% { opacity: 0; }
+  42%, 78% { opacity: 0.9; }
+  95%, 100% { opacity: 0; }
+}
+
+@keyframes cycle-arabesque-leaves {
+  0%, 10% { opacity: 0; }
+  15%, 28% { opacity: 0.9; }
+  32%, 100% { opacity: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .launch-arabesque path { animation: none; stroke-dashoffset: 0; opacity: 0; }
-  .launch-arabesque path:first-child { opacity: 0.8; }
+  .launch-arabesque .arabesque-stem,
+  .launch-arabesque .arabesque-fine { animation: none; stroke-dashoffset: 0; opacity: 0.9; }
+  .launch-arabesque .arabesque-leaf { animation: none; opacity: 0.9; }
+  .launch-arabesque .arabesque-leaf-variant { animation: none; opacity: 0; }
+  .launch-arabesque .arabesque-leaf-variant--one { opacity: 0.9; }
 }
 
 input[type="checkbox"],
