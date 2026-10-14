@@ -15,6 +15,7 @@ import uvicorn
 
 from dropyourmoment.apps import build_apps
 from dropyourmoment.config import Settings, load_settings
+from dropyourmoment.journal import RoutineAccessFilter
 from dropyourmoment.runtime import Runtime
 
 logger = logging.getLogger(__name__)
@@ -37,6 +38,7 @@ def _build_servers(settings: Settings, runtime: Runtime) -> list[uvicorn.Server]
             log_level="info",
         ),
     ]
+    logging.getLogger("uvicorn.access").addFilter(RoutineAccessFilter())
     servers = [uvicorn.Server(config) for config in configs]
     for server in servers:
         # uvicorn installe ses propres gestionnaires de signaux au démarrage ; avec deux
