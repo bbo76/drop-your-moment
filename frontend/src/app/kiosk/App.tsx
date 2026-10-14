@@ -127,10 +127,15 @@ export function App() {
           {maintenanceButton}
           <PrintNotice system={system} />
           {debugEnabled && <DebugFailureBar value={debugFailure} onChange={setDebugFailure} />}
-          <Title font={event.launch_font}>{event.launch_message}</Title>
-          <Lede>Touchez l'écran pour prendre une photo</Lede>
+          <div className="relative grid min-h-56 place-items-center px-16">
+            <svg className="launch-arabesque pointer-events-none absolute inset-0 h-full w-full text-body" viewBox="0 0 800 260" preserveAspectRatio="none" fill="none" aria-hidden="true">
+              <path d="M188 48 C105 10 48 40 62 101 C72 143 132 141 136 103 C139 77 106 68 94 87 C77 114 108 165 175 186 C208 196 236 195 257 188" />
+              <path d="M612 48 C695 10 752 40 738 101 C728 143 668 141 664 103 C661 77 694 68 706 87 C723 114 692 165 625 186 C592 196 564 195 543 188" />
+            </svg>
+            <Title font={event.launch_font}>{event.launch_message}</Title>
+          </div>
           <PrimaryButton onClick={start} disabled={!system.camera_ok}>
-            Commencer
+            Prendre une photo
           </PrimaryButton>
           {!system.camera_ok && (
             <p className="mt-4 rounded-panel bg-warn-bg px-4 py-3 text-sm text-warn">

@@ -32,8 +32,7 @@ def test_un_fichier_corrompu_retombe_sur_le_pin_de_deploiement(tmp_path: Path) -
     assert MaintenancePinStore(tmp_path, "258025").verify("258025") is True
 
 
-def test_la_configuration_utilise_six_chiffres_et_accepte_un_ancien_pin() -> None:
+def test_la_configuration_exige_six_chiffres() -> None:
     assert Settings().maintenance_pin == "258025"
-    assert Settings(maintenance_pin="2580").maintenance_pin == "2580"
     with pytest.raises(ValidationError):
-        Settings(maintenance_pin="25800")
+        Settings(maintenance_pin="2580")
