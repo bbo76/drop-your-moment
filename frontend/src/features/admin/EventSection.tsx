@@ -34,6 +34,8 @@ import { Button, Feedback, Field, Section } from "./ui";
  * enregistrement. Seul le téléversement écrit ce champ. */
 
 const ALL_FILTERS = Object.keys(FILTER_LABELS) as FilterName[];
+// Estimation tirée de la photo imprimée : les repères de coupe latéraux sont à ~8 %.
+const SIDE_CUT_MARGIN = 8;
 const PRINT_PRESETS = [
   { id: "postcard", label: "Carte postale", width: 148, height: 100, detail: "Format standard" },
   { id: "l", label: "Format L", width: 119, height: 89, detail: "Format compact" },
@@ -259,12 +261,12 @@ export function EventSection() {
                   className="group rounded-lg text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
                   aria-label="Agrandir l’overlay"
                 >
-                  <img
+                  <OverlaySafeZone
                     src={overlayUrl(overlayRevision)}
-                    alt="Overlay de l'événement"
-                    /* Le damier rend la transparence visible : sur fond uni, un overlay opaque
-                       et un overlay ajouré se ressemblent. */
-                    className="h-32 rounded-lg border border-border bg-[repeating-conic-gradient(#333846_0_25%,transparent_0_50%)] bg-[length:16px_16px] transition-opacity group-hover:opacity-80"
+                    alt="Overlay de l'événement avec zone de coupe estimée"
+                    className="h-32"
+                    imageClassName="h-full w-auto"
+                    checkerSize={16}
                   />
                   <span className="mt-1.5 block text-xs text-muted-foreground">Agrandir</span>
                 </button>
@@ -298,6 +300,9 @@ export function EventSection() {
             )}
             <p className="mt-3 text-sm text-muted-foreground">
               PNG transparent recommandé : {Math.round((draft.print_format.width_mm / 25.4) * draft.print_format.dpi)} × {Math.round((draft.print_format.height_mm / 25.4) * draft.print_format.dpi)} px
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Les pointillés indiquent une estimation de la zone de coupe latérale (marge d’environ {SIDE_CUT_MARGIN} % par côté), d’après un tirage test.
             </p>
           </div>
         </SettingsGroup>
@@ -438,18 +443,50 @@ export function EventSection() {
         <DialogContent className="flex max-h-[calc(100dvh-2rem)] max-w-[calc(100vw-2rem)] flex-col bg-background sm:max-w-5xl">
           <DialogHeader>
             <DialogTitle>Overlay de l’événement</DialogTitle>
-            <DialogDescription>Aperçu du fichier PNG actuel.</DialogDescription>
+            <DialogDescription>
+              Zone de coupe latérale estimée à partir du tirage test ; elle ne modifie pas le fichier imprimé.
+            </DialogDescription>
           </DialogHeader>
           <div className="grid min-h-0 place-items-center overflow-auto rounded-lg border border-border bg-[repeating-conic-gradient(#333846_0_25%,transparent_0_50%)] bg-[length:20px_20px]">
-            <img
+            <OverlaySafeZone
               src={overlayUrl(overlayRevision)}
-              alt="Overlay de l’événement agrandi"
-              className="max-h-[75dvh] max-w-full object-contain"
+              alt="Overlay de l’événement avec zone de coupe latérale estimée"
+              className="max-h-[75dvh] max-w-full"
+              imageClassName="max-h-[75dvh] max-w-full"
+              checkerSize={20}
             />
           </div>
         </DialogContent>
       </Dialog>
     </Section>
+  );
+}
+
+function OverlaySafeZone({
+  src,
+  alt,
+  className,
+  imageClassName,
+  checkerSize,
+}: {
+  src: string;
+  alt: string;
+  className: string;
+  imageClassName: string;
+  checkerSize: number;
+}) {
+  return (
+    <span
+      className={`relative block w-fit overflow-hidden rounded-lg border border-border bg-[repeating-conic-gradient(#333846_0_25%,transparent_0_50%)] ${className}`}
+      style={{ backgroundSize: `${checkerSize}px ${checkerSize}px` }}
+    >
+      <img src={src} alt={alt} className={`block object-contain ${imageClassName}`} />
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-y-0 border-x-2 border-dashed border-amber-300 shadow-[0_0_3px_#000]"
+        style={{ left: `${SIDE_CUT_MARGIN}%`, right: `${SIDE_CUT_MARGIN}%` }}
+      />
+    </span>
   );
 }
 
