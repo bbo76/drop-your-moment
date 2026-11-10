@@ -11,7 +11,7 @@ interface Props {
   printBusy: boolean;
   printError: string | null;
   printsRemaining: number;
-  onPrintStarted: (copies: number) => void;
+  onPrintStarted: (copies: number, batchId: string) => void;
 }
 
 export function MaintenanceGalleryView({ onExpired, printBusy, printError, printsRemaining, onPrintStarted }: Props) {
@@ -64,9 +64,9 @@ export function MaintenanceGalleryView({ onExpired, printBusy, printError, print
     if (!selected) return;
     setFeedback(null);
     try {
-      await api.printMaintenanceGalleryEntry(selected.session_id, copies);
-      onPrintStarted(copies);
-      setFeedback(`${copies} exemplaire${copies > 1 ? "s" : ""} envoyé${copies > 1 ? "s" : ""} à l'impression.`);
+      const progress = await api.printMaintenanceGalleryEntry(selected.session_id, copies);
+      onPrintStarted(copies, progress.batch_id);
+      setFeedback(`Lot de ${copies} exemplaire${copies > 1 ? "s" : ""} lancé : un job CUPS à la fois.`);
     } catch (cause) {
       handleError(cause, "Impossible de relancer l'impression.");
     }

@@ -41,6 +41,7 @@ class Counters:
     paper_stock_capacity: int = 108
     prints_since_stock_set: int = 0
     stock_set_at: str | None = None
+    applied_print_jobs: tuple[str, ...] = ()
 
     @property
     def paper_remaining(self) -> int:
@@ -64,6 +65,7 @@ class CounterStore:
     """
 
     def __init__(self, data_dir: Path) -> None:
+        self.data_dir = data_dir
         self._path = data_dir / COUNTERS_FILENAME
 
     def read(self) -> Counters:
@@ -93,6 +95,7 @@ class CounterStore:
                     if payload.get("stock_set_at", reset_at) is None
                     else str(payload.get("stock_set_at", reset_at))
                 ),
+                applied_print_jobs=tuple(payload.get("applied_print_jobs", ())),
             )
         except (json.JSONDecodeError, KeyError, TypeError, ValueError, OSError) as exc:
             # Repartir de zéro plutôt que refuser de démarrer : même arbitrage que pour la
@@ -117,6 +120,23 @@ class CounterStore:
             updated.prints_total,
             updated.prints_since_reset,
         )
+        return updated
+
+    def record_print_job(self, batch_id: str, index: int) -> Counters:
+        """Credit one completed spooler job exactly once per batch/index."""
+        key = f"{batch_id}:{index}"
+        current = self.read()
+        if key in current.applied_print_jobs:
+            return current
+        updated = replace(
+            current,
+            prints_total=current.prints_total + 1,
+            prints_since_reset=current.prints_since_reset + 1,
+            prints_since_cassette_reload=current.prints_since_cassette_reload + 1,
+            prints_since_stock_set=current.prints_since_stock_set + 1,
+            applied_print_jobs=(*current.applied_print_jobs, key),
+        )
+        self._write(updated)
         return updated
 
     def set_paper_stock(self, total: int) -> Counters:

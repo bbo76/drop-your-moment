@@ -174,7 +174,16 @@ def test_la_galerie_locale_peut_reimprimer_une_photo(kiosk: TestClient, runtime:
     response = kiosk.post("/api/maintenance/gallery/photo-test/print", json={"copies": 2})
 
     assert response.status_code == 202
-    assert kiosk.get("/api/maintenance/status").json()["print_busy"] is True
+    assert response.json()["batch_id"]
+    assert response.json()["requested"] == 2
+    snapshot = kiosk.get("/api/maintenance/status").json()
+    assert snapshot["print_busy"] is True
+    assert snapshot["print_progress"]["requested"] == 2
+    assert snapshot["print_progress"]["current_index"] == 1
+    assert (
+        kiosk.post("/api/maintenance/gallery/photo-test/print", json={"copies": 2}).status_code
+        == 409
+    )
     assert kiosk.delete("/api/maintenance/gallery/photo-test").status_code == 409
     assert kiosk.post("/api/maintenance/power/poweroff").status_code == 409
 

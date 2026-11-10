@@ -155,13 +155,14 @@ export function useMaintenance(debugFailure: DebugFailure, onExpired: () => void
     refresh: load,
     saving: saving || debugFailure !== "none",
     printNotice,
-    markPrintStarted: (copies: number) => {
+    markPrintStarted: (copies: number, batchId: string) => {
       setPrintNotice({
         state: "printing",
         copies,
-        targetPrintsTotal: (snapshot?.health.counters.prints_total ?? 0) + copies,
+        batchId,
+        completed: 0,
       });
-      setSnapshot((current) => current && ({ ...current, print_busy: true, print_error: null }));
+      setSnapshot((current) => current && ({ ...current, print_busy: true, print_error: null, print_progress: null }));
     },
     saveSettings,
     changeHotspot,
@@ -171,5 +172,17 @@ export function useMaintenance(debugFailure: DebugFailure, onExpired: () => void
     reloadCassette: () => run(api.reloadCassette, "Le rechargement du bac n’a pas été enregistré."),
     replaceInk: (capacity: 36 | 54) => run(() => api.replaceMaintenanceInk(capacity), "Le remplacement de la cassette d’encre n’a pas été enregistré."),
     cancelPrint,
+    reconcilePrint: async () => {
+      setSaving(true);
+      try {
+        await api.reconcileMaintenancePrint();
+        await load();
+        setError(null);
+      } catch {
+        setError("Rapprochement impossible : vérifiez CUPS et le stock physique avant de confirmer.");
+      } finally {
+        setSaving(false);
+      }
+    },
   };
 }

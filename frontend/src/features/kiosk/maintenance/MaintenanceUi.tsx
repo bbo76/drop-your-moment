@@ -49,11 +49,10 @@ export function MaintenanceFrame({ title, status, printNotice, wifi, hotspot, er
 
 export function MaintenancePrintStatus({ notice }: { notice: MaintenancePrintNotice | null }) {
   if (!notice) return null;
-  const plural = notice.copies > 1;
   const label = notice.state === "printing"
     ? "Impression en cours"
     : notice.state === "complete"
-      ? `${notice.copies} exemplaire${plural ? "s" : ""} imprimé${plural ? "s" : ""}`
+      ? `${notice.completed ?? 0} / ${notice.copies} jobs terminés côté CUPS`
       : "Échec de l’impression";
   return (
     <div className={`flex min-h-14 items-center gap-3 rounded-panel border-2 px-3 ${notice.state === "error" ? "border-warn text-warn" : "border-edge text-signal"}`} role="status" aria-live="polite">
@@ -63,8 +62,8 @@ export function MaintenancePrintStatus({ notice }: { notice: MaintenancePrintNot
       </span>
       <span className="leading-tight">
         <strong className="block text-base font-semibold">{label}</strong>
-        {notice.state === "printing" && <span className="block text-sm text-muted">{notice.copies} exemplaire{plural ? "s" : ""}</span>}
-        {notice.state === "error" && <span className="block max-w-56 truncate text-sm">{notice.error}</span>}
+        {notice.state === "printing" && <span className="block text-sm text-muted">Exemplaire {notice.currentIndex ?? 1} sur {notice.copies} · {notice.completed ?? 0} confirmé(s) CUPS</span>}
+        {notice.state === "error" && <span className="block max-w-56 truncate text-sm">{notice.completed ?? 0}/{notice.copies} CUPS · {notice.error}</span>}
       </span>
     </div>
   );

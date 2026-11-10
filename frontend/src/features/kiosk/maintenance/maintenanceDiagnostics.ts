@@ -4,8 +4,10 @@ export type MaintenanceStatus = "ready" | "paper" | "camera" | "disk" | "printer
 export type MaintenancePrintNotice = {
   state: "printing" | "complete" | "error";
   copies: number;
-  targetPrintsTotal: number;
+  batchId?: string;
   error?: string;
+  completed?: number;
+  currentIndex?: number;
 };
 
 export function resolveMaintenancePrint(
@@ -13,10 +15,18 @@ export function resolveMaintenancePrint(
   snapshot: MaintenanceSnapshot,
 ): MaintenancePrintNotice | null {
   if (!notice || notice.state !== "printing") return notice;
-  if (snapshot.print_error) return { ...notice, state: "error", error: snapshot.print_error };
-  if (!snapshot.print_busy && snapshot.health.counters.prints_total >= notice.targetPrintsTotal) {
-    return { ...notice, state: "complete" };
+  if (snapshot.print_progress && notice.batchId && snapshot.print_progress.batch_id !== notice.batchId) return notice;
+  if (snapshot.print_progress) {
+    const progress = snapshot.print_progress;
+    if (progress.phase === "failed" || progress.phase === "uncertain" || progress.phase === "cancelled") {
+      return { ...notice, state: "error", completed: progress.completed, error: progress.error ?? "Tirage interrompu" };
+    }
+    if (progress.phase === "completed" && progress.completed === progress.requested) {
+      return { ...notice, state: "complete", completed: progress.completed };
+    }
+    return { ...notice, completed: progress.completed, currentIndex: progress.current_index };
   }
+  if (snapshot.print_error) return { ...notice, state: "error", error: snapshot.print_error };
   return notice;
 }
 

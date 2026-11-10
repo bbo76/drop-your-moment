@@ -173,8 +173,239 @@ def test_le_visiteur_choisit_le_nombre_d_exemplaires(
 
     assert body["output_copies"] == 3
     assert runtime.machine.session is not None
-    assert printer.printed == [(runtime.machine.session.final_path, 3)]
+    kiosk.get("/api/status")
+    assert printer.printed == [(runtime.machine.session.final_path, 1)] * 3
+    kiosk.get("/api/status")
     assert runtime.counters.read().prints_total == 3
+
+
+def test_lot_sequentiel_attend_chaque_job_et_compte_un_par_un(
+    kiosk: TestClient, runtime: Runtime, printer: FakePrinterDriver
+) -> None:
+    printer.mode = "spooling"
+    session_id = capture(kiosk)
+    response = kiosk.post(f"/api/session/{session_id}/print", json={"copies": 3}).json()
+    assert response["print_progress"]["requested"] == 3
+    assert response["print_progress"]["current_index"] == 1
+    assert len(printer.printed) == 1
+    for index in (1, 2, 3):
+        assert kiosk.get("/api/status").json()["print_progress"]["completed"] == index - 1
+        printer.settle(JobState.COMPLETED)
+        status = kiosk.get("/api/status").json()
+        assert runtime.counters.read().prints_total == index
+        assert len(printer.printed) == (index if index == 3 else index + 1)
+        assert status["state"] == ("done" if index == 3 else "printing")
+        assert status["print_progress"]["completed"] == index
+    assert all(copies == 1 for _, copies in printer.printed)
+
+
+def test_double_poll_ne_soumet_qu_un_suivant(runtime: Runtime, printer: FakePrinterDriver) -> None:
+    from concurrent.futures import ThreadPoolExecutor
+
+    printer.mode = "spooling"
+    runtime.print_flow.submit(
+        runtime.settings.sessions_dir / "final.jpg", 2, complete_session=False
+    )
+    printer.settle(JobState.COMPLETED)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        list(pool.map(lambda _: runtime.print_flow.poll(), range(2)))
+    assert len(printer.printed) == 2
+    assert runtime.counters.read().prints_total == 1
+
+
+def test_echec_partiel_conserve_le_compte_et_interdit_la_suite(
+    kiosk: TestClient, runtime: Runtime, printer: FakePrinterDriver
+) -> None:
+    printer.mode = "spooling"
+    session_id = capture(kiosk)
+    kiosk.post(f"/api/session/{session_id}/print", json={"copies": 3})
+    printer.settle(JobState.COMPLETED)
+    kiosk.get("/api/status")
+    printer.settle(JobState.FAILED, "bourrage")
+    status = kiosk.get("/api/status").json()
+    assert status["state"] == "error"
+    assert status["print_progress"]["completed"] == 1
+    assert status["print_progress"]["phase"] == "failed"
+    assert runtime.counters.read().prints_total == 1
+    assert len(printer.printed) == 2
+    kiosk.get("/api/status")
+    assert len(printer.printed) == 2
+
+
+def test_annulation_kiosque_empeche_toute_soumission_suivante(
+    kiosk: TestClient, admin: TestClient, runtime: Runtime, printer: FakePrinterDriver
+) -> None:
+    printer.mode = "spooling"
+    session_id = capture(kiosk)
+    kiosk.post(f"/api/session/{session_id}/print", json={"copies": 3})
+    active = runtime.print_flow.job
+    assert active is not None
+    assert admin.post("/admin/counters/cassette/reload").status_code == 409
+    kiosk.post("/api/session/cancel")
+    assert active.id not in printer.jobs
+    assert len(printer.printed) == 1
+    assert runtime.counters.read().prints_total == 0
+
+
+def test_redemarrage_met_en_quarantaine_un_job_sans_le_relancer(
+    runtime: Runtime, printer: FakePrinterDriver
+) -> None:
+    printer.mode = "spooling"
+    path = runtime.settings.sessions_dir / "final.jpg"
+    runtime.print_flow.submit(path, 2, complete_session=False)
+    recovered = type(runtime.print_flow)(runtime.machine, printer, runtime.counters)
+    assert recovered.progress is not None
+    assert recovered.progress.phase == "uncertain"
+    with pytest.raises(Exception, match="cours|rapprocher"):
+        recovered.submit(path, 2, complete_session=False)
+    assert len(printer.printed) == 1
+
+
+def test_maintenance_retirage_retourne_lot_sans_attendre_la_fin(
+    kiosk: TestClient, runtime: Runtime, printer: FakePrinterDriver, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from dropyourmoment.api import maintenance_router
+
+    printer.mode = "spooling"
+    path = runtime.settings.sessions_dir / "final.jpg"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.touch()
+    monkeypatch.setattr(maintenance_router, "_photo_path", lambda *_args: path)
+    assert kiosk.post("/api/maintenance/unlock", json={"pin": "258025"}).status_code == 204
+    response = kiosk.post("/api/maintenance/gallery/archived/print", json={"copies": 2})
+    assert response.status_code == 202
+    assert response.json()["requested"] == 2
+    assert response.json()["completed"] == 0
+    assert len(printer.printed) == 1
+
+
+def test_maintenance_annule_le_job_et_conserve_la_progression(
+    kiosk: TestClient, runtime: Runtime, printer: FakePrinterDriver
+) -> None:
+    printer.mode = "spooling"
+    path = runtime.settings.sessions_dir / "final.jpg"
+    runtime.print_flow.submit(path, 3, complete_session=False)
+    assert kiosk.post("/api/maintenance/unlock", json={"pin": "258025"}).status_code == 204
+    assert kiosk.post("/api/maintenance/print/cancel").status_code == 204
+    progress = kiosk.get("/api/maintenance/status").json()["print_progress"]
+    assert progress["phase"] == "cancelled"
+    assert progress["completed"] == 0
+    assert len(printer.printed) == 1
+
+
+def test_soumission_ambigue_bloque_et_exige_rapprochement(
+    runtime: Runtime, printer: FakePrinterDriver
+) -> None:
+    printer.mode = "offline"
+    path = runtime.settings.sessions_dir / "final.jpg"
+    with pytest.raises(PrinterOfflineError):
+        runtime.print_flow.submit(path, 2, complete_session=False)
+    assert runtime.print_flow.busy
+    assert runtime.print_flow.progress is not None
+    assert runtime.print_flow.progress.phase == "uncertain"
+    with pytest.raises(Exception, match="cours|rapprocher"):
+        runtime.print_flow.submit(path, 2, complete_session=False)
+    runtime.print_flow.acknowledge_uncertain()
+    assert not runtime.print_flow.busy
+
+
+def test_rapprochement_api_debloque_sans_relancer(
+    kiosk: TestClient, runtime: Runtime, printer: FakePrinterDriver
+) -> None:
+    printer.mode = "offline"
+    with pytest.raises(PrinterOfflineError):
+        runtime.print_flow.submit(
+            runtime.settings.sessions_dir / "final.jpg", 2, complete_session=False
+        )
+    assert kiosk.post("/api/maintenance/unlock", json={"pin": "258025"}).status_code == 204
+    assert kiosk.get("/api/maintenance/status").json()["print_busy"] is True
+    assert kiosk.post("/api/maintenance/print/reconcile").status_code == 204
+    assert kiosk.get("/api/maintenance/status").json()["print_busy"] is False
+    assert len(printer.printed) == 0
+
+
+def test_stock_revalide_avant_le_job_suivant(runtime: Runtime, printer: FakePrinterDriver) -> None:
+    printer.mode = "spooling"
+    path = runtime.settings.sessions_dir / "final.jpg"
+    runtime.print_flow.submit(path, 3, complete_session=False)
+    runtime.counters.record_prints(16)
+    printer.settle(JobState.COMPLETED)
+    runtime.print_flow.poll()
+    assert runtime.print_flow.progress is not None
+    assert runtime.print_flow.progress.phase == "failed"
+    assert runtime.print_flow.progress.completed == 1
+    assert runtime.print_flow.progress.current_index == 2
+    assert len(printer.printed) == 1
+
+
+def test_statut_cups_inaccessible_ne_resoumet_pas(
+    runtime: Runtime, printer: FakePrinterDriver, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    printer.mode = "spooling"
+    runtime.print_flow.submit(
+        runtime.settings.sessions_dir / "final.jpg", 2, complete_session=False
+    )
+
+    def unavailable(_job_id: str) -> PrintJob:
+        raise PrinterOfflineError("statut CUPS inaccessible")
+
+    monkeypatch.setattr(printer, "get_job_status", unavailable)
+    runtime.print_flow.poll()
+    runtime.print_flow.poll()
+    assert runtime.print_flow.progress is not None
+    assert runtime.print_flow.progress.phase == "uncertain"
+    assert runtime.counters.read().prints_total == 0
+    assert len(printer.printed) == 1
+
+
+def test_lot_pending_printing_settling_et_timeout_par_job(
+    kiosk: TestClient, runtime: Runtime, printer: FakePrinterDriver
+) -> None:
+    printer.mode = "spooling"
+    now = [100.0]
+    runtime.print_flow._clock = lambda: now[0]
+    runtime.print_flow._completion_delay_s = 5
+    runtime.print_flow._job_timeout_s = 30
+    session_id = capture(kiosk)
+    kiosk.post(f"/api/session/{session_id}/print", json={"copies": 2})
+    printer.settle(JobState.PENDING)
+    assert kiosk.get("/api/status").json()["print_progress"]["phase"] == "pending"
+    now[0] += 10
+    printer.settle(JobState.PRINTING)
+    assert kiosk.get("/api/status").json()["print_progress"]["elapsed_s"] == 10
+    printer.settle(JobState.COMPLETED)
+    assert kiosk.get("/api/status").json()["print_progress"]["phase"] == "settling"
+    assert runtime.counters.read().prints_total == 0
+    now[0] += 5
+    assert kiosk.get("/api/status").json()["print_progress"]["completed"] == 1
+    assert len(printer.printed) == 2
+    now[0] += 30
+    result = kiosk.get("/api/status").json()
+    assert result["print_progress"]["phase"] == "uncertain"
+    assert result["print_progress"]["completed"] == 1
+    assert len(printer.printed) == 2
+
+
+def test_timeout_global_arrete_lot_meme_si_job_reste_dans_son_delai(
+    runtime: Runtime, printer: FakePrinterDriver
+) -> None:
+    printer.mode = "spooling"
+    now = [100.0]
+    runtime.print_flow._clock = lambda: now[0]
+    runtime.print_flow._job_timeout_s = 30
+    runtime.print_flow._batch_timeout_s = 20
+    runtime.print_flow.submit(
+        runtime.settings.sessions_dir / "final.jpg", 2, complete_session=False
+    )
+    now[0] += 15
+    printer.settle(JobState.COMPLETED)
+    runtime.print_flow.poll()
+    assert len(printer.printed) == 2
+    now[0] += 5
+    runtime.print_flow.poll()
+    assert runtime.print_flow.progress is not None
+    assert runtime.print_flow.progress.phase == "uncertain"
+    assert runtime.print_flow.progress.completed == 1
 
 
 def test_le_kiosque_refuse_plus_de_dix_exemplaires(
@@ -194,6 +425,8 @@ def test_le_compteur_suit_le_nombre_de_copies(kiosk: TestClient, runtime: Runtim
     session_id = capture(kiosk)
 
     kiosk.post(f"/api/session/{session_id}/print")
+    kiosk.get("/api/status")
+    kiosk.get("/api/status")
 
     assert runtime.counters.read().prints_total == 3
 
@@ -213,6 +446,8 @@ def test_un_retirage_de_maintenance_ne_change_pas_la_session(
     path.touch()
 
     runtime.print_flow.submit(path, 2, complete_session=False)
+    printer.settle(JobState.COMPLETED)
+    runtime.print_flow.poll()
     printer.settle(JobState.COMPLETED)
     runtime.print_flow.poll()
 
@@ -344,7 +579,8 @@ def test_la_purge_suit_un_tirage_termine(kiosk: TestClient, runtime: Runtime) ->
     runtime.settings.retention_max_age_days = 0.0
 
     session_id = capture(kiosk)
-    kiosk.post(f"/api/session/{session_id}/print")
+    result = kiosk.post(f"/api/session/{session_id}/print").json()
+    assert result["state"] == "done"
 
     assert not ancienne.exists()
     assert runtime.machine.session is not None
