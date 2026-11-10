@@ -189,7 +189,7 @@ def _unmounted_usb_partitions() -> list[dict[str, str]]:
 def mount_storage(
     selection: StorageMount, runtime: Runtime = Depends(get_runtime)
 ) -> StorageVolume:
-    if runtime.machine.state is not SessionState.IDLE or runtime.print_flow.job is not None:
+    if runtime.machine.state is not SessionState.IDLE or runtime.print_flow.busy:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
             detail="une session photo ou impression est en cours",
@@ -249,7 +249,7 @@ def mount_storage(
 def select_storage(
     selection: StorageSelection, runtime: Runtime = Depends(get_runtime)
 ) -> StorageVolume:
-    if runtime.machine.state is not SessionState.IDLE or runtime.print_flow.job is not None:
+    if runtime.machine.state is not SessionState.IDLE or runtime.print_flow.busy:
         raise HTTPException(
             status.HTTP_409_CONFLICT, detail="une session photo ou impression est en cours"
         )
@@ -281,7 +281,7 @@ def select_storage(
 def prepare_storage(
     selection: StorageSelection, runtime: Runtime = Depends(get_runtime)
 ) -> StorageVolume:
-    if runtime.machine.state is not SessionState.IDLE or runtime.print_flow.job is not None:
+    if runtime.machine.state is not SessionState.IDLE or runtime.print_flow.busy:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
             detail="une session photo ou impression est en cours",
@@ -533,25 +533,37 @@ def set_paper_stock(
     change: PaperStockChange, runtime: Runtime = Depends(get_runtime)
 ) -> CounterReading:
     """Définit le stock papier total. Le cumul et l'état du bac ne bougent pas."""
-    return _reading(runtime.counters.set_paper_stock(change.capacity))
+    try:
+        with runtime.print_flow.supply_guard():
+            return _reading(runtime.counters.set_paper_stock(change.capacity))
+    except PrinterError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
 
 @router.post("/counters/cassette/reload", response_model=CounterReading)
 def reload_paper_cassette(runtime: Runtime = Depends(get_runtime)) -> CounterReading:
-    return _reading(runtime.counters.reload_cassette())
+    try:
+        with runtime.print_flow.supply_guard():
+            return _reading(runtime.counters.reload_cassette())
+    except PrinterError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
 
 @router.post("/counters/ink/replace", response_model=CounterReading)
 def replace_ink_cartridge(
     change: InkCartridgeChange, runtime: Runtime = Depends(get_runtime)
 ) -> CounterReading:
-    return _reading(runtime.counters.replace_ink_cartridge(change.capacity))
+    try:
+        with runtime.print_flow.supply_guard():
+            return _reading(runtime.counters.replace_ink_cartridge(change.capacity))
+    except PrinterError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
 
 @router.post("/session/home", response_model=SessionStatus)
 def force_kiosk_home(runtime: Runtime = Depends(get_runtime)) -> SessionStatus:
     """Interrompt à distance une session bloquée et rend le kiosque disponible."""
-    if runtime.machine.state is SessionState.PRINTING or runtime.print_flow.job is not None:
+    if runtime.machine.state is SessionState.PRINTING or runtime.print_flow.busy:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
             detail="une impression est en cours ; attendez la fin du tirage",
@@ -572,7 +584,7 @@ def force_kiosk_home(runtime: Runtime = Depends(get_runtime)) -> SessionStatus:
 def schedule_power_action(
     action: Literal["reboot", "poweroff"], runtime: Runtime = Depends(get_runtime)
 ) -> PowerTransition:
-    if runtime.machine.state is SessionState.PRINTING or runtime.print_flow.job is not None:
+    if runtime.machine.state is SessionState.PRINTING or runtime.print_flow.busy:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
             detail="une impression est en cours ; attendez la fin du tirage",

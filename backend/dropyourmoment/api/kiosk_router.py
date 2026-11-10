@@ -24,6 +24,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from dropyourmoment.core.errors import CameraError, InvalidTransitionError, PrinterError
 from dropyourmoment.core.event_config import LaunchFont
+from dropyourmoment.core.print_flow import PrintProgress
 from dropyourmoment.core.session import Session, SessionState
 from dropyourmoment.hardware.camera.base import AutofocusSettings
 from dropyourmoment.hardware.system_metrics import read_system_metrics
@@ -63,6 +64,7 @@ class SessionStatus(BaseModel):
     photo_url: str | None = None
     output_mode: str | None = None
     output_copies: int = 0
+    print_progress: PrintProgress | None = None
     power_transition: PowerTransition | None = None
 
 
@@ -160,6 +162,9 @@ def _status(runtime: Runtime) -> SessionStatus:
         photo_url=_photo_url(session),
         output_mode=session.output_mode if session else None,
         output_copies=session.output_copies if session else 0,
+        print_progress=runtime.print_flow.progress
+        if runtime.print_flow.progress and session and session.output_mode == "print"
+        else None,
         power_transition=PowerTransition(**vars(pending))
         if (pending := runtime.system_power.pending)
         else None,
@@ -324,6 +329,8 @@ def read_event_overlay(runtime: Runtime = Depends(get_runtime)) -> FileResponse:
 @router.post("/session", response_model=SessionStatus)
 def start_session(runtime: Runtime = Depends(get_runtime)) -> SessionStatus:
     """Ouvre une session, en écrasant celle en cours s'il en reste une abandonnée."""
+    if runtime.print_flow.busy:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail="tirage en cours ou à rapprocher")
     if runtime.system_power.pending is not None:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
@@ -350,6 +357,8 @@ def start_session(runtime: Runtime = Depends(get_runtime)) -> SessionStatus:
 
 @router.post("/session/cancel", response_model=SessionStatus)
 def cancel_session(runtime: Runtime = Depends(get_runtime)) -> SessionStatus:
+    if runtime.print_flow.busy:
+        runtime.print_flow.cancel()
     if runtime.capture_in_progress and runtime.machine.session is not None:
         runtime.capture_cancelled_session_id = runtime.machine.session.id
     if runtime.machine.session is not None:

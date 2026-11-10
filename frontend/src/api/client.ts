@@ -37,7 +37,20 @@ export interface SessionStatus {
   output_mode: "print" | "save" | null;
   /** Nombre d'exemplaires demandés pour le tirage en cours ou terminé. */
   output_copies: number;
+  print_progress: PrintProgress | null;
   power_transition: PowerTransition | null;
+}
+
+export interface PrintProgress {
+  batch_id: string;
+  requested: number;
+  current_index: number;
+  completed: number;
+  phase: "submitting" | "pending" | "printing" | "settling" | "completed" | "failed" | "cancelled" | "uncertain";
+  job_state: string | null;
+  job_id: string | null;
+  elapsed_s: number | null;
+  error: string | null;
 }
 
 /** Capacités du matériel. Ne changent qu'au rebranchement d'un périphérique. */
@@ -153,6 +166,7 @@ export interface MaintenanceSnapshot {
   power_available: boolean;
   print_busy: boolean;
   print_error: string | null;
+  print_progress?: PrintProgress | null;
   print_job_id?: string | null;
   print_job_state?: string | null;
   print_job_copies?: number | null;
@@ -425,6 +439,7 @@ export const api = {
   refreshMaintenanceStorage: () => post<AdminHealth>("/api/maintenance/storage/refresh"),
   ejectMaintenanceStorage: () => post<AdminHealth>("/api/maintenance/storage/eject"),
   cancelMaintenancePrint: () => post<void>("/api/maintenance/print/cancel"),
+  reconcileMaintenancePrint: () => post<void>("/api/maintenance/print/reconcile"),
   maintenanceJournal: (query: JournalQuery = {}) =>
     request<JournalPage>(`/api/maintenance/journal?${journalQuery(query)}`),
   changeHotspot: (action: "activate" | "deactivate") =>
@@ -455,6 +470,7 @@ export const api = {
       body: JSON.stringify({ copies }),
     });
     if (!response.ok) throw new Error(await errorMessage(response, path));
+    return response.json() as Promise<PrintProgress>;
   },
   deleteMaintenanceGalleryEntry: async (sessionId: string) => {
     const path = `/api/maintenance/gallery/${sessionId}`;

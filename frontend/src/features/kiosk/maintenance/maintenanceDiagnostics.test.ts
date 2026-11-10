@@ -73,14 +73,46 @@ const snapshot = {
 } satisfies MaintenanceSnapshot;
 
 assert.equal(maintenanceDiagnostics(snapshot).status, "ready");
-const printing = { state: "printing", copies: 2, targetPrintsTotal: 2 } as const;
+const printing = { state: "printing", copies: 2, batchId: "b" } as const;
+assert.equal(resolveMaintenancePrint(printing, {
+  ...snapshot,
+  print_progress: {
+    batch_id: "old", requested: 2, current_index: 2, completed: 2,
+    phase: "completed", job_state: "completed", job_id: "cups-old", elapsed_s: null, error: null,
+  },
+})?.state, "printing");
 assert.equal(resolveMaintenancePrint(printing, snapshot)?.state, "printing");
 assert.equal(
   resolveMaintenancePrint(printing, {
     ...snapshot,
+    print_progress: {
+      batch_id: "b", requested: 2, current_index: 2, completed: 1,
+      phase: "printing", job_state: "printing", job_id: "cups-2", elapsed_s: 10, error: null,
+    },
     health: { ...snapshot.health, counters: { ...snapshot.health.counters, prints_total: 2 } },
   })?.state,
+  "printing",
+);
+assert.equal(
+  resolveMaintenancePrint(printing, {
+    ...snapshot,
+    print_progress: {
+      batch_id: "b", requested: 2, current_index: 2, completed: 2,
+      phase: "completed", job_state: "completed", job_id: "cups-2", elapsed_s: null, error: null,
+    },
+  })?.state,
   "complete",
+);
+assert.equal(
+  resolveMaintenancePrint(printing, {
+    ...snapshot,
+    print_progress: {
+      batch_id: "b", requested: 2, current_index: 2, completed: 1,
+      phase: "uncertain", job_state: "printing", job_id: "cups-2", elapsed_s: null,
+      error: "statut CUPS inaccessible",
+    },
+  })?.completed,
+  1,
 );
 assert.equal(
   resolveMaintenancePrint(printing, { ...snapshot, print_error: "papier bloqué" })?.state,

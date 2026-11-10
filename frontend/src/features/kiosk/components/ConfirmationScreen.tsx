@@ -1,35 +1,20 @@
 import { Check, Printer } from "lucide-react";
-import { useEffect, useState } from "react";
+import type { PrintProgress } from "@/api/client";
+import { copyLabel, globalProgress } from "../printProgress";
 
 import { Lede } from "./Screen";
-
-// Estimation CP1500 : environ 50 s pour les passes physiques observées.
-// Le backend garde la main sur les erreurs et peut terminer plus tôt si nécessaire.
-const ESTIMATED_PRINT_DURATION_MS = 50_000;
 
 interface Props {
   printing: boolean;
   outputMode: "print" | "save" | null;
   outputCopies: number;
+  progress: PrintProgress | null;
   photoUrl: string | null;
   onContinue: () => Promise<void>;
 }
 
-export function ConfirmationScreen({ printing, outputMode, outputCopies, photoUrl, onContinue }: Props) {
-  const [progress, setProgress] = useState(printing ? 8 : 100);
-
-  useEffect(() => {
-    if (!printing) {
-      setProgress(100);
-      return;
-    }
-    const startedAt = performance.now();
-    const timer = window.setInterval(() => {
-      const elapsed = performance.now() - startedAt;
-      setProgress(Math.min(100, 8 + (elapsed / ESTIMATED_PRINT_DURATION_MS) * 92));
-    }, 120);
-    return () => window.clearInterval(timer);
-  }, [printing]);
+export function ConfirmationScreen({ printing, outputMode, outputCopies, progress, photoUrl, onContinue }: Props) {
+  const percent = globalProgress(progress);
 
   const printed = outputMode === "print";
   const multipleCopies = printed && outputCopies > 1;
@@ -45,28 +30,28 @@ export function ConfirmationScreen({ printing, outputMode, outputCopies, photoUr
           <Printer className="size-14 text-signal" strokeWidth={1.8} aria-hidden="true" />
           <div className="grid gap-3">
             <h1 className="text-5xl leading-none font-bold tracking-[-0.02em]">{multipleCopies ? "Vos exemplaires prennent forme" : "Votre photo prend forme"}</h1>
-            <Lede>{multipleCopies ? "Encore un instant, ils arrivent." : "Encore un instant, elle arrive."}</Lede>
+            <Lede>{progress ? copyLabel(progress) : "En attente du spouleur CUPS"}</Lede>
           </div>
           <div className="grid gap-1 rounded-panel border-2 border-edge bg-ink p-4" role="status">
             <p className="text-2xl leading-tight font-semibold text-body">Patientez avant de prendre la photo</p>
-            <p className="text-lg leading-tight text-muted">Elle effectue encore quelques passages dans l’imprimante.</p>
+            <p className="text-lg leading-tight text-muted">{progress?.completed ?? 0} confirmé(s) par CUPS. L’avancement du job courant est estimé, pas mesuré sur le papier.</p>
           </div>
           <div className="grid gap-3">
             <div className="flex items-end justify-between">
-              <span className="text-lg font-medium text-muted">Impression en cours</span>
-              <span className="text-3xl font-bold tabular-nums text-body">{Math.round(progress)} %</span>
+              <span className="text-lg font-medium text-muted">{progress?.phase === "pending" ? "En attente" : progress?.phase === "settling" ? "Finalisation" : "Progression estimée"}</span>
+              <span className="text-3xl font-bold tabular-nums text-body">{percent === null ? "En attente" : `${Math.round(percent)} %`}</span>
             </div>
             <div
               role="progressbar"
               aria-label="Progression estimée de l'impression"
               aria-valuemin={0}
               aria-valuemax={100}
-              aria-valuenow={Math.round(progress)}
+              aria-valuenow={percent === null ? undefined : Math.round(percent)}
               className="h-5 overflow-hidden rounded-[0.35rem] border-2 border-edge bg-ink"
             >
               <span
                 className="block h-full bg-signal transition-[width] duration-150 ease-out motion-reduce:transition-none"
-                style={{ width: `${progress}%` }}
+                style={{ width: `${percent ?? 0}%` }}
               />
             </div>
           </div>
@@ -77,9 +62,9 @@ export function ConfirmationScreen({ printing, outputMode, outputCopies, photoUr
             <Check className="size-8" strokeWidth={3} />
           </span>
           <h1 className="max-w-[10ch] text-5xl leading-none font-bold tracking-[-0.02em]">
-            {multipleCopies ? `Vos ${outputCopies} exemplaires sont prêts !` : printed ? "Votre photo est prête !" : "C'est enregistré !"}
+            {printed ? `${outputCopies} job${multipleCopies ? "s" : ""} terminé${multipleCopies ? "s" : ""} côté CUPS` : "C'est enregistré !"}
           </h1>
-          <Lede>{multipleCopies ? "Vous pouvez les récupérer." : printed ? "Vous pouvez la récupérer." : "Votre photo reste dans la galerie."}</Lede>
+          <Lede>{printed ? "CUPS ne confirme pas la sortie physique des feuilles. Vérifiez l’imprimante." : "Votre photo reste dans la galerie."}</Lede>
           <p className="whitespace-nowrap text-lg text-signal-ink/70">Touchez pour prendre une nouvelle photo</p>
         </section>
       )}

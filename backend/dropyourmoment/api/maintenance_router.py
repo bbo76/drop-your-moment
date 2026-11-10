@@ -21,6 +21,7 @@ from dropyourmoment.api.admin_router import (
 from dropyourmoment.api.kiosk_router import get_runtime
 from dropyourmoment.core.errors import PrinterError
 from dropyourmoment.core.event_config import LaunchFont
+from dropyourmoment.core.print_flow import PrintProgress
 from dropyourmoment.core.session import SessionState
 from dropyourmoment.hotspot import WifiNetwork, WifiProfile, development_portal_url
 from dropyourmoment.journal import (
@@ -99,6 +100,7 @@ class MaintenanceSnapshot(BaseModel):
     power_available: bool
     print_busy: bool
     print_error: str | None
+    print_progress: PrintProgress | None = None
     print_job_id: str | None
     print_job_state: str | None
     print_job_copies: int | None
@@ -177,8 +179,9 @@ def maintenance_status(runtime: Runtime = Depends(_authorized)) -> MaintenanceSn
             launch_font=config.launch_font,
         ),
         power_available=runtime.system_power.available,
-        print_busy=runtime.print_flow.job is not None,
+        print_busy=runtime.print_flow.busy,
         print_error=runtime.print_flow.last_error,
+        print_progress=runtime.print_flow.progress,
         print_job_id=runtime.print_flow.job.id if runtime.print_flow.job else None,
         print_job_state=runtime.print_flow.job.state if runtime.print_flow.job else None,
         print_job_copies=runtime.print_flow.job.copies if runtime.print_flow.job else None,
@@ -198,7 +201,7 @@ def refresh_storage(runtime: Runtime = Depends(_authorized)) -> AdminHealth:
 @router.post("/storage/eject", response_model=AdminHealth)
 def safe_remove_storage(runtime: Runtime = Depends(_authorized)) -> AdminHealth:
     """Désactive la destination externe après vérification qu'aucune écriture n'est active."""
-    if runtime.machine.state is not SessionState.IDLE or runtime.print_flow.job is not None:
+    if runtime.machine.state is not SessionState.IDLE or runtime.print_flow.busy:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
             detail="attendez la fin de la session ou du tirage",
@@ -213,9 +216,18 @@ def safe_remove_storage(runtime: Runtime = Depends(_authorized)) -> AdminHealth:
 
 @router.post("/print/cancel", status_code=status.HTTP_204_NO_CONTENT)
 def cancel_print(runtime: Runtime = Depends(_authorized)) -> None:
-    if runtime.print_flow.job is None:
+    if not runtime.print_flow.busy:
         return
     runtime.print_flow.cancel()
+
+
+@router.post("/print/reconcile", status_code=status.HTTP_204_NO_CONTENT)
+def reconcile_print(runtime: Runtime = Depends(_authorized)) -> None:
+    """Operator confirms independent CUPS/physical stock reconciliation."""
+    try:
+        runtime.print_flow.acknowledge_uncertain()
+    except PrinterError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
 
 @router.get("/journal", response_model=JournalPage)
@@ -360,7 +372,7 @@ def hotspot_qr(
 
 @router.post("/power/{action}", status_code=status.HTTP_202_ACCEPTED)
 def request_power_action(action: PowerAction, runtime: Runtime = Depends(_authorized)) -> None:
-    if runtime.machine.state is not SessionState.IDLE or runtime.print_flow.job is not None:
+    if runtime.machine.state is not SessionState.IDLE or runtime.print_flow.busy:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
             detail="une session photo ou une impression est en cours",
@@ -399,14 +411,22 @@ class InkCartridgeChange(BaseModel):
 
 @router.post("/cassette/reload", response_model=CounterReading)
 def reload_paper_cassette(runtime: Runtime = Depends(_authorized)) -> CounterReading:
-    return _reading(runtime.counters.reload_cassette())
+    try:
+        with runtime.print_flow.supply_guard():
+            return _reading(runtime.counters.reload_cassette())
+    except PrinterError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
 
 @router.post("/ink/replace", response_model=CounterReading)
 def replace_ink_cartridge(
     change: InkCartridgeChange, runtime: Runtime = Depends(_authorized)
 ) -> CounterReading:
-    return _reading(runtime.counters.replace_ink_cartridge(change.capacity))
+    try:
+        with runtime.print_flow.supply_guard():
+            return _reading(runtime.counters.replace_ink_cartridge(change.capacity))
+    except PrinterError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
 
 @router.get("/gallery", response_model=GalleryPage)
@@ -441,26 +461,34 @@ class GalleryPrintRequest(BaseModel):
     copies: int = Field(ge=1, le=10)
 
 
-@router.post("/gallery/{session_id}/print", status_code=status.HTTP_202_ACCEPTED)
+@router.post(
+    "/gallery/{session_id}/print",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=PrintProgress,
+)
 def print_gallery_photo(
     session_id: str,
     request: GalleryPrintRequest,
     runtime: Runtime = Depends(_authorized),
-) -> None:
-    if runtime.machine.state is not SessionState.IDLE:
-        raise HTTPException(status.HTTP_409_CONFLICT, detail="une session photo est en cours")
+) -> PrintProgress:
+    if runtime.machine.state is not SessionState.IDLE or runtime.print_flow.busy:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, detail="une session photo ou un tirage est en cours"
+        )
     try:
         runtime.print_flow.submit(
             _photo_path(runtime, session_id), request.copies, complete_session=False
         )
     except PrinterError as exc:
         raise HTTPException(status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    assert runtime.print_flow.progress is not None
+    return runtime.print_flow.progress
 
 
 @router.delete("/gallery/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_gallery_photo(session_id: str, runtime: Runtime = Depends(_authorized)) -> Response:
     path = _photo_path(runtime, session_id)
-    if runtime.print_flow.source_path == path:
+    if runtime.print_flow.source_path == path or runtime.print_flow.busy:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
             detail="attendez la fin de l'impression avant de supprimer cette photo",

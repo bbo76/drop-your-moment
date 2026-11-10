@@ -184,14 +184,14 @@ export function App() {
       return (
         <CenteredScreen>
           <Title>Oups</Title>
-          <Lede>Impossible de continuer. Réessayez dans un instant.</Lede>
-          <GhostButton onClick={cancel}>Retour à l'accueil</GhostButton>
+          <Lede>{session.print_progress ? `${session.print_progress.completed} sur ${session.print_progress.requested} job(s) terminés côté CUPS. ${session.print_progress.error ?? "Vérifiez l’imprimante."} Ne relancez pas sans vérifier les feuilles.` : "Impossible de continuer. Réessayez dans un instant."}</Lede>
+          <GhostButton onClick={cancel}>{session.print_progress?.phase === "uncertain" ? "Retour · maintenance requise" : "Retour à l'accueil"}</GhostButton>
         </CenteredScreen>
       );
 
     case "printing":
     case "done":
-      return <ConfirmationScreen printing={session.state === "printing"} outputMode={session.output_mode} outputCopies={session.output_copies} photoUrl={session.photo_url} onContinue={start} />;
+      return <ConfirmationScreen printing={session.state === "printing"} outputMode={session.output_mode} outputCopies={session.output_copies} progress={session.print_progress} photoUrl={session.photo_url} onContinue={start} />;
   }
 }
 
